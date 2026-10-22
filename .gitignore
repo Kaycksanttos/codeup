@@ -1,0 +1,8 @@
+node_modules
+data.json
+.env
+teste-dados
+backups
+*.log
+.DS_Store
+.vscode

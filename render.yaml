@@ -1,0 +1,38 @@
+# Publicação no Render.com (render.com -> New -> Blueprint -> aponte para o repositório com este arquivo).
+# Passo a passo completo em DEPLOY-RENDER.md.
+# Cria 2 coisas: o site (Docker) e o banco PostgreSQL. Os dados dos alunos ficam no banco, nunca no disco do site.
+# Planos (conferidos na tabela de preços do Render): site 0.5c-512mb ≈ US$ 7/mês e banco 0.1c-256mb ≈ US$ 6/mês.
+# Site e banco ficam na MESMA região (virginia = Leste dos EUA, a mais próxima do Brasil entre as do Render): é assim que o site fala com o banco pela rede privada.
+databases:
+  - name: codeup-db
+    plan: 0.1c-256mb
+    region: virginia
+    databaseName: codeup
+    user: codeup
+    ipAllowList: []                           # só o site (rede privada do Render) acessa o banco; nada de fora da internet
+
+services:
+  - type: web
+    name: codeup
+    runtime: docker
+    plan: 0.5c-512mb
+    region: virginia
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: codeup-db, property: connectionString }
+      - { key: BASE_URL, sync: false }          # https://seu-dominio.com.br
+      - { key: COMPANY_NAME, sync: false }
+      - { key: CONTACT_EMAIL, sync: false }
+      - { key: ADSENSE_CLIENT, sync: false }    # opcional: os anúncios podem ser ligados pelo painel do dono (Ajustes → Anúncios); o painel vale mais que esta variável
+      - { key: ADSENSE_SLOT, sync: false }
+      - { key: GOOGLE_CLIENT_ID, sync: false }
+      - { key: RESEND_API_KEY, sync: false }    # necessário para confirmar e-mail e recuperar senha
+      - { key: SMTP_HOST, sync: false }
+      - { key: PY_MAX_PARALLEL, value: "2" }   # no máximo 2 correções de Python ao mesmo tempo (o plano de 512 MB de memória é pequeno)
+      - { key: SMTP_PORT, value: "587" }
+      - { key: SMTP_USER, sync: false }
+      - { key: SMTP_PASS, sync: false }
+      - { key: MAIL_FROM, sync: false }
+      - { key: ADMIN_KEY, generateValue: true }
+      - { key: ADMIN_HOST, sync: false }        # admin.seu-dominio.com.br (opcional: painel em endereço próprio; veja o README 5b)

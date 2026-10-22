@@ -1,0 +1,131 @@
+# CodeUp — aprenda SQL, Python e Análise de Dados na prática
+
+App web instalável no celular (PWA). Escreve código de verdade no navegador, corrige no servidor,
+tem contas, 2 trilhas (Python e SQL) com 3 níveis de 30 lições e uma prova cada, certificado verificável, XP/vidas/sequência. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
+
+## Testar tudo do começo (modo teste)
+
+`npm run teste` (vazio) ou `npm run teste:demo` (com alunos de exemplo) sobe uma cópia do app em http://localhost:3100 com dados novos, sem tocar no seu `data.json` nem no banco de verdade. O painel fica em `/admin` (chave `admin-teste`), o e-mail de confirmação e o "esqueci a senha" abrem na hora e a faixa laranja tem o botão **Começar do zero**. O roteiro completo está em **TESTAR.md**.
+
+## O que tem dentro
+```
+codeup/
+├─ server.js          backend (contas, correção, anúncios, e-mail, LGPD)
+├─ sqlcheck.js        correção de SQL isolada (tempo e memória limitados)
+├─ lessons.js         monta o curso a partir de content/ (regras: 6 grátis, nota 70%, 10 questões)
+├─ content/           py1-3.js e sql1-3.js: as 180 lições e os bancos de questões das 6 provas
+│                     checkpoints.js: 30 checkpoints (a cada 5 lições, em SQL e Python: uma consulta/código com o que se aprendeu; são obrigatórios para abrir as lições 6, 11, 16, 21 e 26 e valem XP)
+├─ admin.js           painel do dono: API /api/admin/* (cadastros, liberar cursos, suspender, ajustes, auditoria)
+├─ legal/             Termos de Uso e Política de Privacidade (modelos)
+├─ public/            o app: index.html, app.js, style.css, ícones, manifest, sw.js
+│                     admin.html, admin.js, admin.css: a tela do painel do dono (abre em /admin)
+│                     scene.js: cenários dos visuais "Azul" (floresta azul, padrão) e "Rosa"
+│                     img/tay*.webp e img/cut*.webp: os personagens (Tay = feminino, rosa · Cut = masculino, azul), versão inteira e versão rosto
+│                     Cadastro em 2 passos: "Você é feminino ou masculino?" (u.sex = f|m) e "Quem vai te guiar?" (u.guide = tay|cut, escolha independente do gênero); seguem junto no POST /api/register e no login Google. Contas antigas respondem uma vez ao entrar (POST /api/guide aceita sex e/ou guide). Dá para trocar em Perfil > Eu sou / Personagem; o painel mostra os dois (visão geral, ficha, CSV)
+│                     Estilos: Azul (floresta azul), Rosa, Azul escuro e Claro (Perfil > Aparência); escolher a Tay já liga o Rosa
+├─ test/              testes automáticos (cada lição/prova + API + curso/prova/certificado + Google/recuperação)
+├─ Dockerfile, render.yaml, .env.example, package.json, package-lock.json
+```
+
+## 1) Rodar no seu computador (VS Code)
+1. Instale o Node.js 18 ou superior (nodejs.org).
+2. Abra o terminal **na pasta onde está o `package.json`** (no VS Code: botão direito na pasta → Abrir no Terminal) e rode: `npm install`. Se aparecer a pasta `node_modules` ali dentro, deu certo. O `sql.js` também vem copiado em `vendor/sql/`, então o SQL funciona mesmo sem o `npm install`; o instalador cuida do resto (Express etc.). Ao iniciar com `npm start`, o terminal mostra **"Correção de SQL no servidor: ATIVA"**; se aparecer **FALHOU**, rode `npm install` de novo nessa pasta e reinicie (enquanto isso o servidor confere o SQL pelo resultado enviado pelo navegador, como já faz no Python sem Linux). Na lição, o aluno escreve, vê o resultado do código na hora e só toca em **Concluído** para ser avaliado.
+3. Copie `.env.example` para `.env` (no teste, use `ADS_PREVIEW=1` para ver as caixas de anúncio).
+4. `npm start` → abra http://localhost:3000 (precisa de internet: SQL e Python carregam de uma CDN).
+5. Para conferir tudo: `npm test`.
+
+Na recuperação de senha, sem e-mail configurado, o link aparece no terminal do servidor.
+
+## 2) Colocar no ar (Render.com — o caminho mais simples)
+**Passo a passo completo, para quem nunca publicou: `DEPLOY-RENDER.md`.** Resumo:
+Você precisa de: uma conta no GitHub, uma no Render e um domínio (opcional no início).
+1. Suba a pasta `codeup` para um repositório no GitHub (o `.gitignore` já protege o `.env` e os dados).
+2. No Render: **New → Blueprint** → escolha o repositório (ele lê o `render.yaml`).
+3. Preencha as variáveis pedidas (veja o `.env.example`): `BASE_URL`, `COMPANY_NAME`, `CONTACT_EMAIL`, e-mail e (depois) os anúncios.
+4. O `render.yaml` cria o site **e um banco PostgreSQL** (planos pagos: site ≈ US$ 7/mês e banco ≈ US$ 6/mês, conforme a tabela de preços do Render). Os dados dos alunos ficam no banco, com backup do Render; sem banco, os usuários sumiriam a cada reinício.
+5. Aponte seu domínio em Settings → Custom Domains. O HTTPS é automático.
+Funciona igual em Railway, Fly.io ou qualquer VPS com Docker (`Dockerfile` incluso). Use a variável `DATABASE_URL` com o endereço do seu Postgres (Supabase e Neon têm plano grátis). Sem `DATABASE_URL`, o app usa o arquivo `data.json` (monte um volume em `/data`).
+**Importante:** rode **uma única cópia** do servidor (os dados ficam em memória e são gravados a cada segundo). Se já tinha alunos no `data.json`, ele é importado para o Postgres automaticamente na primeira vez.
+Obs.: o `render.yaml` usa os nomes de plano atuais do Render (`0.5c-512mb` e `0.1c-256mb`) e foi conferido contra a documentação, mas não foi aplicado na plataforma real; se o Render reclamar de algum campo, crie o serviço manualmente (Docker + um PostgreSQL e a variável `DATABASE_URL`).
+Obs. 2: o app foi testado em modo produção contra um PostgreSQL de verdade (cadastro, correção de Python e SQL, e dados mantidos depois de reiniciar). A imagem Docker (Alpine) não pôde ser construída aqui; no primeiro deploy olhe o log: devem aparecer `Dados em: PostgreSQL` e `Correção de Python no servidor: ATIVA`.
+Obs. 3: o plano de 512 MB aguenta bem o começo (o app usa ~120 MB parado e cada correção de Python com pandas ~65 MB, limitadas a 2 ao mesmo tempo). Se o painel do Render mostrar a memória perto do limite, suba o plano do site.
+
+## 3) Anúncios (Google AdSense)
+O app é gratuito e ganha dinheiro com anúncios. **Você liga tudo pelo painel do dono, sem mexer no servidor:** `/admin` → **Ajustes** → cartão **Anúncios (Google AdSense)**. Sem nada configurado, nenhum anúncio aparece.
+1. Coloque o site no ar com domínio próprio e as páginas **Termos** e **Privacidade** (já existem). O AdSense só aprova sites públicos, com conteúdo e política de privacidade.
+2. Em adsense.google.com, cadastre o site. A análise leva de alguns dias a algumas semanas.
+3. No painel, cole o **ID do editor** (`ca-pub-...`, em AdSense → Conta → Informações da conta) e ligue. Dá para colar o código inteiro que o Google gera: o painel separa os números. Vale na hora, sem reiniciar. A página inicial passa a levar a meta tag `google-adsense-account` (no AdSense, verifique o site pelo método **Metatag** ou **ads.txt**).
+4. Depois de aprovado: em AdSense → Anúncios → Por bloco de anúncios, crie um **display responsivo** e cole o número do `data-ad-slot` no campo **ID do bloco**. Sem ele o app não desenha os quadros. Deixe os “Anúncios automáticos” desligados no AdSense.
+5. O arquivo `/ads.txt` é gerado sozinho com o seu ID (abra `https://SEU-DOMINIO/ads.txt` para conferir). Quem prefere variáveis de ambiente ainda pode usar `ADSENSE_CLIENT` e `ADSENSE_SLOT`: o que for salvo no painel vale mais, e “Voltar ao padrão do servidor” devolve o valor das variáveis.
+6. Onde aparecem: início, trilhas, desafios, perfil e tela de fim de lição, sempre com o rótulo “Publicidade”. **Nunca** durante lição ou prova (melhor para o aluno e exigido pelas regras do AdSense contra cliques acidentais).
+7. Aviso de cookies: o aluno **não escolhe** o tipo de anúncio. Os anúncios são sempre **não personalizados** (o app pede isso ao Google) e carregam direto; o aviso mostra só um botão “Entendi” (e some durante lição e prova). Anúncios personalizados exigiriam o consentimento do aluno, por isso ficam fora. Isso ajuda com a LGPD, mas **peça a um advogado para revisar**; se tiver público na Europa, use também a mensagem de consentimento do próprio AdSense (Privacidade e mensagens).
+7. Regras do AdSense: nunca clique nos seus próprios anúncios nem peça para outros clicarem; o Google bloqueia a conta.
+Não consegui testar com o Google real aqui (sem acesso à rede deles); no primeiro dia olhe o console do navegador por erros de CSP. Se algo for bloqueado, a política está em `server.js` (`ADS_HOSTS`).
+
+## 4) E-mail — necessário para a recuperação de senha funcionar
+Sem um serviço de e-mail configurado, o link de redefinição **só aparece no terminal do servidor** e o aluno que esquecer a senha não recebe nada. Escolha uma opção:
+- **Resend (mais simples):** crie a conta em resend.com → *Domains* → adicione e verifique o seu domínio (ele mostra os registros DNS para você colar no seu provedor de domínio) → *API Keys* → crie uma chave. No ambiente: `RESEND_API_KEY=re_...` e `MAIL_FROM="CodeUp <no-reply@seu-dominio.com.br>"`.
+- **SMTP** (Brevo, Amazon SES, Gmail com senha de app…): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `MAIL_FROM`.
+Sem domínio próprio verificado, a maioria dos provedores só entrega para o seu próprio e-mail ou cai no spam — configure o domínio antes de lançar.
+
+**Como funciona a recuperação:** “Esqueci minha senha” → o aluno recebe um e-mail com um botão (link válido por 1 hora, uso único) → cria a nova senha e **já entra no app**. Por segurança: a resposta é a mesma exista ou não a conta, são no máximo 3 e-mails por hora por endereço, um pedido novo invalida o link anterior, todos os outros aparelhos são desconectados e o aluno recebe um aviso “sua senha foi alterada”. Quem entrou só com Google também pode criar uma senha por esse caminho (ou em Perfil → *Criar senha*). Logado, o aluno troca a senha em Perfil → *Alterar senha*.
+**Se o e-mail de algum aluno não chegar** (spam, endereço errado), gere o link você mesmo e envie por WhatsApp: abra o **Painel admin** (seção 5b), entre no aluno e use **Gerar link de nova senha** — o link aparece na tela, é só copiar e enviar por WhatsApp.
+
+## 4b) Login com o Google
+1. Acesse console.cloud.google.com, crie um projeto (ou use um existente).
+2. **APIs e serviços → Tela de permissão OAuth**: tipo *Externo*, preencha nome do app, e-mail de suporte, e publique o app (*Em produção*) — assim qualquer pessoa pode entrar. Só pedimos nome e e-mail.
+3. **Credenciais → Criar credenciais → ID do cliente OAuth → Aplicativo da Web.** Em *Origens JavaScript autorizadas* adicione `https://seu-dominio.com.br` (e `http://localhost:3000` para testar). Não precisa de URI de redirecionamento.
+4. Copie o **ID do cliente** para `GOOGLE_CLIENT_ID` e reinicie. O botão “Continuar com o Google” aparece sozinho nas telas de entrar e criar conta.
+Como funciona: o Google entrega um token ao navegador, o servidor confere a assinatura e o e-mail verificado e cria a conta (no primeiro acesso a pessoa precisa aceitar os Termos). Se já existir uma conta com o mesmo e-mail, as duas são vinculadas.
+
+## 5) Dia a dia
+- **Como o curso funciona:** o aluno escolhe Python ou SQL (pode estudar a outra depois; o progresso é separado). Cada trilha tem 3 níveis (Básico, Intermediário, Avançado) com 30 lições em sequência. Ao terminar as 30, libera-se a prova: 10 questões sorteadas de um banco de 12, nota mínima de 70% (7 acertos), sem dicas e sem ver a nota até entregar. **Reprovou = as 30 lições do nível voltam a ficar pendentes** (os pontos já ganhos são mantidos e não se ganha pontos duas vezes). Passou = libera o próximo nível. Passando nos 3 níveis, o aluno emite o certificado, com página pública de verificação em `/certificado/CÓDIGO` (botão para imprimir/salvar em PDF). Gratuito: as 6 primeiras lições do Básico de cada trilha. Tudo isso é imposto no servidor.
+- **Editar lições e provas:** os arquivos ficam em `content/` (`py1.js`…`sql3.js`; cada um tem `lessons` e `exam`). Depois de mudar uma atividade Python, rode `npm run build:content` (ele roda a solução no `python3` e atualiza o gabarito em `content/expected.json`) e depois `npm test`. Mudar a regra de nota ou de lições gratuitas: constantes no topo de `lessons.js`. Ao mudar lições de um nível que já tem alunos, o progresso deles continua pelo `id` da lição; não reutilize `id`s para conteúdo diferente.
+- **Exemplos de SQL:** pode escrever o `example` e a `solution` em uma linha só; o app organiza sozinho na tela (uma parte do comando por linha — SELECT, FROM, JOIN, WHERE... —, recuo nas subconsultas e CTEs) e mostra a legenda "Como ler" com o que cada parte faz. Isso é o arquivo `public/fmt.js` (não altera o texto do comando). Se você já escrever o exemplo em várias linhas, ele aparece exatamente como você escreveu.
+- **Seus dados:** `COMPANY_NAME`, `CONTACT_EMAIL`.
+- **Números do negócio e gestão dos alunos:** o **Painel admin** em `/admin` (seção 5b logo abaixo).
+- **Backup:** com Postgres, é do próprio provedor (confira se está ligado). No modo arquivo, 1 por hora na pasta `backups/` (guarda os últimos 72); copie-a de vez em quando para fora do servidor.
+- **Confirmação de e-mail:** quem cria conta com e-mail e senha recebe um link (vale 48 h). Pode estudar sem confirmar, mas precisa confirmar para emitir certificado. Login com Google já entra confirmado. Só funciona se o e-mail do passo 4 estiver configurado; sem ele, as contas entram direto.
+- **Python corrigido no servidor:** ao enviar uma lição ou responder uma prova, o servidor roda o código do aluno num processo isolado (sem rede, sem acesso a arquivos, sem subprocessos, com limite de tempo e memória) e compara a saída; o que o navegador diz ter impresso é ignorado. Precisa de `python3` + pandas no servidor (o `Dockerfile` já instala). Se não houver python3, o app avisa no log e volta ao modo antigo.
+
+## 5b) Painel admin (só para você)
+Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/admin`) e entre com a chave de administrador.
+
+**No Render:** a chave já é criada sozinha — abra o seu serviço → **Environment** → `ADMIN_KEY` → *Reveal* e copie (pode trocar por uma sua).
+
+**Como ligar em outro lugar:** defina `ADMIN_KEY` com uma senha longa (16+ caracteres) — no `.env` do seu computador ou nas variáveis do Render — e reinicie. Sem `ADMIN_KEY` o painel fica **desligado** em produção (e qualquer endereço `/api/admin/...` responde 404, como se não existisse). No seu computador, se você não definir nada, o servidor gera uma chave sozinha e **mostra no terminal** quando inicia. O login vale 12 horas e só fica na aba do navegador; a chave em si nunca é guardada. A página `/admin` não aparece em buscadores (`noindex`).
+
+**O que o painel faz**
+- **Visão geral:** quantos se cadastraram (hoje, 7 e 30 dias), quantos estudaram hoje, lições concluídas, provas, certificados, XP total, gráfico dos últimos 30 dias, funil “cadastro → certificado”, últimos cadastros, ranking de XP e quantos estão em cada trilha.
+- **Usuários:** lista de todos com busca por nome/e-mail, filtros (já estudaram, nunca estudaram, ativos/sumidos, e-mail sem confirmar, Google, curso liberado, com certificado, suspensos), ordenação, páginas e **baixar CSV** (abre direto no Excel).
+- **Ficha do aluno** (clique na linha): progresso por trilha e nível, atividade recente, aparelhos logados e as ações:
+  - **Liberar curso** (Python, SQL ou **todos os cursos**) para aquela pessoa: tira os bloqueios de nível, de sequência e de checkpoint e já permite fazer as provas. **O certificado continua exigindo passar nas 3 provas** da trilha. Dá para tirar a liberação quando quiser.
+  - **A pessoa não precisa recarregar nem sair do app**: o app confere sozinho (ao voltar para a aba/app e a cada ~1 minuto, só no mapa, nunca no meio de uma lição ou prova) e destrava as lições na tela, com o aviso "Seus cursos foram liberados!". O mesmo vale para o *Modo livre* (ligar e desligar) e para os comunicados do dono.
+  - Confirmar e-mail, reenviar confirmação, gerar link de nova senha, encerrar sessões, mudar nome, ajustar XP, zerar o progresso de um nível, anotação interna (só você vê).
+  - **Suspender** (a pessoa é desconectada e não consegue entrar nem recuperando a senha; dá para reativar) e **Excluir conta** (só se você digitar o e-mail da pessoa).
+- **Aprendizado:** as lições em que os alunos mais travam e as que mais exigem tentativas, e a taxa de aprovação de cada prova (para saber o que melhorar no conteúdo).
+- **Certificados:** busca por código, nome ou e-mail; **revogar** (a página pública passa a dizer que não é mais válido) e restaurar.
+- **Ajustes:** **fechar/abrir cadastros**; **comunicado** para os alunos (aviso azul, verde ou amarelo no topo da tela inicial); **modo livre** (libera todos os cursos para todo mundo por 1, 7 ou 30 dias, ou sem prazo — bom para promoção ou demonstração).
+- **Sistema:** confere banco de dados, e-mail, Google, anúncios, correção de Python e de SQL e o endereço do site, com dica do que falta.
+- **Auditoria:** registro de tudo o que foi feito pelo painel (quem, o quê, quando e de qual IP). Nunca guarda senhas.
+
+**Para scripts:** as rotas antigas continuam valendo com o cabeçalho `x-admin-key: <ADMIN_KEY>` (`GET /api/admin/stats`, `POST /api/admin/reset-link`). O painel usa `x-admin-token`, obtido em `POST /api/admin/login`.
+
+**Painel em endereço separado (recomendado em produção).** O painel e o app dos alunos rodam no **mesmo servidor** — de propósito: o app guarda os dados em memória, então um segundo servidor mexendo no mesmo banco desatualizaria e até sobrescreveria o que o primeiro gravou (liberações e suspensões não valeriam). O que dá para separar é o **endereço**: o painel num subdomínio só seu, que não existe no site público.
+1. No Render, abra o serviço → **Settings → Custom Domains** → adicione `admin.seusite.com.br` (além do domínio do site). No seu provedor de domínio, crie o registro **CNAME** `admin` apontando para o endereço que o Render mostrar (algo como `codeup.onrender.com`).
+2. Em **Environment**, crie `ADMIN_HOST` = `admin.seusite.com.br` (só o endereço, sem `https://`) e deixe o Render reiniciar.
+3. Pronto: `https://admin.seusite.com.br` abre direto o painel; no site público `/admin` e `/api/admin/...` passam a responder 404, e no endereço do admin só o painel funciona (o app dos alunos não abre ali). A chave `ADMIN_KEY` continua sendo a senha. Os links de "nova senha" que você gera continuam apontando para o site público.
+Sem `ADMIN_HOST` (ou no seu computador) tudo fica no mesmo endereço, como antes. A aba **Sistema** mostra qual endereço está valendo.
+
+## 6) Segurança e privacidade já incluídas
+**Contas e sessões:** senha com hash (scrypt), mínimo de 8 caracteres e lista de senhas comuns recusadas · login em tempo constante (não revela se o e-mail existe) · limite de tentativas por IP **e por conta** · sessões de 60 dias, no máximo 10 por pessoa, guardadas **só como hash** no banco (se o banco vazar, ninguém entra nas contas) · trocar/recuperar senha derruba os outros aparelhos · links de redefinição e de confirmação de e-mail: aleatórios, de uso único, guardados com hash · login com Google verificado no servidor.
+**Regras do curso e pagamento:** tudo imposto no servidor (provas, sequência das lições, certificado) · gabarito nunca vai ao navegador na prova · SQL e Python do aluno corrigidos em ambiente isolado, com tempo e memória limitados e fila com teto.
+**Navegador:** Content-Security-Policy (só carrega código do próprio site, do CDN do Python e do login do Google; bloqueia plugins, iframes de terceiros e `<base>`) · HSTS · X-Frame-Options · Permissions-Policy · nada de `eval` de dados do usuário; todo texto do aluno é escapado · sql.js servido pelo próprio site · o service worker nunca guarda dados da API nem páginas privadas · não usa cookies (o token vai em cabeçalho), então não há CSRF.
+**Produção:** com `NODE_ENV=production` (o Dockerfile já define) as flags de teste `DEV_SHOW_RESET_LINK`, `ADS_PREVIEW` e `RELAX_SUBMIT_LIMIT` são **ignoradas** e links/tokens nunca vão para o log · dependências sem vulnerabilidades conhecidas no `npm audit` (rode de novo de vez em quando).
+**Privacidade (LGPD):** aceite dos Termos, baixar os dados e excluir a conta.
+**O que depende de você:** HTTPS (o Render já dá), `BASE_URL` com `https://`, chaves reais só nas variáveis do servidor (nunca no GitHub), `ADMIN_KEY` longa, e-mail configurado, e deixar **uma só cópia** do servidor rodando. Se hospedar sem proxy (VPS direto), o IP vem de um cabeçalho que o cliente pode forjar: use um proxy como o Caddy/Nginx ou o Cloudflare na frente.
+
+## 7) Antes de divulgar (importante)
+- **Termos e Política:** são modelos. Leia, ajuste e, de preferência, peça a um advogado para revisar (CPF/CNPJ, endereço, política de reembolso).
+- **Limites conhecidos:** (1) o isolamento do Python é feito por várias travas (processo separado, ambiente vazio, limites de CPU/memória, bloqueio de rede, arquivos e subprocessos), mas não é um contêiner dedicado: para uma escala grande, rode a correção em um serviço separado sem acesso ao banco; (2) o servidor mantém os dados em memória e deve rodar em uma única cópia; (3) o aluno que digita a resposta pronta (ex.: `print("Olá, mundo!")`) passa nas lições, porque o gabarito aparece na correção ao vivo; nas provas o gabarito não aparece; (4) a trilha “Dashboards e Visualização” aparece como “Em breve”; (5) o Python do navegador (Pyodide) e o do servidor podem ter versões diferentes de pandas: as atividades usam só saídas simples para evitar divergência.
+- **Pandas:** as lições de Pandas (Python Avançado, 21 a 30) baixam ~15 MB na 1ª vez (depois ficam em cache).
