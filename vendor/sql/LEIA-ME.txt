@@ -1,0 +1,2 @@
+Cópia do sql.js 1.10.3 (licença MIT, veja LICENSE) usada para corrigir as lições de SQL.
+Fica dentro do projeto de propósito: assim a correção funciona mesmo que o "npm install" não tenha sido rodado nesta pasta.
