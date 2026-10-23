@@ -642,3 +642,14 @@ body.neo .stk{background:#fff}
 .czi.lk{opacity:.55}
 .czi .lkb{position:absolute;top:4px;right:4px;color:var(--mute);display:flex}
 .czi:active{transform:translateY(1px)}
+
+/* ===== personagem animado (anim.js): o canvas WebGL fica por cima da <img> e passa um pouco das bordas (pulo e balanço) ===== */
+.abody{position:relative;display:block;flex:none;aspect-ratio:2/3;z-index:1;-webkit-tap-highlight-color:transparent}
+.abody>img{display:block;height:100%;width:100%;filter:drop-shadow(0 10px 14px #000a)}
+.abody>canvas{position:absolute;left:-8%;top:-10%;width:116%;height:110%;pointer-events:none}
+.abody.on{cursor:pointer;touch-action:manipulation}
+.abody.on>img{animation:none}
+.stage.bad .abody>canvas{filter:grayscale(.5)}
+.hero .abody.hb{position:absolute;left:auto;top:auto;right:8px;bottom:0;height:285px;filter:none;z-index:1}
+.czp{padding-top:28px}
+.czp .abody>img{filter:drop-shadow(0 8px 10px #0007)}

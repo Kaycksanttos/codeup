@@ -115,7 +115,7 @@ const unlockAllOn = () => { const a = settingsMain().unlockAll; return !!(a.on &
 const unlocked = (u, track) => unlockAllOn() || !!(u.unlock && u.unlock[track]);
 const pub = u => ({
   name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
-  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
+  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true]))
 });
 const idx = id => lessons.findIndex(l => l.id === String(id));
@@ -406,7 +406,7 @@ const GNAME_MSG = 'O nome do personagem precisa ter de 2 a 14 caracteres: letras
 const profileOf = b => ({ ...(SEXES.includes(b && b.sex) ? { sex: b.sex } : {}), ...(GUIDES.includes(b && b.guide) ? { guide: b.guide } : {}), ...(gnameOf(b && b.gname) ? { gname: gnameOf(b.gname) } : {}) });
 app.post('/api/guide', auth, (req, res) => {
   const b = req.body || {}, has = k => b[k] !== undefined && b[k] !== null;
-  if (!['guide', 'sex', 'gname', 'frame', 'color', 'sticker', 'bg'].some(has)) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
+  if (!['guide', 'sex', 'gname', 'frame', 'color', 'sticker', 'bg', 'outfit'].some(has)) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
   if (has('guide') && !GUIDES.includes(String(b.guide))) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
   if (has('sex') && !SEXES.includes(String(b.sex))) return res.status(400).json({ error: 'Escolha feminino ou masculino.' });
   if (has('gname') && !gnameOf(b.gname)) return res.status(400).json({ error: GNAME_MSG });
@@ -414,7 +414,7 @@ app.post('/api/guide', auth, (req, res) => {
   const fk = has('frame') && b.frame !== 'auto' ? R.TIERS.findIndex(t => t.key === String(b.frame)) : 0;
   if (has('frame') && b.frame !== 'auto' && (fk < 1 || fk > R.tierOf(req.u.xp))) return res.status(400).json({ error: 'Essa moldura ainda não foi conquistada.' });
   // personalizar o personagem (cor da roupa, adesivo, fundo): só itens que o título atual já libera; 'auto' volta ao padrão
-  const CZ = [['color', 'Essa cor ainda não foi conquistada.'], ['sticker', 'Esse adesivo ainda não foi conquistado.'], ['bg', 'Esse fundo ainda não foi conquistado.']];
+  const CZ = [['color', 'Essa cor ainda não foi conquistada.'], ['sticker', 'Esse adesivo ainda não foi conquistado.'], ['bg', 'Esse fundo ainda não foi conquistado.'], ['outfit', 'Esse estilo de roupa ainda não foi conquistado.']];
   for (const [k, msg] of CZ) {
     if (!has(k) || b[k] === 'auto') continue;
     const it = R.item(R.LISTS[k], String(b[k])); if (!it) return res.status(400).json({ error: 'Opção inválida.' });

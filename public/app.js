@@ -79,7 +79,9 @@ const stkIcon = (k, s) => `<svg width=${s} height=${s} viewBox="0 0 24 24" fill=
 const stkBadge = (k, size) => { const it = CR.item(CR.STICKERS, k); return it && STK[k] ? `<i class=stk style="--sc:${it.color};width:${size}px;height:${size}px">${stkIcon(k, Math.round(size * .62))}</i>` : ''; };
 // rosto com adesivo no canto (perfil e ranking); o resto do app usa só mascot()
 const avatar = (s, cls = '') => `<span class=av style="width:${s}px;height:${s}px">${mascot(s, cls)}${stkBadge(S.me && S.me.sticker, Math.round(s * .42))}</span>`;
-const body = (h = 200, cls = '') => `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+// personagem de corpo inteiro: animado em WebGL (anim.js) com a estampa da roupa escolhida; sem WebGL cai na <img> normal
+const OUTF = () => CR.outfitId(S.me && S.me.outfit);
+const body = (h = 200, cls = '', extra = '') => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: /\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '', alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
 const stage = (h, text, cls = '') => `<div class="stage ${cls}"${(b => b ? ` style="--gl:${b.c1}"` : '')(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls)}<span class=gn>${esc(gnm())}</span></div>`;
 const tg = (t, s = 40) => t == 'python' ? `<span class="tg py" style="--s:${s}px">py</span>` : `<span class="tg sq" style="--s:${s}px">${ic('db', Math.round(s * .5))}</span>`;
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
@@ -148,7 +150,7 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><img class=hb src="${IMG().full}" alt="${esc(gnm())}"><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div>${window.CodeUpAnim ? body(285, '', 'hb') : `<img class=hb src="${IMG().full}" alt="${esc(gnm())}">`}<div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
     <div class=feat><span>${ic('code', 16)} 180 lições práticas</span><span>${ic('cap', 16)} 3 níveis com prova</span><span>${ic('award', 16)} Certificado</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
@@ -528,7 +530,16 @@ function tiersView() {
     <div class=panel><div class=ph><span>${nxt ? 'Próximo título: ' + nxt.title : 'Você chegou ao topo: Lenda!'}</span><b>${nxt ? 'faltam ' + nf(nxt.xp - m.xp) + ' XP' : nf(m.xp) + ' XP'}</b></div><div class=bar><i style="width:${nxt ? Math.round((m.xp - tier.xp) / (nxt.xp - tier.xp) * 100) : 100}%"></i></div></div>
     <div class=tiers>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp; return `<div class="tri ${on ? 'on' : 'lk'}" style="--fr:${t.color}"><span class=sw2></span><div class=bd><b>${t.title}</b><small>${t.frame ? 'Moldura ' + t.frame : 'Título inicial'} · ${nf(t.xp)} XP</small></div>${k == 0 ? '' : on ? `<button class="btn ${cur == k ? 'pri' : 'ghost'}" onclick="setFrame('${t.key}')">${cur == k ? 'Em uso' : 'Usar'}</button>` : `<span class=r>${ic('lock', 16)}</span>`}</div>`; }).join('')}</div>`;
 }
-// Personalizar o personagem: cor da roupa, adesivo e fundo. O que ainda não foi liberado aparece com cadeado e o título que libera.
+// miniatura (só CSS) de cada estilo de roupa, na cor escolhida
+const STAR_SVG = c => `url(data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'><path fill='${c}' d='M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z'/></svg>`).replace(/'/g, '%27')})`;
+const outBg = (k, hue) => { const c = `hsl(${hue} 78% 52%)`, l = `hsl(${hue} 80% 92%)`, d = `hsl(${hue} 70% 30%)`, m2 = `hsl(${hue} 70% 40%)`; return ({
+  liso: c, listrado: `repeating-linear-gradient(0deg,${l} 0 3px,${c} 3px 7px)`, bolinhas: `radial-gradient(${l} 24%,transparent 27%) 0 0/9px 9px,${c}`,
+  xadrez: `conic-gradient(${l} 25%,${c} 0 50%,${l} 0 75%,${c} 0) 0 0/12px 12px`, degrade: `linear-gradient(180deg,${c},hsl(${(hue + 70) % 360} 90% 62%))`,
+  estrelas: `${STAR_SVG('#ffe97a')} 0 0/12px 12px,${c}`, camuflado: `radial-gradient(circle at 25% 30%,${d} 28%,transparent 30%),radial-gradient(circle at 75% 65%,${l} 22%,transparent 24%),radial-gradient(circle at 60% 20%,${m2} 25%,transparent 27%),${c}`,
+  tiedye: 'conic-gradient(#ff6b6b,#ffc94a,#f4f45a,#58e07a,#4ab4ff,#b07bff,#ff6b6b)', galaxia: 'radial-gradient(circle at 28% 30%,#ec4899cc,transparent 52%),radial-gradient(circle at 72% 72%,#38bdf8cc,transparent 52%),radial-gradient(#fff 8%,transparent 10%) 6px 4px/13px 13px,#1b0b4d',
+  ouro: 'linear-gradient(135deg,#a8780a,#ffd95a 38%,#b8860b 62%,#ffe48a)', holo: 'conic-gradient(from 30deg,#ff9ad5,#a0f0ff,#fff0a0,#b8ffb0,#d6a8ff,#ff9ad5)'
+})[k] || c; };
+// Personalizar o personagem: cor da roupa, estilo da roupa, adesivo e fundo. O que ainda não foi liberado aparece com cadeado e o título que libera.
 function czView() {
   const m = S.me, top = CR.tierOf(m.xp), g = gid(), lk = it => it.tier > top;
   const need = it => `Libera com o título ${CR.TIERS[it.tier].title} (${nf(CR.TIERS[it.tier].xp)} XP)`;
@@ -537,12 +548,15 @@ function czView() {
   const colors = chip('color', 'auto', !m.color, `<i class=sw style="background:hsl(${baseC.hue} 80% 60%)"></i>`, 'Original') + CR.COLORS.filter(c => c.key != CR.BASE[g]).map(c => chip('color', c.key, m.color == c.key, `<i class=sw style="background:hsl(${c.hue} 80% 58%)"></i>`, c.name, c)).join('');
   const stk = chip('sticker', 'auto', !m.sticker, `<i class="sw nn"></i>`, 'Nenhum') + CR.STICKERS.map(x => chip('sticker', x.key, m.sticker == x.key, `<i class=sw style="--sc:${x.color}">${stkIcon(x.key, 22)}</i>`, x.name, x)).join('');
   const bgs = chip('bg', 'auto', !m.bg, `<i class="sw g-${g}"></i>`, 'Padrão') + CR.BACKS.map(x => chip('bg', x.key, m.bg == x.key, `<i class=sw style="background:${bgCss(x.key)}"></i>`, x.name, x)).join('');
+  const hue = (CR.item(CR.COLORS, m.color) || baseC).hue;
+  const outs = chip('outfit', 'auto', !m.outfit, `<i class=sw style="background:${outBg('liso', hue)}"></i>`, 'Liso') + CR.OUTFITS.filter(o => o.id).map(o => chip('outfit', o.key, m.outfit == o.key, `<i class=sw style="background:${outBg(o.key, hue)}"></i>`, o.name, o)).join('');
   const pbg = bgCss(m.bg, m.color && m.color != CR.BASE[g] ? m.color : '');
-  const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length;
+  const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS, CR.OUTFITS.filter(o => o.id)].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length + CR.OUTFITS.length - 1;
   return `<div class=sec>Personalizar personagem</div>
     <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190)}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
     <p class=tn style="margin:8px 2px 0">${free == all ? 'Você liberou todos os itens. É uma lenda!' : `${free} de ${all} itens liberados. Ganhe XP para subir de título e liberar o resto.`}</p>
     <div class=czh>Cor da roupa</div><div class=czg>${colors}</div>
+    <div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>
     <div class=czh>Adesivo</div><div class=czg>${stk}</div>
     <div class=czh>Fundo</div><div class=czg>${bgs}</div>`;
 }

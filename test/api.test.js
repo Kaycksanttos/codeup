@@ -1079,3 +1079,49 @@ test('personalização: o app tem a tela, usa as imagens coloridas e o cache off
   assert.match(ui, /aria-pressed=\$\{on\}/, 'botões de escolha dizem se estão marcados'); assert.match(ui, /bloqueado: /, 'e leem o bloqueio em voz alta');
   for (const c of ['.czi', '.czp', '.czg', '.stk', '.av']) assert.ok(css.includes(c), 'CSS de ' + c); assert.match(sw, /codeup-v(3[1-9]|[4-9]\d)/, 'cache novo para quem já tinha o app instalado');
 });
+
+// ---------------- Personagem animado (WebGL) + estilo da roupa ----------------
+test('animação: estilos de roupa (tabela, regra de desbloqueio) e as máscaras existem para os dois personagens', () => {
+  const pubDir = path.join(__dirname, '..', 'public'), anim = fs.readFileSync(path.join(pubDir, 'anim.js'), 'utf8');
+  assert.deepEqual(Rw.OUTFITS.map(o => o.id), Rw.OUTFITS.map((_, i) => i), 'ids 0..N em sequência (o desenho em anim.js usa o número)');
+  assert.equal(Rw.OUTFITS[0].key, 'liso'); assert.equal(Rw.OUTFITS[0].tier, 0); assert.ok(Rw.OUTFITS.length >= 11);
+  assert.equal(Rw.pick('outfit', 9999, 'liso'), null, 'liso é o padrão, não uma escolha'); assert.equal(Rw.pick('outfit', 0, 'listrado'), 'listrado');
+  assert.equal(Rw.pick('outfit', 0, 'bolinhas'), null, 'bolinhas pedem Aprendiz'); assert.equal(Rw.pick('outfit', 100, 'bolinhas'), 'bolinhas');
+  assert.equal(Rw.pick('outfit', 4499, 'holo'), null); assert.equal(Rw.pick('outfit', 4500, 'holo'), 'holo'); assert.equal(Rw.pick('outfit', 9999, 'nao-existe'), null);
+  assert.equal(Rw.outfitId('ouro'), 9); assert.equal(Rw.outfitId('liso'), 0); assert.equal(Rw.outfitId(undefined), 0); assert.equal(Rw.outfitId('../x'), 0);
+  const top = Math.max(...Rw.OUTFITS.map(o => o.id)); assert.match(anim, new RegExp(`st<${top - 0.5}\\b`), 'o shader entende o último estilo'); assert.equal(Rw.LISTS.outfit, Rw.OUTFITS);
+  // máscaras do desenho: roupa (R moletom, G calça, B tênis), movimento (R cabeça, G cabelo, B braço) e olhos
+  const dim = f => { const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.toString('latin1', 1, 4), 'PNG', f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+  for (const g of ['tay', 'cut']) { assert.deepEqual(dim(g + '-parts.png'), [320, 480]); assert.deepEqual(dim(g + '-eye.png'), [320, 480]); assert.deepEqual(dim(g + '-rig.png'), [160, 240]); }
+  // o desenho usa exatamente as imagens 640x960 (a máscara é desenhada em cima delas)
+  for (const f of ['tay.webp', 'cut.webp']) { const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.toString('latin1', 8, 12), 'WEBP'); }
+});
+
+test('animação: /api/guide valida o estilo da roupa e o app mostra só o que vale', async () => {
+  const em = 'an1@teste.com', tk = await regP(em, 'Ana Estilo Pires', { sex: 'f', guide: 'tay', gname: 'Ana' }), g = body => call('/api/guide', { token: tk, body });
+  let me = (await call('/api/me', { token: tk })).j; assert.equal(me.outfit, null, 'começa liso');
+  assert.equal((await g({ outfit: 'listrado' })).j.outfit, 'listrado');
+  const lk = async (body, re) => { const r = await g(body); assert.equal(r.status, 400, JSON.stringify(body)); assert.match(r.j.error, re); };
+  await lk({ outfit: 'galaxia' }, /estilo de roupa ainda não foi conquistado/); await lk({ outfit: 'xx' }, /Opção inválida/); await lk({ outfit: '' }, /Opção inválida/); await lk({ outfit: 5 }, /Opção inválida/);
+  assert.equal((await call('/api/me', { token: tk })).j.outfit, 'listrado', 'pedido recusado não muda nada');
+  await setXp(em, 3200); assert.equal((await g({ outfit: 'galaxia', color: 'verde' })).j.outfit, 'galaxia', 'dá para trocar estilo e cor juntos');
+  await setXp(em, 100); me = (await call('/api/me', { token: tk })).j; assert.equal(me.outfit, null, 'o dono tirou XP: o estilo que deixou de ser liberado volta ao liso'); assert.equal(me.color, 'verde');
+  await setXp(em, 100); assert.equal((await g({ outfit: 'bolinhas' })).j.outfit, 'bolinhas');
+  me = (await g({ outfit: 'auto' })).j; assert.equal(me.outfit, null); assert.equal((await g({ outfit: 'liso' })).j.outfit, null, 'liso volta ao padrão');
+  assert.equal((await call('/api/guide', { body: { outfit: 'listrado' } })).status, 401);
+  // o ranking mostra só o rosto: não precisa do estilo da roupa
+  assert.ok(!('outfit' in (await rk(tk)).mine), 'ranking não carrega o estilo');
+});
+
+test('animação: o app carrega anim.js, usa o personagem animado, tem fallback e o cache offline foi trocado', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), html = rd('index.html'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js'), anim = rd('anim.js');
+  assert.match(html, /<script src="\/anim\.js"><\/script>/); assert.ok(html.indexOf('/anim.js') < html.indexOf('/app.js'), 'anim.js carrega antes do app'); assert.match(sw, /'\/anim\.js'/); assert.match(sw, /codeup-v(3[2-9]|[4-9]\d)/);
+  assert.match(ui, /CodeUpAnim\.html\(/); assert.match(ui, /window\.CodeUpAnim \?/, 'sem anim.js ainda aparece a imagem normal'); assert.match(ui, /Estilo da roupa/); assert.match(ui, /function outBg|const outBg/);
+  assert.match(css, /\.abody>canvas/); assert.match(css, /\.abody/);
+  // segurança e boas práticas do motor
+  assert.match(anim, /prefers-reduced-motion/, 'respeita "reduzir movimento"'); assert.match(anim, /IntersectionObserver/, 'não desenha o que está fora da tela'); assert.match(anim, /document\.hidden/, 'pausa com a aba escondida'); assert.match(anim, /webglcontextlost/, 'trata perda do contexto');
+  assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML'); assert.ok(!/https?:\/\//.test(anim.replace(/\/\*[\s\S]*?\*\//g, '')), 'não busca nada de fora');
+  assert.doesNotThrow(() => new Function(anim), 'anim.js é JavaScript válido');
+  const r = await fetch(U + '/anim.js'); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /javascript/);
+  for (const f of ['tay-parts.png', 'cut-rig.png', 'cut-eye.png']) assert.equal((await fetch(U + '/img/' + f)).status, 200, f);
+});

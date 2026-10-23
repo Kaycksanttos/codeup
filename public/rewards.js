@@ -40,11 +40,19 @@
     { key: 'doce', name: 'Algodão-doce', c1: '#ffc2e8', c2: '#8b5cf6', tier: 3 }, { key: 'lava', name: 'Lava', c1: '#ffb347', c2: '#b91c1c', tier: 4 },
     { key: 'galaxia', name: 'Galáxia', c1: '#a78bfa', c2: '#0f0a3c', tier: 5 }, { key: 'ouro', name: 'Ouro', c1: '#fde68a', c2: '#b45309', tier: 6 }, { key: 'diamante', name: 'Diamante', c1: '#cffafe', c2: '#0e7490', tier: 7 }
   ];
-  const LISTS = { color: COLORS, sticker: STICKERS, bg: BACKS };
+  // Estilo da roupa (estampa do moletom e da calça, desenhada em tempo real no personagem animado). `id` é o número que o desenho (anim.js) entende; 0 = liso (o padrão).
+  const OUTFITS = [
+    { key: 'liso', name: 'Liso', id: 0, tier: 0 }, { key: 'listrado', name: 'Listrado', id: 1, tier: 0 }, { key: 'bolinhas', name: 'Bolinhas', id: 2, tier: 1 },
+    { key: 'xadrez', name: 'Xadrez', id: 3, tier: 2 }, { key: 'degrade', name: 'Degradê', id: 4, tier: 2 }, { key: 'estrelas', name: 'Estrelas', id: 5, tier: 3 },
+    { key: 'camuflado', name: 'Camuflado', id: 6, tier: 3 }, { key: 'tiedye', name: 'Tie-dye', id: 7, tier: 4 }, { key: 'galaxia', name: 'Galáxia', id: 8, tier: 5 },
+    { key: 'ouro', name: 'Dourado', id: 9, tier: 6 }, { key: 'holo', name: 'Holográfico', id: 10, tier: 7 }
+  ];
+  const LISTS = { color: COLORS, sticker: STICKERS, bg: BACKS, outfit: OUTFITS };
   const item = (list, key) => list.find(x => x.key === key) || null;
   // o que realmente vale para esta pessoa: a escolha só vale se o item existe e o título já foi conquistado; senão volta ao padrão (null)
-  const pick = (kind, xp, key, guide) => { const it = item(LISTS[kind], key); return it && it.tier <= tierOf(xp) && !(kind === 'color' && it.key === BASE[guide]) ? it.key : null; };
+  const pick = (kind, xp, key, guide) => { const it = item(LISTS[kind], key); return it && it.tier <= tierOf(xp) && !(kind === 'color' && it.key === BASE[guide]) && !(kind === 'outfit' && !it.id) ? it.key : null; };
+  const outfitId = key => { const it = item(OUTFITS, key); return it ? it.id : 0; };
   const colorFile = (guide, color, face) => { const g = guide === 'tay' ? 'tay' : 'cut'; return `/img/${g}${color && color !== BASE[g] && item(COLORS, color) ? '-' + color : ''}${face ? '-face' : ''}.webp`; };
-  const api = { TIERS, tierOf, nextTier, frameOf, BASE, COLORS, STICKERS, BACKS, LISTS, item, pick, colorFile };
+  const api = { TIERS, tierOf, nextTier, frameOf, BASE, COLORS, STICKERS, BACKS, OUTFITS, LISTS, item, pick, outfitId, colorFile };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.CodeUpRewards = api;
 })(typeof window !== 'undefined' ? window : globalThis);

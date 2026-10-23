@@ -64,9 +64,17 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] No **Perfil → Personalizar personagem** aparece uma prévia do personagem inteiro (com o fundo e o adesivo escolhidos) e três grupos: **Cor da roupa**, **Adesivo** e **Fundo**.
 - [ ] Tocar numa opção livre muda na hora a prévia, o rostinho do topo do Perfil, o ranking e as telas do app (a página não pula para o topo). **Original / Nenhum / Padrão** voltam ao começo.
 - [ ] Itens ainda não conquistados aparecem apagados com cadeado; ao tocar, o aviso diz qual título libera ("Libera com o título Craque (1.200 XP)."). Livres desde o começo: Verde, Roxo e a cor do outro personagem, 3 adesivos (estrela, raio, coração) e 2 fundos (pôr do sol, oceano).
-- [ ] O texto abaixo da prévia conta quantos itens já estão liberados ("16 de 27"). Com o título Lenda mostra que tudo foi liberado.
+- [ ] O texto abaixo da prévia conta quantos itens já estão liberados ("16 de 37"). Com o título Lenda mostra que tudo foi liberado.
 - [ ] Para testar sem ganhar XP à mão: painel do dono (`/admin`) → Usuários → pessoa → **XP** → defina 350 (libera até Vermelho), 4600 (libera tudo). Se o dono baixar o XP depois, o que deixou de ser liberado volta ao padrão.
 - [ ] No Ranking, a linha de cada aluno mostra o rostinho na cor escolhida, com o fundo e o adesivo no canto.
+
+**4d. Personagem animado e estilo da roupa**
+- [ ] O personagem de corpo inteiro (tela de resultado da lição/prova, escolha de trilha, tela de entrada e a prévia do Perfil) **se mexe sozinho**: respira, balança de leve, inclina a cabeça e **pisca**. A Tay mexe o cabelo; o Cut balança o joinha.
+- [ ] **Tocar no personagem** faz ele pular. Ao **passar** numa lição/prova ele **comemora** (pulinhos); ao **errar** a prova ele fica de cabeça baixa e balança a cabeça dizendo "não".
+- [ ] No **Perfil → Personalizar personagem** há o grupo **Estilo da roupa** (Liso, Listrado, Bolinhas, Xadrez, Degradê, Estrelas, Camuflado, Tie-dye, Galáxia, Dourado, Holográfico). A prévia muda na hora, e a estampa vale para o moletom e a calça (logos, corações, coroas e partes brancas dos tênis ficam como são). A cor escolhida em **Cor da roupa** colore as estampas simples; Tie-dye, Galáxia, Dourado e Holográfico têm cores próprias.
+- [ ] Livres desde o começo: **Liso** e **Listrado**. Os outros pedem título (Bolinhas: Aprendiz · Xadrez e Degradê: Praticante · Estrelas e Camuflado: Destaque · Tie-dye: Craque · Galáxia: Expert · Dourado: Mestre · Holográfico: Lenda). Bloqueados aparecem com cadeado.
+- [ ] Em **Ajustes do sistema → Acessibilidade → Reduzir movimento** (ou no navegador), o personagem fica parado, mas mantém a estampa.
+- [ ] Em um aparelho/navegador sem WebGL o personagem aparece como imagem normal (com a flutuação antiga) e o resto do app funciona igual.
 
 **5. Provas e certificado (sem fazer as 90 lições à mão)**
 - [ ] Abra o painel do dono (`/admin`), entre com a chave `admin-teste`, aba **Usuários**, toque na pessoa e em **Liberar todos os cursos**.
