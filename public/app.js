@@ -55,11 +55,32 @@ const nf = n => Number(n || 0).toLocaleString('pt-BR');
 // nome que a pessoa deu ao personagem (ou o nome original, se ainda não escolheu)
 const gnm = () => (S.me && S.me.gname) || (S.reg && S.reg.gname) || GUIDES[gid()].name;
 const gid = () => { const g = (S.me && S.me.guide) || LS.get('guide'); return g === 'tay' ? 'tay' : 'cut'; };
-const IMG = () => { const g = gid(); return { face: `/img/${g}-face.webp`, full: `/img/${g}.webp` }; };
-const frameStyle = () => { const k = S.me ? CR.frameOf(S.me.xp, S.me.frame) : 0; return k ? ` style="--fr:${CR.TIERS[k].color}"` : ''; };   // moldura conquistada pelo XP (só no aro do personagem)
-const mascot = (s = 56, cls = '') => `<img class="mascot g-${gid()} ${cls}"${/\bring\b/.test(cls) ? frameStyle() : ''} src="${IMG().face}" width=${s} height=${s} alt="${esc(gnm())}, seu guia no CodeUp">`;
+const IMG = () => { const g = gid(), c = S.me && S.me.color; return { face: CR.colorFile(g, c, true), full: CR.colorFile(g, c, false) }; };   // cor escolhida (ou a de fábrica)
+// fundo do círculo do rosto: o que a pessoa escolheu; sem escolha, acompanha a cor da roupa (a cor de fábrica usa o degradê original)
+const bgCss = (bg, color) => { const b = CR.item(CR.BACKS, bg), c = CR.item(CR.COLORS, color); return b ? `radial-gradient(circle at 50% 28%,${b.c1},${b.c2} 78%)` : c ? `radial-gradient(circle at 50% 28%,hsl(${c.hue} 95% 72%),hsl(${c.hue} 62% 36%) 78%)` : ''; };
+// atributo style do aro/fundo: moldura conquistada pelo XP (só no aro) e fundo
+const cosStyle = (ring, o = S.me, guide = gid()) => { if (!o) return ''; const fr = ring ? CR.frameOf(o.xp, o.frame) : 0, bg = bgCss(o.bg, o.color && o.color !== CR.BASE[guide] ? o.color : ''); const v = (fr ? `--fr:${CR.TIERS[fr].color};` : '') + (bg ? `--bgc:${bg};` : ''); return v ? ` style="${v}"` : ''; };
+const mascot = (s = 56, cls = '') => `<img class="mascot g-${gid()} ${cls}"${cosStyle(/\bring\b/.test(cls))} src="${IMG().face}" width=${s} height=${s} alt="${esc(gnm())}, seu guia no CodeUp">`;
+// adesivos: ícones cheios, desenhados em 24×24; a cor vem do item (--sc)
+const STK = {
+  estrela: '<path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z"/>',
+  raio: '<path d="M13.5 2 5 13.5h5.8L9.5 22 19 9.8h-5.9z"/>',
+  coracao: '<path d="M12 21.2S3.5 16 3.5 9.7A4.7 4.7 0 0 1 12 7a4.7 4.7 0 0 1 8.5 2.7c0 6.3-8.5 11.5-8.5 11.5z"/>',
+  foguete: '<path d="M12 2c3.3 2.2 5.2 5.6 5.2 9.6 0 1.4-.3 2.7-.8 3.9H7.6c-.5-1.2-.8-2.5-.8-3.9C6.8 7.6 8.7 4.2 12 2z"/><circle cx="12" cy="9.5" r="1.9" fill="#0b1030"/><path d="M7.4 14.6 4.6 18l.4-4.6zM16.6 14.6 19.4 18l-.4-4.6zM10.4 17h3.2L12 22z"/>',
+  chama: '<path d="M12.4 2.2c.5 3.2-2.9 5-2.9 8.4 0 1.2.6 2.2 1.6 2.7-.3-1.5.4-2.8 1.7-4 .9 1.1 3.3 2.2 3.3 5A5.1 5.1 0 0 1 12 19.3a5.5 5.5 0 0 1-5.5-5.5c0-2.2.9-3.7 2-5 .1 1.6.8 2.4 1.7 2.7-.4-3.6.5-7.1 2.2-9.3z"/><path d="M12 22c-2.600 0-4.600-1.300-4.600-3.200h9.200C16.600 20.700 14.600 22 12 22z"/>',
+  capelo: '<path d="M12 4 1.8 9 12 14l8.200-4v6h1.600V9z"/><path d="M5.800 12.300v4c0 1.500 2.700 3 6.200 3s6.200-1.500 6.200-3v-4L12 15.600z"/>',
+  ideia: '<path d="M12 2.200a6.300 6.300 0 0 0-3.700 11.400c.7.600 1.100 1.300 1.200 2.200h5c.1-.9.5-1.600 1.200-2.200A6.300 6.300 0 0 0 12 2.200z"/><path d="M9.600 17.600h4.800v1.200a2.400 2.400 0 0 1-4.800 0z"/>',
+  trofeu: '<path d="M7 3h10v6.200a5 5 0 0 1-10 0z"/><path d="M7 5H3.200v1.800A3.600 3.600 0 0 0 7 10.400V8.800a2 2 0 0 1-2.200-2V6.600H7zM17 5h3.800v1.800a3.600 3.600 0 0 1-3.800 3.600V8.800a2 2 0 0 0 2.200-2V6.600H17z"/><path d="M11 14h2v3h-2zM8 18h8v2.500H8z"/>',
+  coroa: '<path d="M2.800 7.500l4.700 4.200L12 4.500l4.500 7.200 4.700-4.200-1.800 11H4.600z"/>',
+  diamante: '<path d="M6.200 3h11.600l4.200 6.200L12 21.500 2 9.200z"/><path d="M2 9.200h20M9 3 7.600 9.200 12 21.500 16.400 9.200 15 3" fill="none" stroke="#0b1030" stroke-opacity=".45"/>',
+  cometa: '<path d="M16.500 3.500l1.600 3.400 3.700.5-2.700 2.600.7 3.700-3.300-1.800-3.300 1.800.7-3.700-2.700-2.600 3.700-.5z"/><path d="M2.800 20.500 11 11.800M3 14.500l5-5M8.500 21l5-5" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/>'
+};
+const stkIcon = (k, s) => `<svg width=${s} height=${s} viewBox="0 0 24 24" fill=currentColor stroke-width=1 aria-hidden=true>${STK[k] || ''}</svg>`;
+const stkBadge = (k, size) => { const it = CR.item(CR.STICKERS, k); return it && STK[k] ? `<i class=stk style="--sc:${it.color};width:${size}px;height:${size}px">${stkIcon(k, Math.round(size * .62))}</i>` : ''; };
+// rosto com adesivo no canto (perfil e ranking); o resto do app usa só mascot()
+const avatar = (s, cls = '') => `<span class=av style="width:${s}px;height:${s}px">${mascot(s, cls)}${stkBadge(S.me && S.me.sticker, Math.round(s * .42))}</span>`;
 const body = (h = 200, cls = '') => `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
-const stage = (h, text, cls = '') => `<div class="stage ${cls}"><div class=sb>${text}</div><div class=glow></div>${body(h, cls)}<span class=gn>${esc(gnm())}</span></div>`;
+const stage = (h, text, cls = '') => `<div class="stage ${cls}"${(b => b ? ` style="--gl:${b.c1}"` : '')(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls)}<span class=gn>${esc(gnm())}</span></div>`;
 const tg = (t, s = 40) => t == 'python' ? `<span class="tg py" style="--s:${s}px">py</span>` : `<span class="tg sq" style="--s:${s}px">${ic('db', Math.round(s * .5))}</span>`;
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
@@ -408,7 +429,7 @@ function render() {
     const n = L.filter(done).length, np = Object.keys(m.passed).length, lvl = Math.floor(m.xp / 100) + 1,
       ach = [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', ['python', 'sql'].some(t => passedLv(t, 2))],
         ['trophy', 'Avançado aprovado', ['python', 'sql'].some(t => passedLv(t, 3))], ['award', 'Certificado', Object.keys(m.certs).length > 0], ['chart', 'Meio caminho', trackPct(T) >= 50]];
-    h = `<div class=prof>${mascot(88, 'ring big')}<div><h2>${esc(m.name)} <button class=ibtn onclick=editName() aria-label="Editar nome">${ic('pencil', 16)}</button></h2><small class=mut>${esc(m.email)}</small><div style="margin-top:6px"><span class=badge>Nível ${lvl}</span><span class="badge gold">${CR.TIERS[CR.tierOf(m.xp)].title}</span></div></div></div>
+    h = `<div class=prof>${avatar(88, 'ring big')}<div><h2>${esc(m.name)} <button class=ibtn onclick=editName() aria-label="Editar nome">${ic('pencil', 16)}</button></h2><small class=mut>${esc(m.email)}</small><div style="margin-top:6px"><span class=badge>Nível ${lvl}</span><span class="badge gold">${CR.TIERS[CR.tierOf(m.xp)].title}</span></div></div></div>
     <div class=panel><div class=ph><span>XP do nível ${lvl}</span><b>${m.xp % 100} / 100</b></div><div class=bar><i style="width:${m.xp % 100}%"></i></div></div>
     <div class=stats><div>${ic('flame', 20)}<b>${m.streak}</b><small>dias de treino</small></div><div>${ic('file', 20)}<b>${n}</b><small>lições feitas</small></div><div>${ic('cap', 20)}<b>${np}</b><small>provas aprovadas</small></div><div>${ic('bolt', 20)}<b>${m.xp}</b><small>pontos totais</small></div></div>
     <div class=sec>Conquistas</div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
@@ -416,6 +437,7 @@ function render() {
     <div class=sec>Eu sou</div><div class='skins s4 gsw'>${[['f', 'Feminino'], ['m', 'Masculino']].map(([k, n]) => `<button class="btn ${m.sex == k ? 'pri' : 'ghost'}" onclick="setSex('${k}')">${n}</button>`).join('')}</div>
     <div class=sec>Personagem</div><div class='skins s4 gsw'>${['tay', 'cut'].map(g => `<button class="btn ${gid() == g ? 'pri' : 'ghost'}" onclick="setGuide('${g}')"><img src="/img/${g}-face.webp" class="g-${g}" alt="" width=28 height=28> ${GUIDES[g].name}</button>`).join('')}</div>
     <button class="btn ghost block" onclick=editGname()>${ic('pencil', 16)} Nome do personagem: <b>${esc(gnm())}</b></button>
+    ${czView()}
     <div class=sec>Ranking</div><div class='skins s4 gsw'>${[[true, 'Aparecer'], [false, 'Ficar de fora']].map(([k, n]) => `<button class="btn ${!m.rankOff == k ? 'pri' : 'ghost'}" onclick="rkVis(${k})">${n}</button>`).join('')}</div>
     <p class=tn style="margin:4px 2px 0">No ranking aparecem só o seu primeiro nome, a inicial do sobrenome, o personagem e o XP.</p>
     <div class=sec>Aparência</div><div class='skins s4'>${[['wild', 'Azul'], ['rose', 'Rosa'], ['', 'Azul escuro'], ['neo', 'Claro']].map(x => `<button class="btn ${(['rose', 'neo', ''].includes(LS.get('skin')) ? LS.get('skin') : 'wild') == x[0] ? 'pri' : 'ghost'}" onclick="setSkin('${x[0]}')">${x[1]}</button>`).join('')}</div>
@@ -487,11 +509,11 @@ function rankView() {
   else if (k.me.pos) me = `<b>Você está em ${k.me.pos}º lugar</b><small>${nf(k.me.xp)} XP ${per == 'semana' ? 'nesta semana' : 'no total'}</small>`;
   else me = `<b>Você ainda não pontuou${per == 'semana' ? ' nesta semana' : ''}</b><small>Conclua uma lição para entrar no ranking.</small>`;
   let fim = ''; if (per == 'semana' && k.resets) { const ms = Math.max(0, Date.parse(k.resets) - Date.now()), d = Math.floor(ms / 864e5), hh = Math.floor(ms % 864e5 / 36e5); fim = `<small class=mut>Recomeça em ${d ? d + (d == 1 ? ' dia e ' : ' dias e ') : ''}${hh} h</small>`; }
-  const av = r => `<img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${r.frame ? ` style="--fr:${CR.TIERS[r.frame].color}"` : ''} src="/img/${r.guide}-face.webp" width=44 height=44 alt="">`;
+  const av = r => { const fr = r.frame ? `--fr:${CR.TIERS[r.frame].color};` : '', bg = bgCss(r.bg, r.color && r.color !== CR.BASE[r.guide] ? r.color : ''), st = fr + (bg ? `--bgc:${bg};` : ''); return `<span class=av style="width:44px;height:44px"><img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${st ? ` style="${st}"` : ''} src="${CR.colorFile(r.guide, r.color, true)}" width=44 height=44 alt="">${stkBadge(r.sticker, 20)}</span>`; };
   const row = r => `<div class="rkr${r.me ? ' me' : ''}${r.pos <= 3 ? ' p' + r.pos : ''}"><span class=pos>${r.pos <= 3 ? ic('crown', 16) : ''}<b>${r.pos}º</b></span>${av(r)}<div class=bd><b>${esc(r.name)}${r.me ? ' <span class=badge>você</span>' : ''}</b><small>${esc(CR.TIERS[r.tier].title)}</small></div><span class=rxp><b>${nf(r.xp)}</b><small>XP</small></span></div>`;
   const list = k.top.length ? k.top.map(row).join('') + (k.me.row ? `<div class=rkgap aria-hidden=true>· · ·</div>${row(k.me.row)}` : '')
     : `<div class=panel><p style="margin:0">Ninguém pontuou${per == 'semana' ? ' nesta semana' : ''} ainda. Conclua uma lição e seja ${fm('o primeiro', 'a primeira')}!</p></div>`;
-  return head + `<div class="panel rkme">${mascot(54, 'ring')}<div class=bd>${me}</div></div>${fim ? `<div class=rkfim>${fim}${k.total ? `<small class=mut>${nf(k.total)} ${k.total == 1 ? 'aluno' : 'alunos'}</small>` : ''}</div>` : ''}${list}
+  return head + `<div class="panel rkme">${avatar(54, 'ring')}<div class=bd>${me}</div></div>${fim ? `<div class=rkfim>${fim}${k.total ? `<small class=mut>${nf(k.total)} ${k.total == 1 ? 'aluno' : 'alunos'}</small>` : ''}</div>` : ''}${list}
     <p class=tn style="margin-top:14px">Aparecem só o primeiro nome, a inicial do sobrenome, o personagem e o XP.${k.me.hidden ? '' : ' <a onclick="rkVis(false)">Sair do ranking</a>'}</p>`;
 }
 function rkPer(p) { if (S.rkp === p) return; S.rkp = p; go('rk'); }
@@ -505,6 +527,30 @@ function tiersView() {
   return `<div class=sec>Títulos e molduras</div>
     <div class=panel><div class=ph><span>${nxt ? 'Próximo título: ' + nxt.title : 'Você chegou ao topo: Lenda!'}</span><b>${nxt ? 'faltam ' + nf(nxt.xp - m.xp) + ' XP' : nf(m.xp) + ' XP'}</b></div><div class=bar><i style="width:${nxt ? Math.round((m.xp - tier.xp) / (nxt.xp - tier.xp) * 100) : 100}%"></i></div></div>
     <div class=tiers>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp; return `<div class="tri ${on ? 'on' : 'lk'}" style="--fr:${t.color}"><span class=sw2></span><div class=bd><b>${t.title}</b><small>${t.frame ? 'Moldura ' + t.frame : 'Título inicial'} · ${nf(t.xp)} XP</small></div>${k == 0 ? '' : on ? `<button class="btn ${cur == k ? 'pri' : 'ghost'}" onclick="setFrame('${t.key}')">${cur == k ? 'Em uso' : 'Usar'}</button>` : `<span class=r>${ic('lock', 16)}</span>`}</div>`; }).join('')}</div>`;
+}
+// Personalizar o personagem: cor da roupa, adesivo e fundo. O que ainda não foi liberado aparece com cadeado e o título que libera.
+function czView() {
+  const m = S.me, top = CR.tierOf(m.xp), g = gid(), lk = it => it.tier > top;
+  const need = it => `Libera com o título ${CR.TIERS[it.tier].title} (${nf(CR.TIERS[it.tier].xp)} XP)`;
+  const chip = (kind, key, on, icon, label, it) => `<button class="czi${on ? ' on' : ''}${it && lk(it) ? ' lk' : ''}" onclick="czSet('${kind}','${key}')" aria-pressed=${on} aria-label="${esc(label)}${it && lk(it) ? ' (bloqueado: ' + need(it) + ')' : ''}">${icon}<small>${esc(label)}</small>${it && lk(it) ? `<span class=lkb>${ic('lock', 12)}</span>` : ''}</button>`;
+  const baseC = CR.COLORS.find(c => c.key == CR.BASE[g]);
+  const colors = chip('color', 'auto', !m.color, `<i class=sw style="background:hsl(${baseC.hue} 80% 60%)"></i>`, 'Original') + CR.COLORS.filter(c => c.key != CR.BASE[g]).map(c => chip('color', c.key, m.color == c.key, `<i class=sw style="background:hsl(${c.hue} 80% 58%)"></i>`, c.name, c)).join('');
+  const stk = chip('sticker', 'auto', !m.sticker, `<i class="sw nn"></i>`, 'Nenhum') + CR.STICKERS.map(x => chip('sticker', x.key, m.sticker == x.key, `<i class=sw style="--sc:${x.color}">${stkIcon(x.key, 22)}</i>`, x.name, x)).join('');
+  const bgs = chip('bg', 'auto', !m.bg, `<i class="sw g-${g}"></i>`, 'Padrão') + CR.BACKS.map(x => chip('bg', x.key, m.bg == x.key, `<i class=sw style="background:${bgCss(x.key)}"></i>`, x.name, x)).join('');
+  const pbg = bgCss(m.bg, m.color && m.color != CR.BASE[g] ? m.color : '');
+  const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length;
+  return `<div class=sec>Personalizar personagem</div>
+    <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190)}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
+    <p class=tn style="margin:8px 2px 0">${free == all ? 'Você liberou todos os itens. É uma lenda!' : `${free} de ${all} itens liberados. Ganhe XP para subir de título e liberar o resto.`}</p>
+    <div class=czh>Cor da roupa</div><div class=czg>${colors}</div>
+    <div class=czh>Adesivo</div><div class=czg>${stk}</div>
+    <div class=czh>Fundo</div><div class=czg>${bgs}</div>`;
+}
+async function czSet(kind, key) {
+  const it = key == 'auto' ? null : CR.item(CR.LISTS[kind], key);
+  if (it && it.tier > CR.tierOf(S.me.xp)) { const t = CR.TIERS[it.tier]; return toast(`Libera com o título ${t.title} (${nf(t.xp)} XP).`); }
+  const y = window.scrollY;
+  try { S.me = await api('guide', { body: { [kind]: key } }); render(); window.scrollTo(0, y); } catch (e) { fail(e); }
 }
 async function setFrame(key) { try { S.me = await api('guide', { body: { frame: key } }); toast('Moldura trocada!'); render(); } catch (e) { fail(e); } }
 // aviso de "nova conquista" na tela de resultado quando o XP faz a pessoa chegar a um novo título

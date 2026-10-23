@@ -115,7 +115,7 @@ const unlockAllOn = () => { const a = settingsMain().unlockAll; return !!(a.on &
 const unlocked = (u, track) => unlockAllOn() || !!(u.unlock && u.unlock[track]);
 const pub = u => ({
   name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
-  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
+  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true]))
 });
 const idx = id => lessons.findIndex(l => l.id === String(id));
@@ -406,17 +406,25 @@ const GNAME_MSG = 'O nome do personagem precisa ter de 2 a 14 caracteres: letras
 const profileOf = b => ({ ...(SEXES.includes(b && b.sex) ? { sex: b.sex } : {}), ...(GUIDES.includes(b && b.guide) ? { guide: b.guide } : {}), ...(gnameOf(b && b.gname) ? { gname: gnameOf(b.gname) } : {}) });
 app.post('/api/guide', auth, (req, res) => {
   const b = req.body || {}, has = k => b[k] !== undefined && b[k] !== null;
-  if (!has('guide') && !has('sex') && !has('gname') && !has('frame')) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
+  if (!['guide', 'sex', 'gname', 'frame', 'color', 'sticker', 'bg'].some(has)) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
   if (has('guide') && !GUIDES.includes(String(b.guide))) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
   if (has('sex') && !SEXES.includes(String(b.sex))) return res.status(400).json({ error: 'Escolha feminino ou masculino.' });
   if (has('gname') && !gnameOf(b.gname)) return res.status(400).json({ error: GNAME_MSG });
   // moldura: só uma que a pessoa já conquistou pelo XP ('auto' volta a usar a mais alta)
   const fk = has('frame') && b.frame !== 'auto' ? R.TIERS.findIndex(t => t.key === String(b.frame)) : 0;
   if (has('frame') && b.frame !== 'auto' && (fk < 1 || fk > R.tierOf(req.u.xp))) return res.status(400).json({ error: 'Essa moldura ainda não foi conquistada.' });
+  // personalizar o personagem (cor da roupa, adesivo, fundo): só itens que o título atual já libera; 'auto' volta ao padrão
+  const CZ = [['color', 'Essa cor ainda não foi conquistada.'], ['sticker', 'Esse adesivo ainda não foi conquistado.'], ['bg', 'Esse fundo ainda não foi conquistado.']];
+  for (const [k, msg] of CZ) {
+    if (!has(k) || b[k] === 'auto') continue;
+    const it = R.item(R.LISTS[k], String(b[k])); if (!it) return res.status(400).json({ error: 'Opção inválida.' });
+    if (it.tier > R.tierOf(req.u.xp)) return res.status(400).json({ error: msg });
+  }
   if (has('guide')) req.u.guide = String(b.guide);
   if (has('sex')) req.u.sex = String(b.sex);
   if (has('gname')) req.u.gname = gnameOf(b.gname);
   if (has('frame')) { if (b.frame === 'auto') delete req.u.frame; else req.u.frame = R.TIERS[fk].key; }
+  for (const [k] of CZ) if (has(k)) { if (b[k] === 'auto') delete req.u[k]; else req.u[k] = String(b[k]); }
   RANK.at = 0; save(); res.json(pub(req.u));
 });
 
@@ -431,12 +439,12 @@ function rankRows(period) {
   const score = u => period === 'semana' ? (u.wk && u.wk.w === w ? u.wk.xp : 0) : (u.xp || 0), at = u => u.xpAt || Date.parse(u.created) || 0;
   const rows = Object.values(DB.users).filter(u => !u.banned && u.verified !== false && !u.rankOff && score(u) > 0)
     .sort((a, b) => score(b) - score(a) || at(a) - at(b) || (a.id < b.id ? -1 : 1))
-    .map((u, i) => ({ id: u.id, pos: i + 1, name: shortName(u.name), guide: GUIDES.includes(u.guide) ? u.guide : 'cut', xp: score(u), tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame) }));
+    .map((u, i) => ({ id: u.id, pos: i + 1, name: shortName(u.name), guide: GUIDES.includes(u.guide) ? u.guide : 'cut', xp: score(u), tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame), color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg) }));
   c = { rows, by: new Map(rows.map(r => [r.id, r])) }; RANK.m.set(period, c); return c;
 }
 app.get('/api/ranking', auth, limit(60 * RELAX, 60e3), (req, res) => {
   const period = req.query.p === 'geral' ? 'geral' : 'semana', u = req.u, { rows, by } = rankRows(period), mine = by.get(u.id) || null;
-  const out = r => ({ pos: r.pos, name: r.name, guide: r.guide, xp: r.xp, tier: r.tier, frame: r.frame, me: r.id === u.id });
+  const out = r => ({ pos: r.pos, name: r.name, guide: r.guide, xp: r.xp, tier: r.tier, frame: r.frame, color: r.color, sticker: r.sticker, bg: r.bg, me: r.id === u.id });
   res.json({
     period, total: rows.length, top: rows.slice(0, 20).map(out),
     me: { pos: mine ? mine.pos : null, hidden: !!u.rankOff, xp: period === 'semana' ? (u.wk && u.wk.w === weekId() ? u.wk.xp : 0) : (u.xp || 0), row: mine && mine.pos > 20 ? out(mine) : null },

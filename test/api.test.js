@@ -968,7 +968,7 @@ test('ranking: mostra só nome + inicial, ordena por XP e desempata por quem che
   assert.equal(a.mine.xp, 5000); assert.equal(a.mine.tier, 7); assert.equal(a.mine.frame, 7); assert.equal(a.mine.guide, 'tay'); assert.equal(p.mine.tier, 7);
   assert.equal(a.j.me.xp, 5000); assert.equal(a.j.me.hidden, false); assert.equal(a.j.me.pos, a.mine.pos);
   assert.ok(a.j.top.length <= 20 && a.j.total >= 3 && a.j.period === 'geral'); assert.equal(a.j.resets, null, 'o geral nunca zera');
-  for (const x of a.j.top) { assert.deepEqual(Object.keys(x).sort(), ['frame', 'guide', 'me', 'name', 'pos', 'tier', 'xp']); assert.ok(x.xp > 0); }
+  for (const x of a.j.top) { assert.deepEqual(Object.keys(x).sort(), ['bg', 'color', 'frame', 'guide', 'me', 'name', 'pos', 'sticker', 'tier', 'xp']); assert.ok(x.xp > 0); }
   for (let i = 1; i < a.j.top.length; i++) assert.ok(a.j.top[i].xp <= a.j.top[i - 1].xp && a.j.top[i].pos === a.j.top[i - 1].pos + 1, 'lista em ordem e posições seguidas');
   assert.equal(a.j.top.filter(x => x.me).length, 1, 'só uma linha é "você"');
   const txt = JSON.stringify([a.j, p.j, z.j]);
@@ -1022,4 +1022,60 @@ test('ranking: arquivos do app — passo do nome, aba Ranking, rewards.js servid
   assert.match(html, /<script src="\/rewards\.js"><\/script>/); assert.ok(html.indexOf('/rewards.js') < html.indexOf('/app.js'), 'rewards.js carrega antes do app'); assert.match(sw, /'\/rewards\.js'/);
   const r = await fetch(U + '/rewards.js'); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /javascript/);
   const served = new Function('window', 'module', (await r.text()) + '; return window.CodeUpRewards;')({}, undefined); assert.equal(served.TIERS.length, Rw.TIERS.length, 'o navegador recebe a mesma tabela do servidor');
+});
+
+// ---------------- Personalizar o personagem: cor, adesivo e fundo ----------------
+test('personalização: tabelas de itens, imagens coloridas existem e a regra de desbloqueio por título', () => {
+  const pub = path.join(__dirname, '..', 'public');
+  for (const [kind, list] of Object.entries(Rw.LISTS)) {
+    assert.ok(list.length >= 5, kind); assert.equal(new Set(list.map(x => x.key)).size, list.length, 'chaves únicas em ' + kind);
+    for (const it of list) { assert.ok(Number.isInteger(it.tier) && it.tier >= 0 && it.tier < Rw.TIERS.length, kind + ' ' + it.key + ': título válido'); assert.ok(/^[a-z]+$/.test(it.key) && it.name); }
+    assert.ok(list.some(x => x.tier === 0), 'sempre há algo livre desde o começo em ' + kind);
+    if (kind !== 'color') assert.ok(list.some(x => x.tier >= 5), 'e algo raro para quem chega longe em ' + kind);
+  }
+  assert.equal(new Set(Rw.COLORS.map(c => c.hue)).size, Rw.COLORS.length, 'matizes diferentes'); for (const b of Rw.BACKS) assert.ok(/^#[0-9a-f]{6}$/i.test(b.c1) && /^#[0-9a-f]{6}$/i.test(b.c2)); for (const x of Rw.STICKERS) assert.ok(/^#[0-9a-f]{6}$/i.test(x.color));
+  assert.deepEqual(Rw.BASE, { tay: 'rosa', cut: 'azul' }); assert.ok(Rw.item(Rw.COLORS, Rw.BASE.tay) && Rw.item(Rw.COLORS, Rw.BASE.cut));
+  for (const g of ['tay', 'cut']) for (const c of Rw.COLORS) for (const face of [false, true]) { const f = Rw.colorFile(g, c.key, face); assert.ok(fs.existsSync(path.join(pub, f)), 'falta a imagem ' + f); assert.equal(f === `/img/${g}${face ? '-face' : ''}.webp`, c.key === Rw.BASE[g], 'a cor de fábrica usa a imagem original'); }
+  assert.equal(Rw.colorFile('tay', null, true), '/img/tay-face.webp'); assert.equal(Rw.colorFile('cut', '../x', false), '/img/cut.webp', 'cor desconhecida não vira caminho de arquivo'); assert.equal(Rw.colorFile('zzz', 'verde', false), '/img/cut-verde.webp');
+  assert.equal(Rw.pick('color', 0, 'verde', 'tay'), 'verde'); assert.equal(Rw.pick('color', 0, 'laranja', 'tay'), null, 'laranja pede o título Aprendiz'); assert.equal(Rw.pick('color', 100, 'laranja', 'tay'), 'laranja');
+  assert.equal(Rw.pick('color', 9999, 'rosa', 'tay'), null, 'a cor de fábrica não conta como escolha'); assert.equal(Rw.pick('color', 9999, 'rosa', 'cut'), 'rosa', 'mas para o outro personagem é uma cor a mais');
+  assert.equal(Rw.pick('sticker', 4499, 'cometa', 'cut'), null); assert.equal(Rw.pick('sticker', 4500, 'cometa', 'cut'), 'cometa'); assert.equal(Rw.pick('bg', 0, 'nao-existe', 'cut'), null); assert.equal(Rw.pick('bg', 0, undefined, 'cut'), null);
+  const ui = fs.readFileSync(path.join(pub, 'app.js'), 'utf8'); for (const x of Rw.STICKERS) assert.match(ui, new RegExp(`\\b${x.key}: '<`), 'ícone do adesivo ' + x.key + ' desenhado no app');
+});
+
+test('personalização: /api/guide só aceita itens que o título já libera e o ranking mostra o que vale', async () => {
+  const em = 'cz1@teste.com', tk = await regP(em, 'Dani Custom Pires', { sex: 'f', guide: 'tay', gname: 'Dani' }), g = body => call('/api/guide', { token: tk, body });
+  let me = (await call('/api/me', { token: tk })).j; assert.equal(me.color, null); assert.equal(me.sticker, null); assert.equal(me.bg, null);
+  // livres desde o começo
+  assert.equal((await g({ color: 'verde' })).j.color, 'verde'); assert.equal((await g({ sticker: 'estrela' })).j.sticker, 'estrela'); assert.equal((await g({ bg: 'oceano' })).j.bg, 'oceano');
+  assert.equal((await g({ color: 'azul', sticker: 'raio', bg: 'sol' })).j.color, 'azul', 'dá para mudar várias coisas de uma vez');
+  // bloqueados
+  const lk = async (body, re) => { const r = await g(body); assert.equal(r.status, 400, JSON.stringify(body)); assert.match(r.j.error, re); };
+  await lk({ color: 'laranja' }, /cor ainda não foi conquistada/); await lk({ sticker: 'cometa' }, /adesivo ainda não foi conquistado/); await lk({ bg: 'diamante' }, /fundo ainda não foi conquistado/);
+  await lk({ color: 'xx' }, /Opção inválida/); await lk({ sticker: '' }, /Opção inválida/); await lk({ bg: 123 }, /Opção inválida/); await lk({ color: 'verde', sticker: 'cometa' }, /adesivo/);
+  me = (await call('/api/me', { token: tk })).j; assert.equal(me.color, 'azul', 'um pedido recusado não muda nada'); assert.equal(me.sticker, 'raio');
+  assert.equal((await call('/api/guide', { body: { color: 'verde' } })).status, 401, 'precisa estar logado');
+  // sobe de título: libera
+  await setXp(em, 100); assert.equal((await g({ color: 'laranja' })).j.color, 'laranja'); await lk({ color: 'vermelho' }, /cor ainda/);
+  await setXp(em, 4500); assert.equal((await g({ sticker: 'cometa', bg: 'diamante' })).j.sticker, 'cometa');
+  // no ranking os outros veem a cor, o adesivo e o fundo (e só isso)
+  let r = (await rk(tk)).mine; assert.equal(r.color, 'laranja'); assert.equal(r.sticker, 'cometa'); assert.equal(r.bg, 'diamante');
+  // o dono tirou XP: o que deixou de ser liberado volta ao padrão (nada fica "preso")
+  await setXp(em, 120); me = (await call('/api/me', { token: tk })).j; assert.equal(me.color, 'laranja'); assert.equal(me.sticker, null, 'cometa pede Lenda'); assert.equal(me.bg, null);
+  r = (await rk(tk)).mine; assert.equal(r.color, 'laranja'); assert.equal(r.sticker, null); assert.equal(r.bg, null);
+  // voltar ao padrão
+  me = (await g({ color: 'auto', sticker: 'auto', bg: 'auto' })).j; assert.equal(me.color, null); assert.equal(me.sticker, null); assert.equal(me.bg, null);
+  // a cor de fábrica do personagem não é uma "escolha"; trocar de personagem mantém uma cor que continua valendo
+  assert.equal((await g({ color: 'rosa' })).j.color, null, 'Tay já é rosa'); assert.equal((await g({ color: 'verde' })).j.color, 'verde');
+  assert.equal((await g({ guide: 'cut' })).j.color, 'verde'); assert.equal((await g({ color: 'rosa' })).j.color, 'rosa', 'no Cut, rosa é uma cor a mais'); assert.equal((await g({ guide: 'tay' })).j.color, null, 'voltando à Tay, rosa é a cor de fábrica');
+  assert.equal((await rk(tk)).mine.guide, 'tay');
+  const exp = (await call('/api/export', { token: tk })).j; assert.ok(!('pass' in exp), 'exportação continua sem senha');
+});
+
+test('personalização: o app tem a tela, usa as imagens coloridas e o cache offline foi trocado', () => {
+  const rd = f => fs.readFileSync(path.join(__dirname, '..', ...f.split('/')), 'utf8'), ui = rd('public/app.js'), css = rd('public/style.css'), sw = rd('public/sw.js');
+  assert.match(ui, /function czView\(/); assert.match(ui, /async function czSet\(/); assert.match(ui, /CR\.colorFile\(g, c, true\)/, 'todas as telas usam a imagem da cor escolhida'); assert.match(ui, /\$\{czView\(\)\}/);
+  assert.match(ui, /avatar\(88, 'ring big'\)/, 'perfil mostra o adesivo'); assert.match(ui, /stkBadge\(r\.sticker, 20\)/, 'ranking mostra o adesivo dos outros alunos'); assert.match(ui, /colorFile\(r\.guide, r\.color, true\)/);
+  assert.match(ui, /aria-pressed=\$\{on\}/, 'botões de escolha dizem se estão marcados'); assert.match(ui, /bloqueado: /, 'e leem o bloqueio em voz alta');
+  for (const c of ['.czi', '.czp', '.czg', '.stk', '.av']) assert.ok(css.includes(c), 'CSS de ' + c); assert.match(sw, /codeup-v(3[1-9]|[4-9]\d)/, 'cache novo para quem já tinha o app instalado');
 });

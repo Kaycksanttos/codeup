@@ -60,6 +60,14 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] **Perfil → Títulos e molduras:** 8 títulos (Iniciante 0 XP, Aprendiz 100, Praticante 300, Destaque 700, Craque 1.200, Expert 2.000, Mestre 3.200, Lenda 4.500). Os já conquistados têm **Usar** / **Em uso**; os outros mostram cadeado e quanto falta. Escolher uma moldura troca o aro do personagem no app e no ranking.
 - [ ] Ao concluir uma lição que cruza o limite (ex.: de 95 para 110 XP) aparece o cartão **"Nova conquista! Você virou Aprendiz e ganhou a moldura Bronze."** com o link **Ver**. (Dica: no painel do dono, ajuste o XP da pessoa para 95 e faça uma lição.)
 
+**4c. Personalizar o personagem**
+- [ ] No **Perfil → Personalizar personagem** aparece uma prévia do personagem inteiro (com o fundo e o adesivo escolhidos) e três grupos: **Cor da roupa**, **Adesivo** e **Fundo**.
+- [ ] Tocar numa opção livre muda na hora a prévia, o rostinho do topo do Perfil, o ranking e as telas do app (a página não pula para o topo). **Original / Nenhum / Padrão** voltam ao começo.
+- [ ] Itens ainda não conquistados aparecem apagados com cadeado; ao tocar, o aviso diz qual título libera ("Libera com o título Craque (1.200 XP)."). Livres desde o começo: Verde, Roxo e a cor do outro personagem, 3 adesivos (estrela, raio, coração) e 2 fundos (pôr do sol, oceano).
+- [ ] O texto abaixo da prévia conta quantos itens já estão liberados ("16 de 27"). Com o título Lenda mostra que tudo foi liberado.
+- [ ] Para testar sem ganhar XP à mão: painel do dono (`/admin`) → Usuários → pessoa → **XP** → defina 350 (libera até Vermelho), 4600 (libera tudo). Se o dono baixar o XP depois, o que deixou de ser liberado volta ao padrão.
+- [ ] No Ranking, a linha de cada aluno mostra o rostinho na cor escolhida, com o fundo e o adesivo no canto.
+
 **5. Provas e certificado (sem fazer as 90 lições à mão)**
 - [ ] Abra o painel do dono (`/admin`), entre com a chave `admin-teste`, aba **Usuários**, toque na pessoa e em **Liberar todos os cursos**.
 - [ ] No app da pessoa os cadeados somem sozinhos (até 1 minuto, ou ao voltar para a aba) e aparece o aviso "Seus cursos foram liberados!".
