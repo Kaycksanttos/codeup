@@ -22,8 +22,8 @@
   var FS = [
     '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
     'uniform sampler2D uTex,uPar,uRig,uLid;',
-    'uniform vec2 uRes,uOrg,uPivot,uArmP;uniform float uK,uHop,uSy,uSway,uHead,uArm,uHair,uBlink,uTime,uStyle;',
-    'uniform vec4 uEL,uER;uniform vec2 uGate;uniform vec3 uMain,uAlt,uLref,uLash;',
+    'uniform vec2 uRes,uOrg,uPivot,uArmP;uniform float uK,uHop,uSy,uSway,uHead,uArm,uHair,uBlink,uTime,uStyle,uShine,uFlash;',
+    'uniform vec4 uEL,uER;uniform vec2 uGate;uniform vec3 uMain,uAlt,uLref,uLash,uFx;',
     'const vec2 SZ=vec2(640.,960.);',
     'vec2 rot(vec2 v,float a){float c=cos(a),s=sin(a);return vec2(c*v.x-s*v.y,s*v.x+c*v.y);}',
     'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
@@ -97,6 +97,10 @@
     '   }',
     '  }',
     ' }',
+    ' if(uShine>-2.||uFlash>.001){',                                                               // brilho diagonal (conquista) e pulso de cor
+    '  float tt=(q.x*.45+(960.-q.y)*.55)/(640.*.45+960.*.55);float bd=(tt-uShine)/.085;',
+    '  rgb=min(rgb+uFx*(exp(-bd*bd)*.65+uFlash*.13),vec3(1.));',
+    ' }',
     ' gl_FragColor=vec4(rgb*c.a,c.a);',
     '}'
   ].join('\n');
@@ -123,7 +127,7 @@
       gl.useProgram(pr);
       var b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
       var loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      var U = {}; ['uTex', 'uPar', 'uRig', 'uLid', 'uRes', 'uOrg', 'uPivot', 'uArmP', 'uK', 'uHop', 'uSy', 'uSway', 'uHead', 'uArm', 'uHair', 'uBlink', 'uTime', 'uStyle', 'uEL', 'uER', 'uGate', 'uMain', 'uAlt', 'uLref', 'uLash'].forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
+      var U = {}; ['uTex', 'uPar', 'uRig', 'uLid', 'uRes', 'uOrg', 'uPivot', 'uArmP', 'uK', 'uHop', 'uSy', 'uSway', 'uHead', 'uArm', 'uHair', 'uBlink', 'uTime', 'uStyle', 'uEL', 'uER', 'uGate', 'uMain', 'uAlt', 'uLref', 'uLash', 'uFx', 'uShine', 'uFlash'].forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
       gl.uniform1i(U.uTex, 0); gl.uniform1i(U.uPar, 1); gl.uniform1i(U.uRig, 2); gl.uniform1i(U.uLid, 3);
       gl.disable(gl.BLEND); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       try { gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); } catch (e) {}
@@ -200,6 +204,41 @@
     if (jit > .62) b = Math.max(b, tri(ph - start - .3, .18));
     return b;
   }
+  // ---- faíscas (estrelinhas e confete) ao redor do personagem, calculadas só pelo tempo: [instante, quantidade, anel?]
+  var BURSTS = { good: [[.5, 10, 0]], pop: [[.2, 9, 0]], epic1: [[.75, 24, 1], [1.65, 14, 0]], epic2: [[.75, 34, 1], [1.65, 26, 1], [2.4, 20, 0]] };
+  function bursts(i) { return i.mode == 'epic' ? (i.fx > 1 ? BURSTS.epic2 : BURSTS.epic1) : BURSTS[i.mode] || null; }
+  function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function hex(c) { var n = parseInt(c.slice(1), 16); return [(n >> 16) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
+  function star(cx, x, y, R, rot) { cx.beginPath(); for (var k = 0; k < 8; k++) { var r = k % 2 ? R * .26 : R, a = rot + k * Math.PI / 4; cx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r, y + Math.sin(a) * r); } cx.closePath(); cx.fill(); }
+  function fxDraw(i, t) {
+    var cx = i.fx2d; if (!cx) return;
+    var cv = i.fcv; cx.clearRect(0, 0, cv.width, cv.height);
+    if (reduce) return;
+    var list = (bursts(i) || []).map(function (b) { return [b[0], b[1], b[2], t - i.t0]; });
+    if (i.tapFx >= 0) { if (t - i.tapFx > 2) i.tapFx = -1; else list.push([0, 8, 0, t - i.tapFx, 7]); }
+    if (!list.length) return;
+    var r = cv.width / (2.4 * i.bw), s = i.bh / H, ox = .7 * i.bw, oy = .45 * i.bh, pal = [i.fxc, '#ffffff', '#ffd43b', i.fxl];
+    list.forEach(function (b) {
+      var age = b[3] - b[0]; if (age < 0 || age > 2) return;
+      var rnd = rng(7919 * (b[4] || 1) + Math.round(b[0] * 100) + 13 * i.fxs);
+      if (b[2] && age < .9) {                                   // anel que se abre a partir do corpo
+        cx.save(); cx.globalAlpha = (1 - age / .9) * .55; cx.strokeStyle = i.fxc; cx.lineWidth = Math.max(1, 7 * (1 - age / .9)) * r;
+        cx.beginPath(); cx.ellipse((ox + 320 * s) * r, (oy + 560 * s) * r, (60 + age * 520) * s * r, (30 + age * 260) * s * r, 0, 0, 6.2832); cx.stroke(); cx.restore();
+      }
+      for (var k = 0; k < b[1]; k++) {
+        var ang = rnd() * 6.2832, rx = 175 + rnd() * 170, ry = 230 + rnd() * 230, sp = 30 + rnd() * 120, life = .9 + rnd() * .9, kind = rnd(), sz = 7 + rnd() * 11, col = pal[Math.floor(rnd() * pal.length)], ph = rnd() * 6.2832, rt = rnd() * 6.2832;
+        var u = age / life; if (u > 1) continue;
+        var x = 320 + Math.cos(ang) * rx + Math.cos(ang) * sp * age, y = 480 + Math.sin(ang) * ry * .85 + Math.sin(ang) * sp * age - 50 * age + (kind > .86 ? 140 * age * age : 0);
+        cx.save(); cx.globalAlpha = Math.max(0, (u < .15 ? u / .15 : 1 - (u - .15) / .85) * (.65 + .35 * Math.sin(age * 18 + ph))); cx.fillStyle = col;
+        var X = (ox + x * s) * r, Y = (oy + y * s) * r, R = sz * r * (1 - u * .35) * Math.max(1.1, s * 4);
+        if (kind > .86) { cx.translate(X, Y); cx.rotate(rt + age * 6); cx.fillRect(-R * .55, -R * .3, R * 1.1, R * .6); }
+        else if (kind > .62) { cx.beginPath(); cx.arc(X, Y, R * .45, 0, 6.2832); cx.fill(); }
+        else star(cx, X, Y, R * 1.15, rt + age * 1.5);
+        cx.restore();
+      }
+    });
+  }
+
   function pose(i, t) {
     var c = CH[i.g] || CH.tay, TAU = 6.2832, s = i.seed, mode = i.mode;
     var o = { hop: 0, sy: 1, sway: 0, head: 0, arm: 0, hair: c.hair, blink: 0 };
@@ -210,6 +249,24 @@
     o.arm = c.armAmp * Math.sin(TAU * t / (i.g == 'cut' ? 2.0 : 2.8) + s);
     o.blink = blinkAt(t, s);
     var T = t - i.t0;                                           // tempo desde que o personagem apareceu
+    var bs = bursts(i); if (bs) { var fl = 0; bs.forEach(function (b) { var d = (T - b[0]) / .2; fl += Math.exp(-d * d); }); o.flash = Math.min(1, fl) * (mode == 'epic' ? .9 : .5); }
+    if (mode == 'epic') {                                       // CONQUISTA: agacha, pula bem alto com os braços para cima, brilho passa pelo corpo, mais dois pulos e segue comemorando
+      var pre = T < .45 ? Math.sin(Math.PI * T / .45) : 0;
+      o.sy -= .07 * pre; o.head += .06 * pre; o.arm -= .15 * pre;
+      [[.45, 58], [1.4, 36], [2.15, 22]].forEach(function (j) {
+        var uu = (T - j[0]) / .62;
+        if (uu >= 0 && uu <= 1) { var b = Math.sin(Math.PI * uu); o.hop += j[1] * b; o.sy += .055 * b - (uu < .12 ? .075 * (1 - uu / .12) : 0) - (uu > .88 ? .065 * ((uu - .88) / .12) : 0); o.head -= .09 * b; }
+      });
+      var up = clamp((T - .3) / .4, 0, 1) * (T < 3.2 ? 1 : clamp(1 - (T - 3.2) / .8, 0, 1));
+      o.arm += ((i.g == 'cut' ? .6 : .34) + .14 * Math.sin(TAU * 3.2 * T)) * up;
+      o.head += .04 * Math.sin(TAU * 1.3 * t);
+      var sp = (T - .55) / .8, sq = (T - 1.8) / .8;
+      if (sp >= 0 && sp <= 1) o.shine = -.25 + 1.5 * sp; else if (i.fx > 1 && sq >= 0 && sq <= 1) o.shine = -.25 + 1.5 * sq;
+      if (T >= 3.2) { mode = 'good'; T = T - 3.2 + 2.4; }       // depois disso, comemora de vez em quando como no "good"
+    } else if (mode == 'pop') {                                 // acabou de trocar um item: pulinho e um brilho
+      var up2 = T / .6;
+      if (up2 >= 0 && up2 <= 1) { var b2 = Math.sin(Math.PI * up2); o.hop += 20 * b2; o.sy += .04 * b2 - (up2 < .15 ? .05 * (1 - up2 / .15) : 0); o.head += .05 * Math.sin(TAU * up2); o.shine = -.25 + 1.5 * up2; }
+    }
     if (mode == 'good') {                                       // comemora: 3 pulinhos, braço balançando e depois pula de vez em quando
       var per = T < 2.4 ? .8 : 4, ph = T < 2.4 ? T % .8 : (T - 2.4) % 4, u = ph / .8, a = T < 2.4 ? 22 : 16;
       if (u < 1) { o.hop = a * Math.sin(Math.PI * u); o.sy += .035 * Math.sin(Math.PI * u) - (u < .14 ? .05 * (1 - u / .14) : 0) - (u > .88 ? .045 * ((u - .88) / .12) : 0); }
@@ -253,23 +310,28 @@
     gl.uniform1f(U.uArm, p.arm); gl.uniform1f(U.uHair, p.hair); gl.uniform1f(U.uBlink, p.blink); gl.uniform1f(U.uTime, t);
     gl.uniform1f(U.uStyle, i.style); gl.uniform2f(U.uGate, c.gate[0], c.gate[1]);
     gl.uniform3f(U.uMain, a.st.main[0], a.st.main[1], a.st.main[2]); gl.uniform3f(U.uAlt, a.st.alt[0], a.st.alt[1], a.st.alt[2]);
+    gl.uniform1f(U.uShine, p.shine === undefined ? -5 : p.shine); gl.uniform1f(U.uFlash, p.flash || 0); gl.uniform3f(U.uFx, i.fxr[0], i.fxr[1], i.fxr[2]);
     gl.uniform3f(U.uLash, c.lash[0], c.lash[1], c.lash[2]); gl.uniform3f(U.uLref, a.st.lref[0], a.st.lref[1], a.st.lref[2]);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     i.cx.clearRect(0, 0, cw, chh);
     i.cx.drawImage(en.cv, 0, en.cv.height - chh, cw, chh, 0, 0, cw, chh);
+    if (i.fx2d) fxDraw(i, t);
   }
 
   function size(i) {
     var r = i.el.getBoundingClientRect(), h = r.height || parseFloat(i.el.style.height) || 200, dpr = Math.min(root.devicePixelRatio || 1, 2);
     var k = Math.min(h * dpr / H, KMAX), w = Math.round((W + 2 * PX) * k), hh = Math.round((H + PT) * k);
     if (i.cv.width != w || i.cv.height != hh) { i.cv.width = w; i.cv.height = hh; i.dirty = true; }
+    i.bw = r.width || h * 2 / 3; i.bh = h;
+    if (i.fcv) { var rr = Math.min(dpr, 1000 / (2.4 * i.bw), 800 / (1.5 * i.bh)), fw = Math.round(2.4 * i.bw * rr), fh = Math.round(1.5 * i.bh * rr); if (i.fcv.width != fw || i.fcv.height != fh) { i.fcv.width = fw; i.fcv.height = fh; i.dirty = true; } }
   }
 
   function release(i) {
     var j = insts.indexOf(i); if (j >= 0) insts.splice(j, 1);
     if (i.io) { try { i.io.disconnect(); } catch (e) {} }
     if (i.cv && i.cv.parentNode) i.cv.parentNode.removeChild(i.cv);
+    if (i.fcv && i.fcv.parentNode) i.fcv.parentNode.removeChild(i.fcv);
     if (i.el) { i.el.classList.remove('on'); i.el.removeAttribute('data-on'); var im = i.el.querySelector('img'); if (im) im.style.visibility = ''; }
   }
 
@@ -278,18 +340,24 @@
     var g = el.getAttribute('data-g'); if (!CH[g]) return;
     var en = engine(); if (!en) return;
     el.setAttribute('data-on', '1');
-    var i = { el: el, g: g, src: el.getAttribute('data-src'), style: +el.getAttribute('data-o') || 0, mode: el.getAttribute('data-mode') || '', seed: Math.random() * 6, t0: now(), tap: -1, vis: true, dirty: true, as: null };
+    var i = { el: el, g: g, src: el.getAttribute('data-src'), style: +el.getAttribute('data-o') || 0, mode: el.getAttribute('data-mode') || '', seed: Math.random() * 6, t0: now(), tap: -1, tapFx: -1, vis: true, dirty: true, as: null };
+    var fxc = el.getAttribute('data-fxc'); i.fxc = /^#[0-9a-f]{6}$/i.test(fxc || '') ? fxc : '#ffd43b'; i.fx = +el.getAttribute('data-fx') || 1; i.fxs = Math.floor(Math.random() * 1000);
+    var fx3 = hex(i.fxc).map(function (v) { return v + (1 - v) * .35; }); i.fxr = fx3; i.fxl = 'rgb(' + fx3.map(function (v) { return Math.round(v * 255); }).join(',') + ')';
     i.cv = document.createElement('canvas'); i.cv.className = 'ac'; i.cv.setAttribute('aria-hidden', 'true'); i.cx = i.cv.getContext('2d');
     insts.push(i); size(i);
+    if ((i.mode == 'epic' || i.mode == 'good' || i.mode == 'pop') && !reduce) ensureFx(i);
     assets(i.src, g).then(function (a) {
       if (!el.isConnected) { release(i); return; }
-      i.as = a; i.t0 = now(); el.insertBefore(i.cv, el.firstChild); size(i);
+      i.as = a; i.t0 = now(); el.insertBefore(i.cv, el.firstChild); if (i.fcv) el.insertBefore(i.fcv, i.cv.nextSibling); size(i);
       draw(i, i.t0, reduce ? STILL : null); i.dirty = false;                       // primeiro quadro já na mesma hora, antes de esconder a <img> (sem piscar)
       el.classList.add('on'); var im = el.querySelector('img'); if (im) im.style.visibility = 'hidden';
       i.dirty = reduce; loop();
     }).catch(function () { release(i); });
     if ('IntersectionObserver' in root) { i.io = new IntersectionObserver(function (es) { i.vis = es[es.length - 1].isIntersecting; if (i.vis) { i.dirty = true; loop(); } }); i.io.observe(el); }
-    el.addEventListener('pointerdown', function () { i.tap = now(); loop(); });
+    el.addEventListener('pointerdown', function () { i.tap = i.tapFx = now(); if (!reduce) { ensureFx(i); if (i.fcv && !i.fcv.parentNode && i.as) { el.insertBefore(i.fcv, i.cv.nextSibling); size(i); } } loop(); });
+  }
+  function ensureFx(i) {
+    if (i.fcv) return; i.fcv = document.createElement('canvas'); i.fcv.className = 'afx'; i.fcv.setAttribute('aria-hidden', 'true'); i.fx2d = i.fcv.getContext('2d'); size(i);
   }
   function now() { return (root.performance ? root.performance.now() : Date.now()) / 1000; }
 
@@ -331,7 +399,7 @@
   // HTML do personagem animado: guia (tay|cut), arquivo colorido, estilo da roupa (número), altura em px, classes e modo (good|bad)
   function html(o) {
     var h = o.h || 200;
-    return '<span class="abody ' + (o.cls || '') + '" data-g="' + o.g + '" data-src="' + o.src + '" data-o="' + (o.o || 0) + '"' + (o.mode ? ' data-mode="' + o.mode + '"' : '') + ' style="height:' + h + 'px"><img class="body" src="' + o.src + '" alt="' + (o.alt || '') + '" style="height:100%"></span>';
+    return '<span class="abody ' + (o.cls || '') + '" data-g="' + o.g + '" data-src="' + o.src + '" data-o="' + (o.o || 0) + '"' + (o.mode ? ' data-mode="' + o.mode + '"' : '') + (o.fx ? ' data-fx="' + (+o.fx || 1) + '"' : '') + (/^#[0-9a-f]{6}$/i.test(o.fxc || '') ? ' data-fxc="' + o.fxc + '"' : '') + ' style="height:' + h + 'px"><img class="body" src="' + o.src + '" alt="' + (o.alt || '') + '" style="height:100%"></span>';
   }
 
   root.CodeUpAnim = {

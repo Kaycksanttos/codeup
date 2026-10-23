@@ -81,8 +81,18 @@ const stkBadge = (k, size) => { const it = CR.item(CR.STICKERS, k); return it &&
 const avatar = (s, cls = '') => `<span class=av style="width:${s}px;height:${s}px">${mascot(s, cls)}${stkBadge(S.me && S.me.sticker, Math.round(s * .42))}</span>`;
 // personagem de corpo inteiro: animado em WebGL (anim.js) com a estampa da roupa escolhida; sem WebGL cai na <img> normal
 const OUTF = () => CR.outfitId(S.me && S.me.outfit);
-const body = (h = 200, cls = '', extra = '') => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: /\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '', alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
-const stage = (h, text, cls = '') => `<div class="stage ${cls}"${(b => b ? ` style="--gl:${b.c1}"` : '')(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls)}<span class=gn>${esc(gnm())}</span></div>`;
+// cls: 'good' (passou), 'bad' (errou), 'epic'/'epic2' (conquista: nível novo, prova, título novo → pulo grande, brilho e faíscas na cor fxc), 'pop' (acabou de trocar um item)
+const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 'pop' : /\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '';
+const body = (h = 200, cls = '', extra = '', fxc = '') => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+const stage = (h, text, cls = '', fxc = '') => `<div class="stage ${cls}"${(b => { const v = [b ? '--gl:' + b.c1 : '', /^#[0-9a-f]{6}$/i.test(fxc) ? '--fx:' + fxc : ''].filter(Boolean).join(';'); return v ? ` style="${v}"` : ''; })(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls, '', fxc)}<span class=gn>${esc(gnm())}</span></div>`;
+// personagem do resultado de uma conquista: título novo (cor do título) > trilha concluída > nível novo > só passou (ou prova aprovada, que também é conquista)
+const winStage = (h, text, base = 'good', big = false) => {
+  const t = S.tierUp ? CR.TIERS[S.tierUp] : null;
+  if (t) return stage(h, `Agora você é ${t.title}!`, 'good epic2', t.color);
+  if (big) return stage(h, text, 'good epic2', '#fbbf24');
+  if (S.lvlUp) return stage(h, 'Subiu de nível!', 'good epic', '#fbbf24');
+  return stage(h, text, base, /epic/.test(base) ? '#fbbf24' : '');
+};
 const tg = (t, s = 40) => t == 'python' ? `<span class="tg py" style="--s:${s}px">py</span>` : `<span class="tg sq" style="--s:${s}px">${ic('db', Math.round(s * .5))}</span>`;
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
@@ -553,7 +563,7 @@ function czView() {
   const pbg = bgCss(m.bg, m.color && m.color != CR.BASE[g] ? m.color : '');
   const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS, CR.OUTFITS.filter(o => o.id)].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length + CR.OUTFITS.length - 1;
   return `<div class=sec>Personalizar personagem</div>
-    <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190)}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
+    <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190, S.pop ? 'pop' : '', '', '#ffd43b')}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
     <p class=tn style="margin:8px 2px 0">${free == all ? 'Você liberou todos os itens. É uma lenda!' : `${free} de ${all} itens liberados. Ganhe XP para subir de título e liberar o resto.`}</p>
     <div class=czh>Cor da roupa</div><div class=czg>${colors}</div>
     <div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>
@@ -564,7 +574,7 @@ async function czSet(kind, key) {
   const it = key == 'auto' ? null : CR.item(CR.LISTS[kind], key);
   if (it && it.tier > CR.tierOf(S.me.xp)) { const t = CR.TIERS[it.tier]; return toast(`Libera com o título ${t.title} (${nf(t.xp)} XP).`); }
   const y = window.scrollY;
-  try { S.me = await api('guide', { body: { [kind]: key } }); render(); window.scrollTo(0, y); } catch (e) { fail(e); }
+  try { S.me = await api('guide', { body: { [kind]: key } }); S.pop = 1; render(); S.pop = 0; window.scrollTo(0, y); } catch (e) { fail(e); }
 }
 async function setFrame(key) { try { S.me = await api('guide', { body: { frame: key } }); toast('Moldura trocada!'); render(); } catch (e) { fail(e); } }
 // aviso de "nova conquista" na tela de resultado quando o XP faz a pessoa chegar a um novo título
@@ -876,7 +886,7 @@ function result() {
   const btn = last ? `<button class="btn pri block" onclick="examIntro(${l.lv})">${ic('cap', 16)} Fazer a prova do nível</button>`
     : needCp ? `<button class="btn pri block" onclick="openCp('${needCp.id}')">${ic('flag', 16)} Fazer o checkpoint</button>`
     : `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>`;
-  confetti(); A.innerHTML = `<div class="c res">${stage(230, 'Mandou bem!', 'good')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
+  confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Mandou bem!')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a prova para liberar o próximo nível.</p>` : ''}
   ${needCp ? `<p class=gl>Checkpoint liberado! Faça uma consulta com o que você aprendeu nas últimas 5 lições para abrir a lição ${nx.n}.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>na prática</small></div></div>
@@ -887,7 +897,7 @@ function result() {
 
 function resultCp() {
   const l = S.cur, nx = S.ls.find(x => x.track == l.track && x.lv == l.lv && x.n == l.after + 1);
-  confetti(); A.innerHTML = `<div class="c res">${stage(230, 'Checkpoint conquistado!', 'good')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
+  confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP extra</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>no desafio</small></div></div>
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos deste checkpoint.</p>'}
   ${nx ? `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button>${adSlot()}</div>`;
@@ -956,7 +966,7 @@ function examSummary() {
 async function examFinish() {
   const x = S.ex;
   if (!confirm('Entregar a prova agora? Depois não dá para mudar as respostas.')) return;
-  try { const r = await api('exam/finish', { body: { track: x.t, level: x.lv } }), xb = S.me.xp; Object.assign(S.me, { xp: r.xp, gems: r.gems, done: r.done, passed: r.passedMap, fails: r.fails, exams: r.exams, certs: r.certs }); S.tierUp = CR.tierOf(r.xp) > CR.tierOf(xb) ? CR.tierOf(r.xp) : 0; S.ex = null; examResult(r, x); }
+  try { const r = await api('exam/finish', { body: { track: x.t, level: x.lv } }), xb = S.me.xp; Object.assign(S.me, { xp: r.xp, gems: r.gems, done: r.done, passed: r.passedMap, fails: r.fails, exams: r.exams, certs: r.certs }); S.tierUp = CR.tierOf(r.xp) > CR.tierOf(xb) ? CR.tierOf(r.xp) : 0; S.lvlUp = 0; S.ex = null; examResult(r, x); }
   catch (e) { fail(e); }
 }
 function examResult(r, x) {
@@ -964,7 +974,7 @@ function examResult(r, x) {
   const t = x.t, lv = x.lv;
   if (r.passed) {
     const next = lv < 3, fin = r.trackComplete;
-    confetti(); A.innerHTML = `<div class="c res">${stage(240, 'Aprovado! Que orgulho!', 'good')}<h1>Aprovado!</h1><p class=sub>${r.score} de ${r.total} (${r.pct}%)</p>${tierCard()}
+    confetti(); A.innerHTML = `<div class="c res">${winStage(240, fin ? 'Trilha concluída! Que orgulho!' : 'Aprovado! Que orgulho!', 'good epic', fin)}<h1>Aprovado!</h1><p class=sub>${r.score} de ${r.total} (${r.pct}%)</p>${tierCard()}
     <div class=stats3><div><b>${r.score}/${r.total}</b><small>acertos</small></div><div><b>+${r.bonus || 0}</b><small>XP bônus</small></div><div><b>${r.passPct}%</b><small>nota mínima</small></div></div>
     <p class=gl>${fin ? `Você concluiu toda a trilha ${TN[t]}. Seu certificado está pronto.` : next ? `O nível <b>${LV[lv]}</b> foi liberado.` : ''}</p>
     ${fin ? `<button class="btn pri block" onclick="certFlow('${t}')">${ic('award', 16)} Emitir meu certificado</button>` : ''}

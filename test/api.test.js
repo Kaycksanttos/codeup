@@ -1125,3 +1125,18 @@ test('animação: o app carrega anim.js, usa o personagem animado, tem fallback 
   const r = await fetch(U + '/anim.js'); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /javascript/);
   for (const f of ['tay-parts.png', 'cut-rig.png', 'cut-eye.png']) assert.equal((await fetch(U + '/img/' + f)).status, 200, f);
 });
+
+test('animação: conquistas (título novo, nível novo, prova, trilha) e troca de item têm animação própria', () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), css = rd('style.css');
+  // as telas de resultado usam o personagem de conquista: título novo > trilha concluída > nível novo > só passou
+  assert.match(ui, /const winStage = /); assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /winStage\(230, 'Checkpoint conquistado!'\)/); assert.match(ui, /winStage\(240, fin \?/);
+  assert.match(ui, /Agora você é \$\{t\.title\}!/); assert.match(ui, /Subiu de nível!/); assert.match(ui, /'good epic2', t\.color/, 'título novo usa a cor do título'); assert.match(ui, /S\.pop = 1; render\(\); S\.pop = 0;/, 'trocar um item faz o personagem dar um pulinho com brilho');
+  assert.ok(!/stage\((230|240), '(Mandou bem!|Checkpoint conquistado!|Aprovado! Que orgulho!)', 'good'\)/.test(ui), 'nenhuma tela de resultado ficou com o personagem comum');
+  assert.match(ui, /bodyMode = /); assert.match(ui, /fx: \/\\bepic2\\b\/\.test\(cls\) \? 2/);
+  // o motor entende os modos novos e só aceita cor #rrggbb (vem do HTML)
+  assert.match(anim, /mode == 'epic'/); assert.match(anim, /mode == 'pop'/); assert.match(anim, /\^#\[0-9a-f\]\{6\}\$/i, 'cor das faíscas validada'); assert.match(anim, /fxDraw/); assert.match(anim, /uShine/);
+  assert.match(css, /\.stage\.epic \.glow/); assert.match(css, /canvas\.afx/); assert.match(css, /@keyframes fxglow/);
+  // com "reduzir movimento" não há faíscas nem pulo
+  assert.match(anim, /if \(reduce\) return;/);
+  assert.match(fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8'), /codeup-v(3[3-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+});
