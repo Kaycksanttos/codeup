@@ -19,9 +19,10 @@ codeup/
 ├─ legal/             Termos de Uso e Política de Privacidade (modelos)
 ├─ public/            o app: index.html, app.js, style.css, ícones, manifest, sw.js
 │                     admin.html, admin.js, admin.css: a tela do painel do dono (abre em /admin)
+│                     rewards.js: tabela de títulos/molduras por XP (8 níveis; um só arquivo usado pelo navegador e pelo servidor)
 │                     scene.js: cenários dos visuais "Azul" (floresta azul, padrão) e "Rosa"
 │                     img/tay*.webp e img/cut*.webp: os personagens (Tay = feminino, rosa · Cut = masculino, azul), versão inteira e versão rosto
-│                     Cadastro em 2 passos: "Você é feminino ou masculino?" (u.sex = f|m) e "Quem vai te guiar?" (u.guide = tay|cut, escolha independente do gênero); seguem junto no POST /api/register e no login Google. Contas antigas respondem uma vez ao entrar (POST /api/guide aceita sex e/ou guide). Dá para trocar em Perfil > Eu sou / Personagem; o painel mostra os dois (visão geral, ficha, CSV)
+│                     Cadastro em 3 passos: "Você é feminino ou masculino?" (u.sex = f|m), "Quem vai te guiar?" (u.guide = tay|cut, escolha independente do gênero) e "Que nome você quer dar ao guia?" (u.gname, 2 a 14 caracteres, só o aluno vê); seguem junto no POST /api/register e no login Google. Contas antigas respondem uma vez ao entrar (POST /api/guide aceita sex e/ou guide). Dá para trocar em Perfil > Eu sou / Personagem; o painel mostra os dois (visão geral, ficha, CSV)
 │                     Estilos: Azul (floresta azul), Rosa, Azul escuro e Claro (Perfil > Aparência); escolher a Tay já liga o Rosa
 ├─ test/              testes automáticos (cada lição/prova + API + curso/prova/certificado + Google/recuperação)
 ├─ Dockerfile, render.yaml, .env.example, package.json, package-lock.json
@@ -116,6 +117,13 @@ Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/adm
 2. Em **Environment**, crie `ADMIN_HOST` = `admin.seusite.com.br` (só o endereço, sem `https://`) e deixe o Render reiniciar.
 3. Pronto: `https://admin.seusite.com.br` abre direto o painel; no site público `/admin` e `/api/admin/...` passam a responder 404, e no endereço do admin só o painel funciona (o app dos alunos não abre ali). A chave `ADMIN_KEY` continua sendo a senha. Os links de "nova senha" que você gera continuam apontando para o site público.
 Sem `ADMIN_HOST` (ou no seu computador) tudo fica no mesmo endereço, como antes. A aba **Sistema** mostra qual endereço está valendo.
+
+## 5c) Ranking, nome do personagem e conquistas
+- **Ranking** (aba com a coroa): "Esta semana" (zera na segunda-feira, meia-noite de Brasília) e "Geral". Mostra os 20 primeiros e, se o aluno estiver mais abaixo, o cartão "Você está em Nº lugar". API: `GET /api/ranking?p=semana|geral`.
+- **Privacidade do ranking:** aparece só o primeiro nome + a inicial do sobrenome, o personagem, o título, a moldura e o XP. Nunca e-mail, sobrenome inteiro nem o nome que o aluno deu ao guia. Quem não quer aparecer usa **Perfil → Ranking → Ficar de fora** (`POST /api/ranking/visibility`). Contas suspensas, com e-mail não confirmado, apagadas ou sem XP no período ficam de fora. A lista é recalculada no máximo a cada 5 s (`RANK_TTL_MS`).
+- **Nome do personagem:** o aluno escolhe o guia (Tay ou Cut) **e dá um nome a ele** (2 a 14 caracteres: letras, números, espaço, ponto, apóstrofo, hífen). Aparece nas falas e nas telas do app, e pode ser trocado em Perfil.
+- **Conquistas por XP:** 8 títulos com moldura colorida no personagem — Iniciante (0), Aprendiz (100), Praticante (300), Destaque (700), Craque (1.200), Expert (2.000), Mestre (3.200) e Lenda (4.500 XP; o curso inteiro dá 5.025). Ao cruzar um limite aparece "Nova conquista!". O aluno escolhe qual moldura usar entre as que já ganhou. A tabela fica em `public/rewards.js`; para mudar os limites basta editar esse arquivo (os testes conferem que a Lenda continua possível).
+- No painel do dono, ajustar o XP de uma pessoa (ficha → XP) muda o título dela; o ranking "Esta semana" só conta XP **ganho em lições, checkpoints e provas**.
 
 ## 6) Segurança e privacidade já incluídas
 **Contas e sessões:** senha com hash (scrypt), mínimo de 8 caracteres e lista de senhas comuns recusadas · login em tempo constante (não revela se o e-mail existe) · limite de tentativas por IP **e por conta** · sessões de 60 dias, no máximo 10 por pessoa, guardadas **só como hash** no banco (se o banco vazar, ninguém entra nas contas) · trocar/recuperar senha derruba os outros aparelhos · links de redefinição e de confirmação de e-mail: aleatórios, de uso único, guardados com hash · login com Google verificado no servidor.

@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const { Worker } = require('worker_threads');
 const lessons = require('./lessons');
+const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
 const { exams, checkpoints, TRACKS, LEVEL_NAMES, PASS_PCT, EXAM_SIZE } = lessons;
 const TRACK_NAMES = { python: 'Python', sql: 'SQL' };
 
@@ -95,6 +96,18 @@ const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(Strin
 const WEAK = new Set(['12345678', '123456789', '1234567890', 'password', 'senha123', 'qwertyui', '11111111', '00000000', 'abcd1234', 'senha1234', 'brasil123', 'iloveyou', 'password1', 'qwerty123', '12341234', '87654321', 'mudar123']);
 const pwProblem = (pw, email) => pw.length < 8 || pw.length > 100 ? 'A senha precisa ter entre 8 e 100 caracteres.' : WEAK.has(pw.toLowerCase()) || pw.toLowerCase() === String(email || '').split('@')[0] ? 'Essa senha é fácil de adivinhar. Escolha outra.' : null;
 const day = d => d.toISOString().slice(0, 10);
+// ---------- ranking e XP ----------
+// A semana do ranking começa na segunda-feira às 00:00 no horário de Brasília (UTC-3, sem horário de verão). O id da semana é a data dessa segunda.
+const BRT = 3 * 36e5;
+const weekStart = (t = Date.now()) => { const d = new Date(t - BRT), dow = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow) + BRT; };
+const weekId = (t = Date.now()) => new Date(weekStart(t)).toISOString().slice(0, 10);
+const RANK_TTL = process.env.RANK_TTL_MS !== undefined && +process.env.RANK_TTL_MS >= 0 ? +process.env.RANK_TTL_MS : 5000;   // o ranking é recalculado no máximo a cada 5 s (nos testes: sempre)
+const RANK = { at: 0, w: '', m: new Map() };
+// XP ganho: soma no total e na semana, e guarda a hora para desempatar o ranking (quem chegou primeiro fica na frente)
+function gainXp(u, n) {
+  if (!(n > 0)) return; const now = Date.now(), w = weekId(now);
+  u.xp = (u.xp || 0) + n; u.xpAt = now; if (!u.wk || u.wk.w !== w) u.wk = { w, xp: 0 }; u.wk.xp += n; RANK.at = 0;
+}
 // ---------- ajustes do dono (painel /admin): cadastros abertos, comunicado e modo livre ----------
 const settingsMain = () => { DB.settings ??= {}; const m = DB.settings.main ??= {}; m.signupsOpen ??= true; m.announce ??= { on: false, text: '', kind: 'info', id: 0 }; m.unlockAll ??= { on: false, until: null }; return m; };
 const unlockAllOn = () => { const a = settingsMain().unlockAll; return !!(a.on && (!a.until || Date.parse(a.until) > Date.now())); };
@@ -102,7 +115,7 @@ const unlockAllOn = () => { const a = settingsMain().unlockAll; return !!(a.on &
 const unlocked = (u, track) => unlockAllOn() || !!(u.unlock && u.unlock[track]);
 const pub = u => ({
   name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
-  track: u.track || null, guide: u.guide || null, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
+  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true]))
 });
 const idx = id => lessons.findIndex(l => l.id === String(id));
@@ -381,21 +394,59 @@ app.get('/api/me', auth, (req, res) => res.json(pub(req.u)));
 app.post('/api/profile', auth, (req, res) => {
   const name = String(req.body.name || '').trim().slice(0, 30);
   if (!name) return res.status(400).json({ error: 'Informe um nome.' });
-  req.u.name = name; save(); res.json(pub(req.u));
+  req.u.name = name; RANK.at = 0; save(); res.json(pub(req.u));
 });
 
 // personagem que acompanha a pessoa na trilha: Tay (rosa, feminino) ou Cut (azul, masculino)
 const GUIDES = ['tay', 'cut'], SEXES = ['f', 'm'];
 // no cadastro a pessoa diz se é feminino (f) ou masculino (m) e qual personagem vai guiá-la; valores fora da lista são ignorados
-const profileOf = b => ({ ...(SEXES.includes(b && b.sex) ? { sex: b.sex } : {}), ...(GUIDES.includes(b && b.guide) ? { guide: b.guide } : {}) });
+// nome que a pessoa dá ao personagem: 2 a 14 caracteres (letras, números, espaço, ponto, apóstrofo e hífen); é mostrado só para ela
+const gnameOf = v => { const t = String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim(); return /^[\p{L}\p{N}][\p{L}\p{N} .'’-]{1,13}$/u.test(t) ? t : ''; };
+const GNAME_MSG = 'O nome do personagem precisa ter de 2 a 14 caracteres: letras, números, espaço, ponto, apóstrofo ou hífen.';
+const profileOf = b => ({ ...(SEXES.includes(b && b.sex) ? { sex: b.sex } : {}), ...(GUIDES.includes(b && b.guide) ? { guide: b.guide } : {}), ...(gnameOf(b && b.gname) ? { gname: gnameOf(b.gname) } : {}) });
 app.post('/api/guide', auth, (req, res) => {
   const b = req.body || {}, has = k => b[k] !== undefined && b[k] !== null;
-  if (!has('guide') && !has('sex')) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
+  if (!has('guide') && !has('sex') && !has('gname') && !has('frame')) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
   if (has('guide') && !GUIDES.includes(String(b.guide))) return res.status(400).json({ error: 'Escolha a Tay ou o Cut.' });
   if (has('sex') && !SEXES.includes(String(b.sex))) return res.status(400).json({ error: 'Escolha feminino ou masculino.' });
+  if (has('gname') && !gnameOf(b.gname)) return res.status(400).json({ error: GNAME_MSG });
+  // moldura: só uma que a pessoa já conquistou pelo XP ('auto' volta a usar a mais alta)
+  const fk = has('frame') && b.frame !== 'auto' ? R.TIERS.findIndex(t => t.key === String(b.frame)) : 0;
+  if (has('frame') && b.frame !== 'auto' && (fk < 1 || fk > R.tierOf(req.u.xp))) return res.status(400).json({ error: 'Essa moldura ainda não foi conquistada.' });
   if (has('guide')) req.u.guide = String(b.guide);
   if (has('sex')) req.u.sex = String(b.sex);
-  save(); res.json(pub(req.u));
+  if (has('gname')) req.u.gname = gnameOf(b.gname);
+  if (has('frame')) { if (b.frame === 'auto') delete req.u.frame; else req.u.frame = R.TIERS[fk].key; }
+  RANK.at = 0; save(); res.json(pub(req.u));
+});
+
+// ---------- ranking de alunos ----------
+// Mostra só o primeiro nome + a inicial do sobrenome, o personagem, o título e o XP (nunca e-mail). Quem não quer aparecer sai em Perfil.
+// Só entram contas ativas, com e-mail confirmado (quando a confirmação está ligada) e com XP no período.
+const shortName = n => { const p = String(n || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return 'Aluno'; const f = p[0].slice(0, 16), l = p.length > 1 ? p[p.length - 1] : ''; return f.charAt(0).toUpperCase() + f.slice(1) + (l ? ' ' + l.charAt(0).toUpperCase() + '.' : ''); };
+function rankRows(period) {
+  const now = Date.now(), w = weekId(now);
+  if (now - RANK.at >= RANK_TTL || RANK.w !== w) { RANK.m.clear(); RANK.at = now; RANK.w = w; }
+  let c = RANK.m.get(period); if (c) return c;
+  const score = u => period === 'semana' ? (u.wk && u.wk.w === w ? u.wk.xp : 0) : (u.xp || 0), at = u => u.xpAt || Date.parse(u.created) || 0;
+  const rows = Object.values(DB.users).filter(u => !u.banned && u.verified !== false && !u.rankOff && score(u) > 0)
+    .sort((a, b) => score(b) - score(a) || at(a) - at(b) || (a.id < b.id ? -1 : 1))
+    .map((u, i) => ({ id: u.id, pos: i + 1, name: shortName(u.name), guide: GUIDES.includes(u.guide) ? u.guide : 'cut', xp: score(u), tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame) }));
+  c = { rows, by: new Map(rows.map(r => [r.id, r])) }; RANK.m.set(period, c); return c;
+}
+app.get('/api/ranking', auth, limit(60 * RELAX, 60e3), (req, res) => {
+  const period = req.query.p === 'geral' ? 'geral' : 'semana', u = req.u, { rows, by } = rankRows(period), mine = by.get(u.id) || null;
+  const out = r => ({ pos: r.pos, name: r.name, guide: r.guide, xp: r.xp, tier: r.tier, frame: r.frame, me: r.id === u.id });
+  res.json({
+    period, total: rows.length, top: rows.slice(0, 20).map(out),
+    me: { pos: mine ? mine.pos : null, hidden: !!u.rankOff, xp: period === 'semana' ? (u.wk && u.wk.w === weekId() ? u.wk.xp : 0) : (u.xp || 0), row: mine && mine.pos > 20 ? out(mine) : null },
+    resets: period === 'semana' ? new Date(weekStart() + 7 * 864e5).toISOString() : null
+  });
+});
+app.post('/api/ranking/visibility', auth, (req, res) => {
+  if (typeof (req.body || {}).show !== 'boolean') return res.status(400).json({ error: 'Escolha aparecer ou ocultar.' });
+  if (req.body.show) delete req.u.rankOff; else req.u.rankOff = true;
+  RANK.at = 0; save(); res.json(pub(req.u));
 });
 
 // LGPD: portabilidade e exclusão
@@ -408,7 +459,7 @@ app.delete('/api/account', auth, async (req, res) => {
   if (req.u.pass ? !checkPw(String(req.body.password || ''), req.u.pass) : req.body.confirm !== 'EXCLUIR')
     return res.status(403).json({ error: req.u.pass ? 'Senha incorreta.' : 'Digite EXCLUIR para confirmar.' });
   for (const c in DB.certs) if (DB.certs[c].uid === req.u.id) delete DB.certs[c];
-  dropSessions(req.u.id); delete DB.users[req.u.id]; save(); res.json({ ok: true });
+  dropSessions(req.u.id); delete DB.users[req.u.id]; RANK.at = 0; save(); res.json({ ok: true });
 });
 
 // ============================================================================
@@ -515,7 +566,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
     const today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
     if (u.last !== today) { u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; }
     (l.cp ? u.cpdone : u.done)[k] = { code, date: new Date().toISOString() };
-    if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; u.xp += gained; u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
+    if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
   }
   save();
   const lvDone = ok && !l.cp && levelDone(u, l.track, l.lv);
@@ -566,7 +617,7 @@ app.post('/api/exam/finish', auth, limit(30, 60e3), (req, res) => {
   let bonus = 0;
   if (passed) {
     u.passed[c.k] = new Date().toISOString();
-    if (!u.xpd['exam-' + c.k]) { u.xpd['exam-' + c.k] = 1; bonus = 50 * c.lv; u.xp += bonus; u.gems = (u.gems || 0) + 20; }
+    if (!u.xpd['exam-' + c.k]) { u.xpd['exam-' + c.k] = 1; bonus = 50 * c.lv; gainXp(u, bonus); u.gems = (u.gems || 0) + 20; }
   } else {
     // reprovou: precisa recomeçar o nível do zero (as 30 lições voltam a ficar pendentes)
     levelLessons(c.track, c.lv).forEach(l => { delete u.done[l.id]; });

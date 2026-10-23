@@ -3,7 +3,7 @@ try { const sk = localStorage.getItem('skin'), cl = document.body.classList; if 
 const SQLJS_V = '1.10.3', PYO_V = '0.26.4';           // versões das bibliotecas que rodam no navegador
 const $ = s => document.querySelector(s), A = $('#app');
 const S = { tk: localStorage.tk || null, me: null, ls: [], cfg: { contact: '', company: 'CodeUp', ads: null }, cur: null, h: 0, hearts: 5, tries: 0, errs: 0, gained: 0, lvlUp: 0,
-  tab: 'home', lv: 0, scroll: true, ex: null, auth: 'login', resetToken: null, SQL: null, pw: null, pyReady: false, busy: false };
+  tab: 'home', rkp: 'semana', rk: null, tierUp: 0, lv: 0, scroll: true, ex: null, auth: 'login', resetToken: null, SQL: null, pw: null, pyReady: false, busy: false };
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ============================================================ ÍCONES, MASCOTE E DESTAQUE DE CÓDIGO
@@ -39,20 +39,27 @@ const IC = {
   swap: '<path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>',
   flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
-  file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>'
+  file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
+  crown: '<path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 19h14"/>'
 };
 const ic = (n, s = 18) => `<svg class=i width=${s} height=${s} viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.8 stroke-linecap=round stroke-linejoin=round aria-hidden=true>${IC[n] || ''}</svg>`;
 const LS = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { } } };
 // Personagem que acompanha a pessoa: Tay (rosa, feminino) ou Cut (azul, masculino). A escolha fica na conta e neste aparelho.
 const GUIDES = {
-  tay: { name: 'Tay', sex: 'Feminino', art: 'a Tay', hi: 'Oi! Eu sou a Tay. Vamos aprender {j}?', intro: 'Oi! Eu sou a Tay, sua guia no CodeUp' },
-  cut: { name: 'Cut', sex: 'Masculino', art: 'o Cut', hi: 'E aí! Eu sou o Cut. Bora aprender {j}?', intro: 'E aí! Eu sou o Cut, seu guia no CodeUp' }
+  tay: { name: 'Tay', sex: 'Feminino', art: 'a Tay', hi: 'Oi! Eu sou {n}. Vamos aprender {j}?', intro: 'Oi! Eu sou {n}, sua guia no CodeUp', sugg: ['Luna', 'Nina', 'Mel'] },
+  cut: { name: 'Cut', sex: 'Masculino', art: 'o Cut', hi: 'E aí! Eu sou {n}. Bora aprender {j}?', intro: 'E aí! Eu sou {n}, seu guia no CodeUp', sugg: ['Bit', 'Max', 'Zeca'] }
 };
+const CR = window.CodeUpRewards;                                          // títulos e molduras por XP (rewards.js)
+const GN_RE = /^[\p{L}\p{N}][\p{L}\p{N} .'’-]{1,13}$/u, gnClean = v => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();   // mesma regra do servidor: 2 a 14 caracteres
+const nf = n => Number(n || 0).toLocaleString('pt-BR');
+// nome que a pessoa deu ao personagem (ou o nome original, se ainda não escolheu)
+const gnm = () => (S.me && S.me.gname) || (S.reg && S.reg.gname) || GUIDES[gid()].name;
 const gid = () => { const g = (S.me && S.me.guide) || LS.get('guide'); return g === 'tay' ? 'tay' : 'cut'; };
 const IMG = () => { const g = gid(); return { face: `/img/${g}-face.webp`, full: `/img/${g}.webp` }; };
-const mascot = (s = 56, cls = '') => `<img class="mascot g-${gid()} ${cls}" src="${IMG().face}" width=${s} height=${s} alt="${GUIDES[gid()].name}, seu guia no CodeUp">`;
-const body = (h = 200, cls = '') => `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${GUIDES[gid()].name}">`;
-const stage = (h, text, cls = '') => `<div class="stage ${cls}"><div class=sb>${text}</div><div class=glow></div>${body(h, cls)}<span class=gn>${GUIDES[gid()].name}</span></div>`;
+const frameStyle = () => { const k = S.me ? CR.frameOf(S.me.xp, S.me.frame) : 0; return k ? ` style="--fr:${CR.TIERS[k].color}"` : ''; };   // moldura conquistada pelo XP (só no aro do personagem)
+const mascot = (s = 56, cls = '') => `<img class="mascot g-${gid()} ${cls}"${/\bring\b/.test(cls) ? frameStyle() : ''} src="${IMG().face}" width=${s} height=${s} alt="${esc(gnm())}, seu guia no CodeUp">`;
+const body = (h = 200, cls = '') => `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+const stage = (h, text, cls = '') => `<div class="stage ${cls}"><div class=sb>${text}</div><div class=glow></div>${body(h, cls)}<span class=gn>${esc(gnm())}</span></div>`;
 const tg = (t, s = 40) => t == 'python' ? `<span class="tg py" style="--s:${s}px">py</span>` : `<span class="tg sq" style="--s:${s}px">${ic('db', Math.round(s * .5))}</span>`;
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
@@ -120,9 +127,9 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><img class=hb src="${IMG().full}" alt="${GUIDES[gid()].name}"><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><img class=hb src="${IMG().full}" alt="${esc(gnm())}"><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
     <div class=feat><span>${ic('code', 16)} 180 lições práticas</span><span>${ic('cap', 16)} 3 níveis com prova</span><span>${ic('award', 16)} Certificado</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
-  A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
+  A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
   if (g) googleBtn();
 }
@@ -208,15 +215,15 @@ async function boot() {
     S.auth = 'reset'; return showAuth();
   }
   if (q.get('verificado')) { const ok = q.get('verificado') == '1'; history.replaceState({}, '', '/'); setTimeout(() => toast(ok ? 'E-mail confirmado! Obrigado.' : 'Este link de confirmação expirou ou já foi usado. Entre e peça um novo.', !ok), 400); }
-  if (!S.tk) return LS.get('guide') || S.skipGuide ? showAuth() : startWizard(['sex', 'guide'], false);   // quem chega pela primeira vez já começa o cadastro: feminino ou masculino e depois o personagem
+  if (!S.tk) return LS.get('guide') || S.skipGuide ? showAuth() : startWizard(['sex', 'guide', 'gname'], false);   // quem chega pela primeira vez já começa o cadastro: feminino ou masculino e depois o personagem
   go('home');
 }
 
 // ---------- Primeiros passos no cadastro: 1) feminino ou masculino  2) qual personagem (Tay ou Cut) vai guiar a jornada ----------
 // need = quais perguntas fazer ('sex', 'guide'); logged = a conta já existe (então só salva no fim).
-const hiFor = g => GUIDES[g].hi.replace('{j}', ((S.wz && S.wz.sex) || (S.me && S.me.sex)) === 'f' ? 'juntas' : 'juntos');
-function startWizard(need, logged) { S.wz = { need, logged: !!logged, i: 0, sex: (S.reg && S.reg.sex) || null, guide: (S.reg && S.reg.guide) || null }; S.skin0 = skinOf(); wizard(); }
-function goRegister() { if (S.reg) { S.auth = 'register'; return showAuth(); } startWizard(['sex', 'guide'], false); }
+const hiFor = (g, n) => GUIDES[g].hi.replace('{n}', n || GUIDES[g].name).replace('{j}', ((S.wz && S.wz.sex) || (S.me && S.me.sex)) === 'f' ? 'juntas' : 'juntos');
+function startWizard(need, logged) { const me = logged && S.me || {}; S.wz = { need, logged: !!logged, i: 0, sex: (S.reg && S.reg.sex) || me.sex || null, guide: (S.reg && S.reg.guide) || me.guide || null, gname: (S.reg && S.reg.gname) || me.gname || null }; S.skin0 = skinOf(); wizard(); }
+function goRegister() { if (S.reg) { S.auth = 'register'; return showAuth(); } startWizard(['sex', 'guide', 'gname'], false); }
 function wizard() {
   const w = S.wz, st = w.need[w.i]; theme(null);
   const dots = w.need.length > 1 ? `<div class=wdots aria-label="Passo ${w.i + 1} de ${w.need.length}">${w.need.map((_, k) => `<i class="${k <= w.i ? 'on' : ''}"></i>`).join('')}</div>` : '';
@@ -227,6 +234,15 @@ function wizard() {
       <p class=sub style="text-align:center">É para o CodeUp falar com você do jeito certo.</p>
       <div class=sexes>${[['f', 'Feminino', '♀'], ['m', 'Masculino', '♂']].map(([k, n, g]) => `<button class="sexb ${k}${w.sex == k ? ' sel' : ''}" data-s=${k} onclick="pickSex('${k}')" aria-pressed=${w.sex == k}><span aria-hidden=true>${g}</span><b>${n}</b></button>`).join('')}</div>
       <button class="btn pri block" id=wok ${w.sex ? '' : 'disabled'} onclick=wizNext()>Continuar</button>${back}</div>`;
+  } else if (st === 'gname') {
+    const g = w.guide, def = GUIDES[g].name; w.gname = w.gname || def;
+    A.innerHTML = `<div class="c auth gpick">${logo}${dots}<h2 style="text-align:center">Que nome você quer dar ${g === 'tay' ? 'à' : 'ao'} ${def}?</h2>
+      <p class=sub style="text-align:center">É o nome que ${GUIDES[g].art} vai usar com você. Pode trocar depois, no Perfil.</p>
+      <div class=gnbox><img class="mascot g-${g}" src="/img/${g}-face.webp" width=84 height=84 alt=""><input class=in id=gn maxlength=14 value="${esc(w.gname)}" autocomplete=off autocapitalize=words spellcheck=false aria-label="Nome do personagem"></div>
+      <div class=gsug>${GUIDES[g].sugg.concat([def]).map(n => `<button type=button class=chip onclick="gnPick('${n}')">${n}</button>`).join('')}</div>
+      <div class="gsay on ${g}" id=gsay aria-live=polite></div><div class=gerr id=gnerr role=alert></div>
+      <button class="btn pri block" id=wok onclick=wizNext()>Continuar</button>${back}</div>`;
+    $('#gn').oninput = gnInput; gnInput();
   } else {
     const card = g => `<button class="gcard ${g}" data-g=${g} onclick="pickGuide('${g}')" aria-pressed=false><img src="/img/${g}.webp" alt="${GUIDES[g].name}"><b>${GUIDES[g].name}</b></button>`;
     A.innerHTML = `<div class="c auth gpick">${logo}${dots}<h2 style="text-align:center">Quem vai te guiar na jornada?</h2>
@@ -247,21 +263,36 @@ function pickGuide(g) {
   $('.gcards').classList.add('has'); const s = $('#gsay'); s.className = 'gsay on ' + g; s.innerHTML = `<b>${GUIDES[g].name}</b> ${esc(hiFor(g))}`;
   const b = $('#wok'); b.disabled = false; b.textContent = 'Continuar com ' + GUIDES[g].art;
 }
+// passo 3: o nome do personagem (validação igual à do servidor; a fala do personagem muda enquanto a pessoa digita)
+function gnInput() {
+  const w = S.wz, v = gnClean($('#gn').value), ok = GN_RE.test(v); w.gname = ok ? v : null;
+  $('#gsay').innerHTML = ok ? `<b>${esc(v)}</b> ${esc(hiFor(w.guide, v))}` : 'Escolha um nome para continuar.';
+  $('#gnerr').textContent = v && !ok ? 'Use de 2 a 14 caracteres: letras, números, espaço, ponto, apóstrofo ou hífen.' : ''; $('#wok').disabled = !ok;
+}
+function gnPick(n) { const i = $('#gn'); i.value = n; gnInput(); i.focus(); }
 function wizBack() { if (S.wz && S.wz.i > 0) { S.wz.i--; wizard(); } }
 async function wizNext() {
   const w = S.wz; if (!w || !w[w.need[w.i]]) return;
   if (w.i < w.need.length - 1) { w.i++; return wizard(); }
   const b = $('#wok'); b.disabled = true;
-  if (w.guide) { const sk = w.guide === 'tay' ? 'rose' : S.skin0 === 'rose' ? 'wild' : S.skin0; LS.set('guide', w.guide); LS.set('skin', sk); applySkin(sk); }   // a Tay traz o visual Rosa; o Cut mantém o visual que a pessoa já usava
+  if (w.guide && w.need.includes('guide')) { const sk = w.guide === 'tay' ? 'rose' : S.skin0 === 'rose' ? 'wild' : S.skin0; LS.set('guide', w.guide); LS.set('skin', sk); applySkin(sk); }   // a Tay traz o visual Rosa; o Cut mantém o visual que a pessoa já usava
   if (w.logged) {
     try { const body = {}; w.need.forEach(k => body[k] = w[k]); S.me = await api('guide', { body }); } catch (e) { b.disabled = false; return fail(e); }
     S.wz = null; S.scroll = true; return go('home');
   }
-  S.reg = { sex: w.sex, guide: w.guide }; S.wz = null; S.skipGuide = false; S.auth = 'register'; showAuth();   // segue para o cadastro já com as duas escolhas
+  S.reg = { sex: w.sex, guide: w.guide, gname: w.gname }; S.wz = null; S.skipGuide = false; S.auth = 'register'; showAuth();   // segue para o cadastro já com as escolhas
 }
 async function setGuide(g) {
   if (g === gid()) return; LS.set('guide', g);
-  try { S.me = await api('guide', { body: { guide: g } }); toast(`${GUIDES[g].name} agora é ${g === 'tay' ? 'sua guia' : 'seu guia'}.`); render(); } catch (e) { fail(e); }
+  const body = { guide: g }; if (!S.me.gname || S.me.gname === GUIDES[gid()].name) body.gname = GUIDES[g].name;   // se o nome ainda era o original, acompanha o novo personagem
+  try { S.me = await api('guide', { body }); toast(`${gnm()} agora é ${g === 'tay' ? 'sua guia' : 'seu guia'}.`); render(); } catch (e) { fail(e); }
+}
+function editGname() {
+  dialog('Nome do personagem', [{ id: 'n', type: 'text', ph: 'De 2 a 14 caracteres', ac: 'off' }], 'Salvar', async v => {
+    const n = gnClean(v.n); if (!GN_RE.test(n)) { toast('Use de 2 a 14 caracteres: letras, números, espaço, ponto, apóstrofo ou hífen.', true); return false; }
+    try { S.me = await api('guide', { body: { gname: n } }); toast(`Agora ${gid() === 'tay' ? 'ela' : 'ele'} se chama ${n}.`); render(); } catch (e) { fail(e); return false; }
+  });
+  setTimeout(() => { const i = $('#d_n'); if (i) { i.value = gnm(); i.maxLength = 14; i.select(); } }, 80);
 }
 async function setSex(k) {
   if (S.me.sex === k) return;
@@ -276,8 +307,9 @@ async function go(t) {
     if (cf && S.cfg) S.cfg.announce = cf.announce;                          // comunicado do dono: atualiza sem precisar recarregar a página
     const g = S.me.guide, l = LS.get('guide');
     if (g && g !== l) LS.set('guide', g);                                   // a conta manda: o mesmo personagem em todos os aparelhos
-    const need = [!S.me.sex && 'sex', !S.me.guide && 'guide'].filter(Boolean);
-    if (need.length) return startWizard(need, true);                        // conta sem gênero e/ou sem personagem (conta antiga ou criada pelo Google): pergunta uma vez
+    const need = [!S.me.sex && 'sex', !S.me.guide && 'guide', !S.me.gname && 'gname'].filter(Boolean);
+    if (need.length) return startWizard(need, true);                        // conta sem gênero, personagem e/ou nome do personagem (conta antiga ou criada pelo Google): pergunta uma vez
+    if (S.tab == 'rk') { try { S.rk = await api('ranking?p=' + S.rkp); } catch { S.rk = null; } }
     render();
   }
   catch (e) { fail(e); if (!S.me) A.innerHTML = `<div class="c auth"><div class=panel><p>Não foi possível carregar.</p><button class="btn pri block" onclick="go('home')">Tentar de novo</button></div></div>`; }
@@ -299,7 +331,7 @@ const cpBefore = l => (S.cps || []).find(c => c.track == l.track && c.lv == l.lv
 // próximo passo da trilha: a lição livre ou, nas lições 6, 11, 16, 21 e 26, o checkpoint que precisa ser feito antes
 const nextStep = t => { const l = S.ls.find(x => x.track == t && !done(x) && (!x.lock || x.lock == 'cp')); if (!l) return null; if (l.lock == 'cp') { const c = cpBefore(l); return c && !c.lock ? { cp: c } : null; } return l; };
 
-const nav = () => `<nav class=nav>${[['home', 'home', 'Início'], ['tr', 'map', 'Trilhas'], ['ch', 'trophy', 'Desafios'], ['pf', 'user', 'Perfil']].map(x => `<button class="${S.tab == x[0] ? 'on' : ''}" onclick="go('${x[0]}')">${ic(x[1], 22)}<span>${x[2]}</span></button>`).join('')}</nav>`;
+const nav = () => `<nav class=nav>${[['home', 'home', 'Início'], ['tr', 'map', 'Trilhas'], ['rk', 'crown', 'Ranking'], ['ch', 'trophy', 'Desafios'], ['pf', 'user', 'Perfil']].map(x => `<button class="${S.tab == x[0] ? 'on' : ''}" onclick="go('${x[0]}')">${ic(x[1], 22)}<span>${x[2]}</span></button>`).join('')}</nav>`;
 
 async function resendVerify() { try { const r = await api('resend-verification', { body: {} }); if (r.devVerifyLink) { toast('Modo teste: abrindo o link de confirmação…'); return void (location.href = r.devVerifyLink); } toast(r.already ? 'Seu e-mail já está confirmado.' : 'E-mail enviado! Olhe também a caixa de spam.'); if (r.already) go(); } catch (e) { fail(e); } }
 function chooseTrack() {
@@ -362,6 +394,7 @@ function render() {
         return `<div class="card ${!p && !ready ? 'lk' : ''}" onclick="${p || ready || m.exams.includes(t + '-' + lv) ? `examIntro(${lv},'${t}')` : `toast('Conclua as 30 lições de ${LV[lv - 1]} (${TN[t]}) para liberar a prova.')`}"><span class="ib ${p ? 'ok' : ''}">${p ? ic('check', 20) : ic('cap', 20)}</span><div class=bd><b>Prova ${LV[lv - 1]}</b><small>${p ? 'Aprovado' : ready ? 'Liberada: faça agora' : nd + ' de 30 lições concluídas'}${fl ? ' · ' + fl + (fl == 1 ? ' reprovação' : ' reprovações') : ''}</small></div><span class=r>${p ? 'Aprovado' : ready ? 'Fazer' : ic('lock', 16)}</span></div>`;
       }).join('') + `<div class="card ${trackPassed(t) ? '' : 'lk'}" onclick="certFlow('${t}')"><span class="ib gold">${ic('award', 20)}</span><div class=bd><b>Certificado ${TN[t]}</b><small>${m.certs[t] ? 'Emitido · ' + esc(m.certs[t].code) : trackPassed(t) ? fm('Pronto', 'Pronta') + ' para emitir' : 'Passe nas 3 provas'}</small></div><span class=r>${m.certs[t] ? 'Abrir' : trackPassed(t) ? 'Emitir' : ic('lock', 16)}</span></div>`).join('');
   }
+  if (S.tab == 'rk') h = rankView();
   if (S.tab == 'tr') {
     h = `<h2 class=ttl>Trilhas</h2><p class=sub>Escolha onde estudar. O progresso de cada trilha é separado.</p>` + ['python', 'sql'].map(t => {
       const p = trackPct(t);
@@ -375,12 +408,16 @@ function render() {
     const n = L.filter(done).length, np = Object.keys(m.passed).length, lvl = Math.floor(m.xp / 100) + 1,
       ach = [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', ['python', 'sql'].some(t => passedLv(t, 2))],
         ['trophy', 'Avançado aprovado', ['python', 'sql'].some(t => passedLv(t, 3))], ['award', 'Certificado', Object.keys(m.certs).length > 0], ['chart', 'Meio caminho', trackPct(T) >= 50]];
-    h = `<div class=prof>${mascot(88, 'ring big')}<div><h2>${esc(m.name)} <button class=ibtn onclick=editName() aria-label="Editar nome">${ic('pencil', 16)}</button></h2><small class=mut>${esc(m.email)}</small><div style="margin-top:6px"><span class=badge>Nível ${lvl}</span></div></div></div>
+    h = `<div class=prof>${mascot(88, 'ring big')}<div><h2>${esc(m.name)} <button class=ibtn onclick=editName() aria-label="Editar nome">${ic('pencil', 16)}</button></h2><small class=mut>${esc(m.email)}</small><div style="margin-top:6px"><span class=badge>Nível ${lvl}</span><span class="badge gold">${CR.TIERS[CR.tierOf(m.xp)].title}</span></div></div></div>
     <div class=panel><div class=ph><span>XP do nível ${lvl}</span><b>${m.xp % 100} / 100</b></div><div class=bar><i style="width:${m.xp % 100}%"></i></div></div>
     <div class=stats><div>${ic('flame', 20)}<b>${m.streak}</b><small>dias de treino</small></div><div>${ic('file', 20)}<b>${n}</b><small>lições feitas</small></div><div>${ic('cap', 20)}<b>${np}</b><small>provas aprovadas</small></div><div>${ic('bolt', 20)}<b>${m.xp}</b><small>pontos totais</small></div></div>
     <div class=sec>Conquistas</div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
+    ${tiersView()}
     <div class=sec>Eu sou</div><div class='skins s4 gsw'>${[['f', 'Feminino'], ['m', 'Masculino']].map(([k, n]) => `<button class="btn ${m.sex == k ? 'pri' : 'ghost'}" onclick="setSex('${k}')">${n}</button>`).join('')}</div>
     <div class=sec>Personagem</div><div class='skins s4 gsw'>${['tay', 'cut'].map(g => `<button class="btn ${gid() == g ? 'pri' : 'ghost'}" onclick="setGuide('${g}')"><img src="/img/${g}-face.webp" class="g-${g}" alt="" width=28 height=28> ${GUIDES[g].name}</button>`).join('')}</div>
+    <button class="btn ghost block" onclick=editGname()>${ic('pencil', 16)} Nome do personagem: <b>${esc(gnm())}</b></button>
+    <div class=sec>Ranking</div><div class='skins s4 gsw'>${[[true, 'Aparecer'], [false, 'Ficar de fora']].map(([k, n]) => `<button class="btn ${!m.rankOff == k ? 'pri' : 'ghost'}" onclick="rkVis(${k})">${n}</button>`).join('')}</div>
+    <p class=tn style="margin:4px 2px 0">No ranking aparecem só o seu primeiro nome, a inicial do sobrenome, o personagem e o XP.</p>
     <div class=sec>Aparência</div><div class='skins s4'>${[['wild', 'Azul'], ['rose', 'Rosa'], ['', 'Azul escuro'], ['neo', 'Claro']].map(x => `<button class="btn ${(['rose', 'neo', ''].includes(LS.get('skin')) ? LS.get('skin') : 'wild') == x[0] ? 'pri' : 'ghost'}" onclick="setSkin('${x[0]}')">${x[1]}</button>`).join('')}</div>
     <div class=sec>Minha conta</div>
     <button class="btn ghost block" onclick="studyTrack('${T == 'python' ? 'sql' : 'python'}')">${ic('swap', 16)} Estudar ${T == 'python' ? 'SQL' : 'Python'}</button>
@@ -417,7 +454,7 @@ const TOUR = [
   { t: 'Oi! Eu sou o guia do CodeUp', p: 'Aqui você aprende Python e SQL escrevendo código de verdade, um passo de cada vez. Quer um tour de 20 segundos?', sel: null },
   { t: 'Este é o seu próximo passo', p: 'Toque na lição que brilha no mapa. Primeiro você lê a teoria, depois pratica, e quando terminar, você toca em Concluído para conferir.', sel: '.ti.cur' },
   { t: 'Estude todo dia', p: 'Cada dia seguido aumenta sua sequência, e cada lição dá XP. Pequenos treinos diários vencem maratonas.', sel: '.hd .chips-r' },
-  { t: 'Seu menu', p: 'Em Trilhas você troca entre Python e SQL. Em Desafios ficam as provas e os certificados. No Perfil estão suas conquistas.', sel: '.nav' }
+  { t: 'Seu menu', p: 'Em Trilhas você troca entre Python e SQL. No Ranking você vê sua posição. Em Desafios ficam as provas e os certificados. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
 ];
 function startTour(force) {
   if ($('.tour') || S.tab != 'home' || !S.me) return;
@@ -428,7 +465,7 @@ function startTour(force) {
   const show = () => {
     const st = TOUR[i]; document.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
     const el = st.sel && $(st.sel); if (el) { el.classList.add('hl'); if (i == 1) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
-    o.innerHTML = `<div class=tb2><div class=tr1>${mascot(72, 'ring')}<div><h3>${i == 0 ? GUIDES[gid()].intro : st.t}</h3><p>${st.p}</p></div></div>
+    o.innerHTML = `<div class=tb2><div class=tr1>${mascot(72, 'ring')}<div><h3>${i == 0 ? esc(GUIDES[gid()].intro.replace('{n}', gnm())) : st.t}</h3><p>${st.p}</p></div></div>
       <div class=dots>${TOUR.map((_, k) => `<i class="${k == i ? 'on' : ''}"></i>`).join('')}</div>
       <div class=row>${i ? '' : '<button class="btn ghost" id=tkSkip>Pular</button>'}<button class="btn pri" id=tkNext>${i == TOUR.length - 1 ? 'Vamos lá!' : 'Próximo'}</button></div></div>`;
     $('#tkNext').onclick = () => { if (++i >= TOUR.length) end(); else show(); };
@@ -436,6 +473,42 @@ function startTour(force) {
   };
   show();
 }
+
+// ============================================================ RANKING E CONQUISTAS POR XP
+// Ranking: semanal (recomeça na segunda-feira) e geral. Mostra só primeiro nome + inicial do sobrenome; quem não quer aparecer sai em Ranking ou Perfil.
+function rankView() {
+  const k = S.rk, per = S.rkp, m = S.me;
+  const head = `<h2 class=ttl>Ranking</h2><p class=sub>${per == 'semana' ? 'Quem mais ganhou XP nesta semana. Recomeça toda segunda-feira.' : 'Quem mais ganhou XP desde o começo.'}</p>
+    <div class=pseg role=tablist aria-label="Período do ranking">${[['semana', 'Esta semana'], ['geral', 'Geral']].map(([p, t]) => `<button role=tab aria-selected=${per == p} class="${per == p ? 'on' : ''}" onclick="rkPer('${p}')">${t}</button>`).join('')}</div>`;
+  if (!k) return head + `<div class=panel><p>Não foi possível carregar o ranking agora.</p><button class="btn pri block" onclick="go('rk')">Tentar de novo</button></div>`;
+  let me;
+  if (k.me.hidden) me = `<b>Você está fora do ranking</b><small>Ninguém vê o seu nome. Quer voltar?</small><button class="btn pri" onclick="rkVis(true)">Aparecer no ranking</button>`;
+  else if (!m.verified) me = `<b>Confirme seu e-mail</b><small>Só contas com e-mail confirmado aparecem no ranking.</small>`;
+  else if (k.me.pos) me = `<b>Você está em ${k.me.pos}º lugar</b><small>${nf(k.me.xp)} XP ${per == 'semana' ? 'nesta semana' : 'no total'}</small>`;
+  else me = `<b>Você ainda não pontuou${per == 'semana' ? ' nesta semana' : ''}</b><small>Conclua uma lição para entrar no ranking.</small>`;
+  let fim = ''; if (per == 'semana' && k.resets) { const ms = Math.max(0, Date.parse(k.resets) - Date.now()), d = Math.floor(ms / 864e5), hh = Math.floor(ms % 864e5 / 36e5); fim = `<small class=mut>Recomeça em ${d ? d + (d == 1 ? ' dia e ' : ' dias e ') : ''}${hh} h</small>`; }
+  const av = r => `<img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${r.frame ? ` style="--fr:${CR.TIERS[r.frame].color}"` : ''} src="/img/${r.guide}-face.webp" width=44 height=44 alt="">`;
+  const row = r => `<div class="rkr${r.me ? ' me' : ''}${r.pos <= 3 ? ' p' + r.pos : ''}"><span class=pos>${r.pos <= 3 ? ic('crown', 16) : ''}<b>${r.pos}º</b></span>${av(r)}<div class=bd><b>${esc(r.name)}${r.me ? ' <span class=badge>você</span>' : ''}</b><small>${esc(CR.TIERS[r.tier].title)}</small></div><span class=rxp><b>${nf(r.xp)}</b><small>XP</small></span></div>`;
+  const list = k.top.length ? k.top.map(row).join('') + (k.me.row ? `<div class=rkgap aria-hidden=true>· · ·</div>${row(k.me.row)}` : '')
+    : `<div class=panel><p style="margin:0">Ninguém pontuou${per == 'semana' ? ' nesta semana' : ''} ainda. Conclua uma lição e seja ${fm('o primeiro', 'a primeira')}!</p></div>`;
+  return head + `<div class="panel rkme">${mascot(54, 'ring')}<div class=bd>${me}</div></div>${fim ? `<div class=rkfim>${fim}${k.total ? `<small class=mut>${nf(k.total)} ${k.total == 1 ? 'aluno' : 'alunos'}</small>` : ''}</div>` : ''}${list}
+    <p class=tn style="margin-top:14px">Aparecem só o primeiro nome, a inicial do sobrenome, o personagem e o XP.${k.me.hidden ? '' : ' <a onclick="rkVis(false)">Sair do ranking</a>'}</p>`;
+}
+function rkPer(p) { if (S.rkp === p) return; S.rkp = p; go('rk'); }
+async function rkVis(show) {
+  if (!show && !confirm('Sair do ranking? Seu nome deixa de aparecer para os outros alunos. Você pode voltar quando quiser, em Ranking ou no Perfil.')) return;
+  try { S.me = await api('ranking/visibility', { body: { show } }); toast(show ? 'Você voltou ao ranking.' : 'Pronto! Você saiu do ranking.'); go(S.tab); } catch (e) { fail(e); }
+}
+// Títulos e molduras: cada título novo chega com um XP; a moldura aparece no aro do personagem (topo, perfil e ranking). Dá para escolher qualquer moldura já conquistada.
+function tiersView() {
+  const m = S.me, top = CR.tierOf(m.xp), tier = CR.TIERS[top], nxt = CR.nextTier(m.xp), cur = CR.frameOf(m.xp, m.frame);
+  return `<div class=sec>Títulos e molduras</div>
+    <div class=panel><div class=ph><span>${nxt ? 'Próximo título: ' + nxt.title : 'Você chegou ao topo: Lenda!'}</span><b>${nxt ? 'faltam ' + nf(nxt.xp - m.xp) + ' XP' : nf(m.xp) + ' XP'}</b></div><div class=bar><i style="width:${nxt ? Math.round((m.xp - tier.xp) / (nxt.xp - tier.xp) * 100) : 100}%"></i></div></div>
+    <div class=tiers>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp; return `<div class="tri ${on ? 'on' : 'lk'}" style="--fr:${t.color}"><span class=sw2></span><div class=bd><b>${t.title}</b><small>${t.frame ? 'Moldura ' + t.frame : 'Título inicial'} · ${nf(t.xp)} XP</small></div>${k == 0 ? '' : on ? `<button class="btn ${cur == k ? 'pri' : 'ghost'}" onclick="setFrame('${t.key}')">${cur == k ? 'Em uso' : 'Usar'}</button>` : `<span class=r>${ic('lock', 16)}</span>`}</div>`; }).join('')}</div>`;
+}
+async function setFrame(key) { try { S.me = await api('guide', { body: { frame: key } }); toast('Moldura trocada!'); render(); } catch (e) { fail(e); } }
+// aviso de "nova conquista" na tela de resultado quando o XP faz a pessoa chegar a um novo título
+const tierCard = () => { if (!S.tierUp) return ''; const t = CR.TIERS[S.tierUp]; return `<div class=tup style="--fr:${t.color}"><span class=tring>${ic('crown', 22)}</span><div class=bd><b>Nova conquista!</b><small>Você virou <b>${t.title}</b> e ganhou a moldura <b>${t.frame}</b>.</small></div><a onclick="go('pf')">Ver</a></div>`; };
 
 // ============================================================ ANÚNCIOS (Google AdSense)
 // Só aparecem se os anúncios estiverem ligados (painel do dono → Ajustes → Anúncios, ou ADSENSE_CLIENT/ADSENSE_SLOT no servidor) e houver o ID do bloco. Ficam em telas de "pausa" (início, trilhas, perfil, fim de lição) e NUNCA durante a lição ou a prova.
@@ -529,7 +602,7 @@ function lesson() {   // etapa 1: teoria
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
   ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor><img src="${IMG().full}" alt="${GUIDES[gid()].name}"><div class=sb>${esc(l.explain)}</div></div>${codeBox(l.example, l.type, 'Exemplo')}
+  <div class=tutor><img src="${IMG().full}" alt="${esc(gnm())}"><div class=sb>${esc(l.explain)}</div></div>${codeBox(l.example, l.type, 'Exemplo')}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
   window.scrollTo(0, 0);
@@ -629,7 +702,7 @@ async function concluir() {
     try { s = await api('submit', { body: { id: l.id, code, out: r.out || '' } }); }
     catch (e) { if (e.engine || e.status == 503) return setFb('srv', fixit(0, '', [esc(e.error || 'O servidor não respondeu agora. Toque em Concluído de novo.')])); throw e; }
     if (!s.ok) return setFb('bad', l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing) : diagPy(l, r.out, s.expected, s.missing));
-    const before = Math.floor(S.me.xp / 100); Object.assign(S.me, { xp: s.xp, gems: s.gems, streak: s.streak, done: s.done, cps: s.cps });
+    const xb = S.me.xp, before = Math.floor(S.me.xp / 100); Object.assign(S.me, { xp: s.xp, gems: s.gems, streak: s.streak, done: s.done, cps: s.cps }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
     S.gained = s.gained; S.lvlUp = Math.floor(s.xp / 100) > before ? Math.floor(s.xp / 100) + 1 : 0; try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
     result();
   } catch (e) { setFb('idle'); fail(e); }
@@ -743,7 +816,7 @@ function result() {
   const btn = last ? `<button class="btn pri block" onclick="examIntro(${l.lv})">${ic('cap', 16)} Fazer a prova do nível</button>`
     : needCp ? `<button class="btn pri block" onclick="openCp('${needCp.id}')">${ic('flag', 16)} Fazer o checkpoint</button>`
     : `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>`;
-  confetti(); A.innerHTML = `<div class="c res">${stage(230, 'Mandou bem!', 'good')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}
+  confetti(); A.innerHTML = `<div class="c res">${stage(230, 'Mandou bem!', 'good')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a prova para liberar o próximo nível.</p>` : ''}
   ${needCp ? `<p class=gl>Checkpoint liberado! Faça uma consulta com o que você aprendeu nas últimas 5 lições para abrir a lição ${nx.n}.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>na prática</small></div></div>
@@ -754,7 +827,7 @@ function result() {
 
 function resultCp() {
   const l = S.cur, nx = S.ls.find(x => x.track == l.track && x.lv == l.lv && x.n == l.after + 1);
-  confetti(); A.innerHTML = `<div class="c res">${stage(230, 'Checkpoint conquistado!', 'good')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}
+  confetti(); A.innerHTML = `<div class="c res">${stage(230, 'Checkpoint conquistado!', 'good')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP extra</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>no desafio</small></div></div>
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos deste checkpoint.</p>'}
   ${nx ? `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button>${adSlot()}</div>`;
@@ -823,7 +896,7 @@ function examSummary() {
 async function examFinish() {
   const x = S.ex;
   if (!confirm('Entregar a prova agora? Depois não dá para mudar as respostas.')) return;
-  try { const r = await api('exam/finish', { body: { track: x.t, level: x.lv } }); Object.assign(S.me, { xp: r.xp, gems: r.gems, done: r.done, passed: r.passedMap, fails: r.fails, exams: r.exams, certs: r.certs }); S.ex = null; examResult(r, x); }
+  try { const r = await api('exam/finish', { body: { track: x.t, level: x.lv } }), xb = S.me.xp; Object.assign(S.me, { xp: r.xp, gems: r.gems, done: r.done, passed: r.passedMap, fails: r.fails, exams: r.exams, certs: r.certs }); S.tierUp = CR.tierOf(r.xp) > CR.tierOf(xb) ? CR.tierOf(r.xp) : 0; S.ex = null; examResult(r, x); }
   catch (e) { fail(e); }
 }
 function examResult(r, x) {
@@ -831,7 +904,7 @@ function examResult(r, x) {
   const t = x.t, lv = x.lv;
   if (r.passed) {
     const next = lv < 3, fin = r.trackComplete;
-    confetti(); A.innerHTML = `<div class="c res">${stage(240, 'Aprovado! Que orgulho!', 'good')}<h1>Aprovado!</h1><p class=sub>${r.score} de ${r.total} (${r.pct}%)</p>
+    confetti(); A.innerHTML = `<div class="c res">${stage(240, 'Aprovado! Que orgulho!', 'good')}<h1>Aprovado!</h1><p class=sub>${r.score} de ${r.total} (${r.pct}%)</p>${tierCard()}
     <div class=stats3><div><b>${r.score}/${r.total}</b><small>acertos</small></div><div><b>+${r.bonus || 0}</b><small>XP bônus</small></div><div><b>${r.passPct}%</b><small>nota mínima</small></div></div>
     <p class=gl>${fin ? `Você concluiu toda a trilha ${TN[t]}. Seu certificado está pronto.` : next ? `O nível <b>${LV[lv]}</b> foi liberado.` : ''}</p>
     ${fin ? `<button class="btn pri block" onclick="certFlow('${t}')">${ic('award', 16)} Emitir meu certificado</button>` : ''}

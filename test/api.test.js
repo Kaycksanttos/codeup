@@ -16,7 +16,7 @@ const confirm = async link => fetch(link.replace(U, U), { redirect: 'manual' });
 const reg = async (email, name = 'Teste') => { const j = (await call('/api/register', { body: { name, email, password: 'segredo1', accept: true } })).j; if (j.devVerifyLink) await confirm(j.devVerifyLink); return j.token; };
 
 test.before(async () => {
-  srv = spawn('node', ['-r', path.join(__dirname, 'mock-google.js'), 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT, DATA_FILE: DATA, BASE_URL: U, ADMIN_KEY: 'chave-admin', COMPANY_NAME: 'Empresa Teste', CONTACT_EMAIL: 'ajuda@teste.com', DEV_SHOW_RESET_LINK: '1', RELAX_SUBMIT_LIMIT: '1', GOOGLE_CLIENT_ID: 'test-client-id' } });
+  srv = spawn('node', ['-r', path.join(__dirname, 'mock-google.js'), 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT, DATA_FILE: DATA, BASE_URL: U, ADMIN_KEY: 'chave-admin', COMPANY_NAME: 'Empresa Teste', CONTACT_EMAIL: 'ajuda@teste.com', DEV_SHOW_RESET_LINK: '1', RELAX_SUBMIT_LIMIT: '1', GOOGLE_CLIENT_ID: 'test-client-id', RANK_TTL_MS: '0' } });
   srv.stdout.on('data', d => log += d); srv.stderr.on('data', d => log += d);
   for (let i = 0; i < 150 && !/rodando/.test(log); i++) await new Promise(r => setTimeout(r, 100));
   assert.match(log, /rodando/, 'servidor não iniciou: ' + log);
@@ -491,10 +491,10 @@ test('cadastro: gênero (feminino/masculino) e personagem escolhidos antes da co
   const ov = (await A('overview')).j; assert.ok(ov.counts.sex && typeof ov.counts.sex.f === 'number' && typeof ov.counts.sex.m === 'number' && typeof ov.counts.sex.none === 'number');
   assert.ok(ov.counts.guides && typeof ov.counts.guides.tay === 'number' && typeof ov.counts.guides.cut === 'number');
   const ex = await (await fetch(U + '/api/export', { headers: { 'x-token': a.token } })).json(); assert.equal(ex.sex, 'f'); assert.equal(ex.guide, 'cut');
-  // o app: duas perguntas no cadastro, uma vez só para conta antiga, e as frases mudam para o gênero escolhido
+  // o app: três perguntas no cadastro (gênero, personagem e nome do personagem), uma vez só para conta antiga, e as frases mudam para o gênero escolhido
   const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
-  assert.match(app, /startWizard\(\['sex', 'guide'\], false\)/, 'visitante novo começa pelas duas perguntas');
-  assert.match(app, /!S\.me\.sex && 'sex', !S\.me\.guide && 'guide'/, 'conta antiga é perguntada uma vez');
+  assert.match(app, /startWizard\(\['sex', 'guide', 'gname'\], false\)/, 'visitante novo começa pelas três perguntas');
+  assert.match(app, /!S\.me\.sex && 'sex', !S\.me\.guide && 'guide', !S\.me\.gname && 'gname'/, 'conta antiga é perguntada uma vez (só o que falta)');
   assert.match(app, /\.\.\.\(S\.reg \|\| \{\}\)/, 'as escolhas seguem junto com o cadastro');
   assert.match(app, /Você é feminino ou masculino\?/); assert.match(app, /Quem vai te guiar na jornada\?/);
   assert.match(app, /Eu sou/, 'dá para mudar no Perfil');
@@ -909,4 +909,117 @@ test('modo teste: fora dele nada aparece; com "npm run teste:demo" começa limpo
   const ui = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   assert.match(ui, /S\.cfg && S\.cfg\.teste\) testBar\(\)/); assert.match(ui, /api\/teste\/reset/); assert.match(ui, /r\.devVerifyLink\) \{ toast\('Modo teste/);
   assert.match(ui, /<h1 class=logo aria-label="CodeUp"><b>Code<\/b><span>Up<\/span><\/h1>/, 'o nome na tela é CodeUp'); assert.ok(!/<b>C<\/b><i>U<\/i>/.test(ui), 'o logo CUP de letras soltas saiu da tela');
+});
+
+// ---------------- Ranking, nome do personagem e recompensas por XP ----------------
+const Rw = require('../public/rewards.js');
+const regP = async (email, name, extra = {}) => { const j = (await call('/api/register', { body: { name, email, password: 'segredo1', accept: true, ...extra } })).j; if (j.devVerifyLink) await confirm(j.devVerifyLink); return j.token; };
+const setXp = async (email, v) => { const r = await act(await uidOf(email), { action: 'xp', mode: 'set', value: v }); assert.equal(r.status, 200, JSON.stringify(r.j)); };
+const rk = async (tk, p = 'geral') => { const r = await call('/api/ranking?p=' + p, { token: tk }); assert.equal(r.status, 200); return { j: r.j, mine: r.j.top.find(x => x.me) || r.j.me.row || null }; };
+
+test('recompensas: a tabela de títulos é crescente, alcançável e a moldura só vale se conquistada', () => {
+  const T = Rw.TIERS; assert.equal(T.length, 8); assert.equal(T[0].xp, 0); assert.equal(T[0].frame, null, 'o título inicial não tem moldura');
+  for (let i = 1; i < T.length; i++) { assert.ok(T[i].xp > T[i - 1].xp, 'XP exigido sempre cresce'); assert.ok(T[i].frame && /^#[0-9a-f]{6}$/i.test(T[i].color)); }
+  assert.equal(new Set(T.map(t => t.key)).size, T.length, 'chaves únicas');
+  const maxXp = lessons.reduce((a, l) => a + l.xp, 0) + lessons.checkpoints.reduce((a, c) => a + c.xp, 0) + 2 * (50 + 100 + 150);
+  assert.ok(T[T.length - 1].xp <= maxXp, `a Lenda (${T[T.length - 1].xp} XP) precisa ser possível: o curso inteiro dá ${maxXp} XP`);
+  assert.equal(Rw.tierOf(0), 0); assert.equal(Rw.tierOf(99), 0); assert.equal(Rw.tierOf(100), 1); assert.equal(Rw.tierOf(4499), 6); assert.equal(Rw.tierOf(4500), 7); assert.equal(Rw.tierOf(1e9), 7);
+  assert.equal(Rw.tierOf(-5), 0); assert.equal(Rw.tierOf('abc'), 0); assert.equal(Rw.tierOf(undefined), 0);
+  assert.equal(Rw.nextTier(0).key, 'apr'); assert.equal(Rw.nextTier(4500), null);
+  assert.equal(Rw.frameOf(1300, 'len'), 4, 'moldura não conquistada cai para a mais alta que a pessoa tem');
+  assert.equal(Rw.frameOf(1300, 'apr'), 1, 'moldura menor escolhida é respeitada'); assert.equal(Rw.frameOf(1300, undefined), 4); assert.equal(Rw.frameOf(1300, 'ini'), 4); assert.equal(Rw.frameOf(0, 'len'), 0);
+});
+
+test('nome do personagem: cadastro e /api/guide validam e limpam o texto', async () => {
+  const tk = await regP('gn1@teste.com', 'Gabi Nome', { sex: 'f', guide: 'tay', gname: '  Luna  ' });
+  let me = (await call('/api/me', { token: tk })).j; assert.equal(me.gname, 'Luna'); assert.equal(me.guide, 'tay'); assert.equal(me.sex, 'f');
+  const bad = await regP('gn2@teste.com', 'Gabi Dois', { sex: 'm', guide: 'cut', gname: '<b>x</b>' });
+  me = (await call('/api/me', { token: bad })).j; assert.equal(me.gname, null, 'nome inválido no cadastro é ignorado (o aluno escolhe de novo)'); assert.equal(me.guide, 'cut');
+  const g = body => call('/api/guide', { token: tk, body });
+  for (const v of ['A', '', '   ', 'x'.repeat(15), '<img>', 'a;b', '😀😀', '-ab', 'a\nb<']) { const r = await g({ gname: v }); assert.equal(r.status, 400, JSON.stringify(v)); assert.match(r.j.error, /2 a 14 caracteres/); }
+  assert.equal((await call('/api/me', { token: tk })).j.gname, 'Luna', 'tentativa inválida não muda o nome');
+  assert.equal((await g({ gname: '  Nina   Mel ' })).j.gname, 'Nina Mel', 'espaços repetidos viram um só');
+  for (const v of ["D'Artagnan", 'João-Pedro', 'Zé', 'Bit 2', 'Ana.B', 'Ça va', 'X'.repeat(14)]) assert.equal((await g({ gname: v })).j.gname, v.normalize('NFC'), v);
+  assert.equal((await g({})).status, 400, 'sem nada para mudar'); assert.equal((await g({ guide: 'outro' })).status, 400); assert.equal((await g({ sex: 'x' })).status, 400);
+  assert.equal((await g({ gname: 'Bit' })).j.guide, 'tay', 'mudar só o nome não mexe no personagem');
+  assert.equal((await call('/api/guide', { body: { gname: 'Bit' } })).status, 401, 'precisa estar logado');
+});
+
+test('molduras: só as conquistadas pelo XP podem ser usadas', async () => {
+  const em = 'fr1@teste.com', tk = await regP(em, 'Fran Moldura', { sex: 'f', guide: 'cut', gname: 'Fran' }), g = body => call('/api/guide', { token: tk, body });
+  for (const f of ['apr', 'pra', 'len']) { const r = await g({ frame: f }); assert.equal(r.status, 400, f + ' sem XP'); assert.match(r.j.error, /ainda não foi conquistada/); }
+  assert.equal((await g({ frame: 'ini' })).status, 400, 'o título inicial não tem moldura'); assert.equal((await g({ frame: 'zzz' })).status, 400); assert.equal((await g({ frame: 7 })).status, 400);
+  await setXp(em, 350);
+  assert.equal((await g({ frame: 'pra' })).j.frame, 'pra', '350 XP já têm a Prata'); assert.equal((await g({ frame: 'apr' })).j.frame, 'apr');
+  assert.equal((await g({ frame: 'des' })).status, 400, 'Ouro pede 700 XP'); assert.equal((await call('/api/me', { token: tk })).j.frame, 'apr', 'erro não troca a moldura');
+  assert.equal((await g({ frame: 'auto' })).j.frame, null, '"auto" volta a usar a mais alta');
+  await g({ frame: 'pra' }); await setXp(em, 150);                                                 // o dono tirou XP: a moldura escolhida deixou de valer
+  assert.equal((await rk(tk)).mine.frame, 1, 'no ranking vale a mais alta que ele realmente tem (Bronze)');
+});
+
+test('ranking: mostra só nome + inicial, ordena por XP e desempata por quem chegou primeiro', async () => {
+  const mk = async (email, name, xp, extra = {}) => { const t = await regP(email, name, { sex: 'f', guide: 'tay', ...extra }); await setXp(email, xp); return t; };
+  const lara = await mk('rk-lara@teste.com', 'Lara Zanetti Quintanilha', 5000, { gname: 'Raio Secreto' });
+  const pedro = await mk('rk-pedro@teste.com', 'pedro', 4900);
+  const zoe = await mk('rk-zoe@teste.com', 'Zoe Quintela', 4900);
+  const a = await rk(lara), p = await rk(pedro), z = await rk(zoe);
+  assert.equal(a.mine.name, 'Lara Q.'); assert.equal(p.mine.name, 'Pedro'); assert.equal(z.mine.name, 'Zoe Q.');
+  assert.ok(a.mine.pos < p.mine.pos && p.mine.pos < z.mine.pos, 'mais XP primeiro; empate → quem tem a conta mais antiga fica na frente');
+  assert.equal(a.mine.xp, 5000); assert.equal(a.mine.tier, 7); assert.equal(a.mine.frame, 7); assert.equal(a.mine.guide, 'tay'); assert.equal(p.mine.tier, 7);
+  assert.equal(a.j.me.xp, 5000); assert.equal(a.j.me.hidden, false); assert.equal(a.j.me.pos, a.mine.pos);
+  assert.ok(a.j.top.length <= 20 && a.j.total >= 3 && a.j.period === 'geral'); assert.equal(a.j.resets, null, 'o geral nunca zera');
+  for (const x of a.j.top) { assert.deepEqual(Object.keys(x).sort(), ['frame', 'guide', 'me', 'name', 'pos', 'tier', 'xp']); assert.ok(x.xp > 0); }
+  for (let i = 1; i < a.j.top.length; i++) assert.ok(a.j.top[i].xp <= a.j.top[i - 1].xp && a.j.top[i].pos === a.j.top[i - 1].pos + 1, 'lista em ordem e posições seguidas');
+  assert.equal(a.j.top.filter(x => x.me).length, 1, 'só uma linha é "você"');
+  const txt = JSON.stringify([a.j, p.j, z.j]);
+  assert.ok(!/@|teste\.com|Zanetti|Quintanilha|Quintela|Secreto/.test(txt), 'nem e-mail, nem sobrenome inteiro, nem o nome que o aluno deu ao personagem aparecem para os outros');
+  assert.equal((await call('/api/ranking')).status, 401, 'precisa estar logado');
+});
+
+test('ranking: semana x geral, parâmetro p e o dia em que zera', async () => {
+  const em = 'rk-sem@teste.com', tk = await regP(em, 'Sara Semana', { sex: 'f', guide: 'cut', gname: 'Sol' });
+  await setXp(em, 400);                                                                           // XP ajustado pelo dono conta no geral, mas não é "ganho nesta semana"
+  let s = await rk(tk, 'semana'), g = await rk(tk, 'geral');
+  assert.equal(s.j.period, 'semana'); assert.equal(s.mine, null, 'sem XP ganho na semana não entra no ranking semanal'); assert.equal(s.j.me.pos, null); assert.equal(s.j.me.xp, 0);
+  assert.equal(g.mine.xp, 400); assert.equal(g.j.me.xp, 400);
+  const l = lessons.find(x => x.id === 'py-1-01'); assert.equal((await doLesson(tk, l)).j.ok, true);
+  s = await rk(tk, 'semana'); g = await rk(tk, 'geral');
+  assert.equal(s.mine.xp, l.xp, 'a semana conta só o XP ganho nas lições'); assert.equal(g.mine.xp, 400 + l.xp);
+  assert.equal((await call('/api/me', { token: tk })).j.wk, l.xp);
+  assert.ok(s.mine.pos >= 1 && s.mine.pos <= s.j.total);
+  const when = new Date(s.j.resets), ms = when - Date.now();
+  assert.ok(ms > 0 && ms <= 7 * 864e5, 'zera em até 7 dias'); assert.equal(when.getUTCDay(), 1, 'numa segunda-feira'); assert.equal(when.getUTCHours(), 3, 'à meia-noite de Brasília (UTC-3)'); assert.equal(when.getUTCMinutes(), 0);
+  assert.equal((await call('/api/ranking?p=qualquer', { token: tk })).j.period, 'semana', 'valor desconhecido usa a semana');
+  assert.equal((await call('/api/ranking', { token: tk })).j.period, 'semana');
+});
+
+test('ranking: quem sai, é suspenso, não confirmou o e-mail ou apagou a conta não aparece', async () => {
+  const viewerEm = 'rk-viewer@teste.com', viewer = await regP(viewerEm, 'Vera Visão', { sex: 'f', guide: 'tay', gname: 'Vi' }); await setXp(viewerEm, 123);
+  const total = async () => (await rk(viewer)).j.total, t0 = await total();
+  // sair e voltar
+  const oEm = 'rk-out@teste.com', o = await regP(oEm, 'Otávio Fora', { sex: 'm', guide: 'cut', gname: 'Oto' }); await setXp(oEm, 777);
+  assert.equal(await total(), t0 + 1); assert.ok((await rk(o)).mine);
+  assert.equal((await call('/api/ranking/visibility', { token: o, body: { show: 'sim' } })).status, 400); assert.equal((await call('/api/ranking/visibility', { token: o, body: {} })).status, 400);
+  const off = await call('/api/ranking/visibility', { token: o, body: { show: false } }); assert.equal(off.j.rankOff, true);
+  let r = await rk(o); assert.equal(r.mine, null); assert.equal(r.j.me.hidden, true); assert.equal(r.j.me.pos, null); assert.equal(r.j.me.xp, 777, 'ele ainda vê o próprio XP'); assert.equal(await total(), t0);
+  assert.equal((await call('/api/me', { token: o })).j.rankOff, true);
+  assert.equal((await call('/api/ranking/visibility', { token: o, body: { show: true } })).j.rankOff, false); assert.ok((await rk(o)).mine); assert.equal(await total(), t0 + 1);
+  // suspenso
+  const id = await uidOf(oEm); assert.equal((await act(id, { action: 'ban', reason: 'teste' })).status, 200); assert.equal(await total(), t0, 'conta suspensa some do ranking');
+  assert.equal((await act(id, { action: 'unban' })).status, 200); assert.equal(await total(), t0 + 1, 'reativada volta');
+  // e-mail não confirmado
+  const uEm = 'rk-unv@teste.com', un = (await call('/api/register', { body: { name: 'Ugo Sem Email', email: uEm, password: 'segredo1', accept: true } })).j; assert.equal(un.devVerifyLink !== undefined, true);
+  await setXp(uEm, 888); assert.equal(await total(), t0 + 1, 'sem confirmar o e-mail não entra'); assert.equal((await call('/api/ranking', { token: un.token })).status, 200, 'mas ele pode abrir a tela');
+  assert.equal((await act(await uidOf(uEm), { action: 'verify' })).status, 200); assert.equal(await total(), t0 + 2, 'confirmou → entra');
+  // apagar a conta
+  const del = await call('/api/account', { method: 'DELETE', token: un.token, body: { password: 'segredo1' } }); assert.equal(del.status, 200); assert.equal(await total(), t0 + 1, 'conta apagada sai da lista na hora');
+});
+
+test('ranking: arquivos do app — passo do nome, aba Ranking, rewards.js servido e no cache offline', async () => {
+  const rd = f => fs.readFileSync(path.join(__dirname, '..', ...f.split('/')), 'utf8'), ui = rd('public/app.js'), css = rd('public/style.css'), html = rd('public/index.html'), sw = rd('public/sw.js');
+  assert.match(ui, /id=gn\b/, 'campo do nome do personagem'); assert.match(ui, /S\.reg = \{ sex: w\.sex, guide: w\.guide, gname: w\.gname \}/, 'o nome escolhido no assistente segue para o cadastro'); assert.match(ui, /startWizard\(\['sex', 'guide', 'gname'\]/); assert.match(ui, /\['rk', 'crown', 'Ranking'\]/); assert.match(ui, /function rankView\(/); assert.match(ui, /class=pseg\b/);
+  assert.ok(!/class=seg\b[^>]*aria-label="Período/.test(ui), 'o seletor de período não usa .seg (é a barra de progresso)'); assert.match(css, /\.pseg\b/);
+  assert.match(html, /<script src="\/rewards\.js"><\/script>/); assert.ok(html.indexOf('/rewards.js') < html.indexOf('/app.js'), 'rewards.js carrega antes do app'); assert.match(sw, /'\/rewards\.js'/);
+  const r = await fetch(U + '/rewards.js'); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /javascript/);
+  const served = new Function('window', 'module', (await r.text()) + '; return window.CodeUpRewards;')({}, undefined); assert.equal(served.TIERS.length, Rw.TIERS.length, 'o navegador recebe a mesma tabela do servidor');
 });
