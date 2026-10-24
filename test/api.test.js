@@ -1283,7 +1283,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>Solução<\/button>/, 'prova não tem Solução nem Teoria');
   assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
-  // prova reprovada: o personagem desanimado (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
+  // prova reprovada: o personagem chorando (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
   assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\/img\/fail-\$\{gid\(\)\}\.webp"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
   for (const g of ['cut', 'tay']) { const f = path.join(pubDir, 'img', `fail-${g}.webp`), b = fs.readFileSync(f); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 10000 && b.length < 200000, `fail-${g} tem tamanho razoável`); assert.equal((await fetch(`${U}/img/fail-${g}.webp`)).status, 200, `fail-${g} é servida`); }
   assert.ok(!ui.includes('nada é gasto: você corrige'), 'a regra antiga (erro não gasta chance) saiu das regras da prova');
