@@ -45,7 +45,7 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Ao tocar em **Concluído** (ou Ctrl+Enter): o resultado do código aparece na caixa "Saída/Resultado"; se errou, aparece abaixo o aviso com onde corrigir; se acertou, vêm XP e a próxima lição abre.
 - [ ] Os botões **Dica**, **Ver dados** e **Solução** funcionam (no SQL a solução aparece organizada em linhas).
 - [ ] Em toda lição, a teoria mostra o **"o que é" dentro do balão do personagem** e 3 cartões: **Para que serve**, **Como você vai usar aqui** e **O que vai aparecer na tela** (textos escritos como se a pessoa tivesse 10 anos e visse aquilo pela primeira vez). A tela de prática fica limpa (só o desafio, o editor e os botões).
-- [ ] Depois da lição 10 (e da 20) aparece o **checkpoint**: tela de abertura com as regras, **2 corações** (chances), sem Dica/Solução/Teoria. Errar 1 vez: sobra 1 coração. Errar a 2ª: **voltam 5 lições** (6 a 10, ou 16 a 20) e aparece a lista delas. A lição 11 (ou 21) só abre depois de passar.
+- [ ] Depois da lição 10 (e da 20) aparece o **checkpoint**: tela de abertura com as regras, **2 corações** (chances), sem Dica/Solução/Teoria. Errar 1 vez: sobra 1 coração (**código que dá erro**, como `SELEC` em vez de `SELECT` ou uma tabela que não existe, **também gasta** o coração; só não gasta se o ambiente de código nem carregar por falta de internet). Errar a 2ª: **voltam 5 lições** (6 a 10, ou 16 a 20) e aparece a lista delas. A lição 11 (ou 21) só abre depois de passar.
 
 **4. Perfil**
 - [ ] Em **Eu sou** dá para mudar Feminino/Masculino; em **Personagem**, trocar Tay/Cut; e escolher a aparência (Floresta, Rosa, Azul escuro, Claro). Textos como "Pronto/Pronta para a prova" acompanham o gênero.

@@ -289,6 +289,22 @@ test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a soluç
   r = (await doTest(tk, C)).j; assert.equal(r.ok, true); assert.equal(r.view, undefined);
 });
 
+test('prova: código que dá erro (sintaxe, tabela inexistente) também gasta uma chance; com as chances no fim, volta as lições', async () => {
+  const tk = await reg('errprova@teste.com', 'Erica Erro'), C = lessons.checkpoints.find(c => c.id === 'cp-sql-1-10');
+  await call('/api/track', { token: tk, body: { track: 'sql' } });
+  for (const l of lessonsOf('sql', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  let r = (await call('/api/submit', { token: tk, body: { id: C.id, code: 'SELEC nome FROM produtos', out: '' } })).j;
+  assert.equal(r.ok, false); assert.equal(r.left, 1, 'erro de digitação no SQL gasta a 1ª chance');
+  assert.equal((await call('/api/lessons/' + C.id, { token: tk })).j.left, 1, 'a chance gasta fica salva no servidor');
+  r = (await call('/api/submit', { token: tk, body: { id: C.id, code: 'SELECT nome FROM produtoss', out: '' } })).j;
+  assert.equal(r.ok, false); assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }, 'tabela inexistente gasta a última chance e volta as lições');
+  // o Python também: código que nem roda (sintaxe) não passa e gasta chance
+  const tp = await reg('errprova2@teste.com', 'Paulo Py'), P = lessons.checkpoints.find(c => c.id === 'cp-py-1-10');
+  for (const l of lessonsOf('python', 1).slice(0, 10)) assert.equal((await doLesson(tp, l)).j.ok, true, l.id);
+  r = (await call('/api/submit', { token: tp, body: { id: P.id, code: 'print("oi"', out: '' } })).j;
+  assert.equal(r.ok, false); assert.equal(r.left, 1, 'erro de sintaxe no Python gasta a 1ª chance');
+});
+
 test('trilha completa: 3 níveis aprovados geram certificado verificável (e SQL continua sem certificado)', async () => {
   const tk = await premiumUser('cert@t.com', 'Carol');
   for (const lv of [1, 2, 3]) {
@@ -1266,6 +1282,8 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>Solução<\/button>/, 'prova não tem Solução nem Teoria');
+  assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
+  assert.ok(!ui.includes('nada é gasto: você corrige'), 'a regra antiga (erro não gasta chance) saiu das regras da prova');
   assert.match(ui, /if \(T && s\.rewind\)/, 'acabaram as chances: tela de voltar lições'); assert.match(ui, /voltar|volta \$\{r\.back\} lições|você volta/i);
   assert.match(ui, /openTest\('\$\{fin\.id\}'\)/, 'o mapa tem o nó da prova final'); assert.match(ui, /Prova final · \$\{LV\[lv - 1\]\}/);
   assert.match(ui, /const cpBefore = l => \(S\.cps \|\| \[\]\)\.find\(c => !c\.fin && /, 'checkpoint antes da lição não inclui a prova final');

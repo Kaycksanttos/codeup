@@ -775,7 +775,7 @@ function testIntro() {
   <p class=sub>${fin ? 'Tudo o que você aprendeu desde a lição 1' : `Tudo o que você aprendeu da lição 1 até a ${l.after}`}</p>
   <div class=chances>${chHearts(ok ? l.chances : left, l.chances, 26)}<small>${ok ? 'Você já passou: pode treinar sem perder nada' : left == 1 ? 'Última chance' : `${left} de ${l.chances} chances`}</small></div>
   <div class="panel rules"><b>Como funciona</b><ul><li>É uma tarefa só: você monta ${l.type == 'sql' ? 'uma consulta completa' : 'um programa completo'} com o que aprendeu.</li><li>Sem dica, sem solução e sem teoria durante a prova.</li>
-    <li>Cada resposta errada gasta uma chance. Se o código nem roda (erro de digitação), nada é gasto: você corrige e tenta de novo.</li>
+    <li>Cada resposta errada gasta uma chance. Código que dá erro (erro de digitação, tabela que não existe) também conta como resposta errada e gasta uma chance. Confira bem antes de tocar em Concluído.</li>
     <li><b>Acertou:</b> ${fin ? `abre ${nxt} (+${50 * l.lv} XP de bônus na 1ª vez)` : `abre a lição ${l.after + 1} (+${l.xp} XP na 1ª vez)`}.</li>
     <li><b>Gastou as ${l.chances} chances:</b> você volta ${l.back} lições (da ${l.backFrom} à ${l.after}) para relembrar. O XP que já ganhou continua seu.</li></ul></div>
   ${infoCards(l.info)}
@@ -906,10 +906,17 @@ async function concluir() {
   if (!code.replace(/(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', ['Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
   S.busy = true; if (b) { b.disabled = true; b.innerHTML = '<span class=spin></span> Conferindo…'; } if (fb) fb.classList.add('stale');   // o botão só troca o texto: não muda de tamanho nem de lugar
   try {
-    let r;
+    let r, err = null;
     try { r = l.type == 'sql' ? await runSql(l, code) : await runPy(l, code, () => id != S.lt); }
-    catch (e) { if (e.message == 'STALE') return setFb('idle'); showErr(e); return setFb('err', diagErr(e, code, l)); }
-    o.className = 'out'; o.innerHTML = r.html;
+    catch (e) {
+      if (e.message == 'STALE') return setFb('idle');
+      showErr(e);
+      // Lição comum (ou prova já vencida): só mostra o erro. Prova valendo: o código que dá erro também é uma resposta errada e gasta uma chance
+      // (o servidor reexecuta o código e confirma). Só não gasta quando o ambiente de código nem carregou (OFFLINE): aí a culpa não é do aluno.
+      if (!isTest(l) || testDone(l) || e.message == 'OFFLINE') return setFb('err', diagErr(e, code, l));
+      err = e; r = { out: '', html: '' };
+    }
+    if (!err) { o.className = 'out'; o.innerHTML = r.html; }
     let s;
     try { s = await api('submit', { body: { id: l.id, code, out: r.out || '' } }); }
     catch (e) { if (e.engine || e.status == 503) return setFb('srv', fixit(0, '', [esc(e.error || 'O servidor não respondeu agora. Toque em Concluído de novo.')])); throw e; }
@@ -919,10 +926,10 @@ async function concluir() {
         Object.assign(S.me, { done: s.done, cps: s.cps, fails: s.fails }); try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
         return testFail(s);
       }
-      const tip = l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing, s.view) : diagPy(l, r.out, s.expected, s.missing);
-      if (!T || s.left === undefined || testDone(l)) return setFb('bad', tip);       // lição comum, ou prova já vencida (treino sem perder chance)
+      const tip = err ? diagErr(err, code, l) : l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing, s.view) : diagPy(l, r.out, s.expected, s.missing), kind = err ? 'err' : 'bad';
+      if (!T || s.left === undefined || testDone(l)) return setFb(kind, tip);        // lição comum, ou prova já vencida (treino sem perder chance)
       l.left = s.left; const h = $('#chh'), n = $('#chn'); if (h) h.innerHTML = chHearts(s.left, l.chances, 20); if (n) n.innerHTML = chanceMsg(s.left, l);
-      return setFb('bad', `<p class=tip>${chHearts(s.left, l.chances, 16)} <b>${s.left == 1 ? 'Resta 1 chance.' : `Restam ${s.left} chances.`}</b></p>` + tip);
+      return setFb(kind, `<p class=tip>${chHearts(s.left, l.chances, 16)} <b>${s.left == 1 ? 'Resta 1 chance.' : `Restam ${s.left} chances.`}</b></p>` + tip);
     }
     S.lastRes = r.html;                                                              // o resultado que o aluno acabou de acertar aparece na tela de conclusão
     const lk0 = {}; [...S.ls, ...(S.cps || [])].forEach(x => { lk0[x.id] = x.lock; });                                              // o que estava com cadeado antes desta conquista
