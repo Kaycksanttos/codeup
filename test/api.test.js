@@ -1115,7 +1115,7 @@ test('animação: /api/guide valida o estilo da roupa e o app mostra só o que v
 
 test('animação: o app carrega anim.js, usa o personagem animado, tem fallback e o cache offline foi trocado', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), html = rd('index.html'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js'), anim = rd('anim.js');
-  assert.match(html, /<script src="\/anim\.js"><\/script>/); assert.ok(html.indexOf('/anim.js') < html.indexOf('/app.js'), 'anim.js carrega antes do app'); assert.match(sw, /'\/anim\.js'/); assert.match(sw, /codeup-v(3[2-9]|[4-9]\d)/);
+  assert.match(html, /<script src="\/anim\.js"><\/script>/); assert.ok(html.indexOf('/poses.js') > 0 && html.indexOf('/poses.js') < html.indexOf('/anim.js') && html.indexOf('/anim.js') < html.indexOf('/app.js'), 'poses.js e anim.js carregam antes do app'); assert.match(sw, /'\/anim\.js'/); assert.match(sw, /'\/poses\.js'/); assert.match(sw, /codeup-v(3[2-9]|[4-9]\d)/);
   assert.match(ui, /CodeUpAnim\.html\(/); assert.match(ui, /window\.CodeUpAnim \?/, 'sem anim.js ainda aparece a imagem normal'); assert.match(ui, /Estilo da roupa/); assert.match(ui, /function outBg|const outBg/);
   assert.match(css, /\.abody>canvas/); assert.match(css, /\.abody/);
   // segurança e boas práticas do motor
@@ -1129,7 +1129,7 @@ test('animação: o app carrega anim.js, usa o personagem animado, tem fallback 
 test('animação: conquistas (título novo, nível novo, prova, trilha) e troca de item têm animação própria', () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), css = rd('style.css');
   // as telas de resultado usam o personagem de conquista: título novo > trilha concluída > nível novo > só passou
-  assert.match(ui, /const winStage = /); assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /winStage\(230, 'Checkpoint conquistado!', 'good dance'\)/); assert.match(ui, /winStage\(240, fin \?/);
+  assert.match(ui, /const winStage = /); assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /winStage\(230, 'Checkpoint conquistado!', 'cp'\)/); assert.match(ui, /winStage\(240, fin \?/);
   assert.match(ui, /Agora você é \$\{t\.title\}!/); assert.match(ui, /Subiu de nível!/); assert.match(ui, /'good epic2', t\.color/, 'título novo usa a cor do título'); assert.match(ui, /S\.pop = 1; render\(\); S\.pop = 0;/, 'trocar um item faz o personagem dar um pulinho com brilho');
   assert.ok(!/stage\((230|240), '(Mandou bem!|Checkpoint conquistado!|Aprovado! Que orgulho!)', 'good'\)/.test(ui), 'nenhuma tela de resultado ficou com o personagem comum');
   assert.match(ui, /bodyMode = /); assert.match(ui, /fx: \/\\bepic2\\b\/\.test\(cls\) \? 2/);
@@ -1141,15 +1141,39 @@ test('animação: conquistas (título novo, nível novo, prova, trilha) e troca 
   assert.match(fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8'), /codeup-v(3[3-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
 });
 
-test('animação: movimentos novos (pulo sorrindo, palmas, tchau, dança) valem no motor, na comemoração, no toque e no Perfil', () => {
-  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), sw = rd('sw.js');
-  for (const k of ['jump', 'clap', 'wave', 'dance']) { assert.match(anim, new RegExp(`k == '${k}'`), 'movimento ' + k + ' no motor'); assert.match(anim, new RegExp(`${k}: `), 'duração/efeito de ' + k); }
-  assert.match(anim, /KINDS = \['hop', 'wave', 'jump', 'dance', 'clap'\]/, 'toque sorteia entre os movimentos');
-  for (const u of ['uHap', 'uMouth', 'uCheek']) assert.match(anim, new RegExp(u), 'rosto feliz (' + u + ')');
-  assert.match(anim, /function trigger\(/); assert.match(anim, /play: function \(el, k\)/); assert.match(anim, /function move\(/); assert.match(anim, /function clapIcon|function noteIcon|function bubble/);
-  assert.match(anim, /if \(reduce\) return false;/, 'com "reduzir movimento" o botão não finge que animou');
-  assert.match(ui, /bodyMode = /); assert.match(ui, /\(jump\|clap\|dance\|wave\)/, 'o app mapeia as classes para o modo'); assert.match(ui, /const WINS = \[/); assert.match(ui, /const winPick/); assert.match(ui, /k == S\.lastWin/, 'não repete a comemoração anterior');
-  assert.match(ui, /body\(285, 'wave', 'hb'\)/, 'o personagem da tela inicial dá oi');
-  assert.match(ui, /function playMove\(/); for (const n of ['Pulo sorrindo', 'Palmas', 'Tchau', 'Dança']) assert.ok(ui.includes(n), 'botão ' + n);
-  assert.match(sw, /codeup-v(3[4-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+test('animação: expressões da folha (poses) valem no motor, nas comemorações, no toque, no mapa e no Perfil', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), sw = rd('sw.js'), css = rd('style.css'), CRw = require('../public/rewards.js');
+  // tabela das poses (gerada por tools/anim/poses.py) e os 22 arquivos
+  const win = {}; new Function('window', rd('poses.js'))(win); const T = win.CodeUpPoses.poses;
+  const expected = { tay: ['jump', 'peace', 'love', 'laugh', 'wink', 'angry', 'think', 'clap', 'peace2', 'sit', 'back'], cut: ['jump', 'peace', 'cool', 'thumbs', 'shy', 'wow', 'think', 'angry', 'dab', 'peace2', 'back'] };
+  for (const g of ['tay', 'cut']) {
+    assert.deepEqual(Object.keys(T[g]).sort(), expected[g].slice().sort(), 'poses de ' + g);
+    for (const id of expected[g]) {
+      const m = T[g][id], f = path.join(pubDir, 'img', 'pose', `${g}-${id}.webp`), b = fs.readFileSync(f);
+      assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 4000 && b.length < 140000, `${g}-${id} tem um tamanho razoável (${b.length})`);
+      assert.ok(m.w > 100 && m.h > 100 && ['full', 'sit', 'bust'].includes(m.k), `${g}-${id} tem tamanho e tipo`); assert.ok(Array.isArray(m.d) && m.d.every(d => d.length === 6 && d[2] > 0 && d[3] > 0), `${g}-${id} rabiscos bem formados`);
+      assert.equal((await fetch(`${U}/img/pose/${g}-${id}.webp`)).status, 200, `${g}-${id} é servida`);
+    }
+  }
+  // os botões do Perfil cobrem exatamente as poses que existem
+  const ex = new Function('return ' + /const EXPR = (\{[\s\S]*?\n\});/.exec(ui)[1])();
+  for (const g of ['tay', 'cut']) assert.deepEqual(ex[g].map(x => x[0]).sort(), expected[g].slice().sort(), 'botões do Perfil de ' + g);
+  assert.match(ui, /function playMove\(/); assert.match(ui, /playMove\('p:\$\{k\}'\)/); assert.match(ui, /Expressões/);
+  // a cor escolhida vale nas poses: mesma conta do matiz que gerou as imagens coloridas do corpo
+  assert.equal(CRw.hueShift('tay', 'verde'), 162); assert.equal(CRw.hueShift('tay', 'azul'), -116); assert.equal(CRw.hueShift('cut', 'verde'), -82); assert.equal(CRw.hueShift('cut', 'vermelho'), 134);
+  assert.equal(CRw.hueShift('tay', 'rosa'), 0); assert.equal(CRw.hueShift('cut', 'azul'), 0); assert.equal(CRw.hueShift('tay', null), 0); assert.equal(CRw.hueShift('tay', 'inexistente'), 0);
+  assert.match(ui, /hue: HUE\(\)/); assert.match(anim, /function hueRotate\(/); assert.match(anim, /data-hue/);
+  // motor: sequências, movimentos, rabiscos, balão, toque, brincadeira dos muitos toques e respeito a "reduzir movimento"
+  for (const f of ['function poseLoad(', 'function startReel(', 'function pzState(', 'function pzDraw(', 'function mot(', 'function preload(', 'function kick(']) assert.ok(anim.includes(f), f);
+  for (const k of ['hop', 'jump2', 'beat', 'shake', 'tilt', 'nod', 'snap', 'startle', 'walk']) assert.match(anim, new RegExp(`n == '${k}'`), 'movimento ' + k);
+  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'hello', 'walk']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
+  assert.match(anim, /i\.taps\.length >= 5/, 'muitos toques seguidos deixam bravinho'); assert.match(anim, /CALM/); assert.match(anim, /k\.indexOf\('p:'\) == 0/); assert.match(anim, /_pose: function/);
+  assert.match(anim, /if \(reduce \|\| !PZ/, 'com "reduzir movimento" as poses não entram'); assert.match(anim, /if \(reduce\) return false;/);
+  assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
+  // telas: cada situação pede a sua sequência de expressões
+  assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.match(ui, /body\(285, 'wave', 'hb', '', 'hello'\)/, 'oi da tela inicial'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
+  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos de novo!', 'bad', '', 'oops'/); assert.match(ui, /const walker = /); assert.equal((ui.match(/walker\(\)/g) || []).length, 2, 'o mapa usa o personagem andando nos dois tipos de parada');
+  assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
+  assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
+  assert.match(sw, /codeup-v(3[5-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
 });

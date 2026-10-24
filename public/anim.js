@@ -262,6 +262,177 @@
     o.hop += d.hop * k; o.sy += d.sy * k; o.sway += d.sway * k; o.head += d.head * k; o.arm += d.arm * k; o.hair += d.hair * k;
     o.hap = Math.max(o.hap, d.hap * k); o.mo = Math.max(o.mo, d.mo * k); o.ck = Math.max(o.ck, d.ck * k);
   }
+  // ------------------------------------------------------------------ poses (folha de expressões)
+  // Cada expressão é uma imagem pronta (public/img/pose/<guia>-<pose>.webp, tabela em poses.js). O personagem "troca de pose" por cima do corpo animado:
+  // a pose entra com um pulinho elástico, se mexe (pula, balança, treme, inclina) e os rabiscos do desenho (corações, "?", faíscas) pipocam um a um.
+  // A cor escolhida vale também aqui: a imagem colorida do corpo foi feita girando o matiz (HSV), e o app faz o mesmo nas poses ao carregar.
+  var TAU2 = 6.2832, PZ = root.CodeUpPoses && root.CodeUpPoses.poses, pzC = {}, pzQ = [], pzPre = {};
+  var KIND = { full: [700, 915], sit: [620, 720], bust: [620, 700] }, BASE = 952;     // caixa (largura, altura) em px da imagem 640×960 e linha do chão
+  var DEF = { jump: 'jump2', peace: 'hop', peace2: 'hop', love: 'bob', laugh: 'beat', wink: 'bob', angry: 'shake', think: 'tilt', clap: 'beat', sit: 'bob', back: 'walk', cool: 'bob', thumbs: 'nod', shy: 'bob', wow: 'startle', dab: 'snap' };
+  var FXP = { jump: 'jump', clap: 'clap', peace: 'star', dab: 'star', wink: 'star', cool: 'star', thumbs: 'star' };
+  var FXN = { jump: [[.98, 8, 0], [1.76, 14, 1]], star: [[.2, 10, 0]], clap: [[.3, 5, 0], [1.2, 5, 0]] };
+  // sequências de pose por situação: [pose, segundos, movimento, faíscas, balão]
+  var REELS = {
+    tay: {
+      win: [[['jump', 2.1, 'jump2', 'jump'], ['peace', 1.6, 'hop', 'star']], [['laugh', .9, 'beat'], ['clap', 2, 'beat', 'clap'], ['wink', 1.3, 'bob', 'star']], [['love', 1.3, 'bob'], ['peace2', 1.2, 'hop'], ['peace', 1.5, 'hop', 'star']]],
+      cp: [[['clap', 2.2, 'beat', 'clap'], ['jump', 2.1, 'jump2', 'jump'], ['wink', 1.3, 'bob', 'star']]],
+      big: [[['love', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap'], ['peace', 1.9, 'hop', 'star']]],
+      think: [[['think', 3.2, 'tilt']]], oops: [[['think', 3.4, 'tilt']]], intro: [[['wink', 2.6, 'bob', 'star']]],
+      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], walk: [[['back', 1e9, 'walk']]]
+    },
+    cut: {
+      win: [[['jump', 2.1, 'jump2', 'jump'], ['peace', 1.6, 'hop', 'star']], [['thumbs', 1.5, 'nod'], ['dab', 1.7, 'snap', 'star'], ['peace2', 1.2, 'hop']], [['shy', 1.2, 'bob'], ['cool', 1.5, 'bob', 'star'], ['peace', 1.5, 'hop']]],
+      cp: [[['dab', 1.7, 'snap', 'star'], ['jump', 2.1, 'jump2', 'jump'], ['thumbs', 1.3, 'nod', 'star']]],
+      big: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star'], ['peace', 1.9, 'hop', 'star']]],
+      think: [[['think', 3.2, 'tilt']]], oops: [[['think', 3.4, 'tilt']]], intro: [[['cool', 2.6, 'bob', 'star']]],
+      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], walk: [[['back', 1e9, 'walk']]]
+    }
+  };
+  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, walk: { delay: 0 } };
+  var TAPS = { tay: ['peace', 'love', 'laugh', 'wink', 'clap', 'peace2', 'jump'], cut: ['peace', 'cool', 'thumbs', 'shy', 'dab', 'peace2', 'jump'] };
+  var CALM = { tay: 'laugh', cut: 'thumbs' };      // depois da bravinha (muitos toques seguidos), ela ri de volta
+  var lastReel = {};
+
+  // gira o matiz de uma imagem (mesma conta HSV que gerou as cores do corpo: só o matiz muda, brilho e saturação ficam)
+  function hueRotate(src, deg, keepReds) {            // keepReds: o Cut tem língua/boca vermelha que não deve virar roxa (a pele dele é preta, não tem matiz)
+    var c = document.createElement('canvas'); c.width = src.naturalWidth || src.width; c.height = src.naturalHeight || src.height;
+    var x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0);
+    var im = x.getImageData(0, 0, c.width, c.height), d = im.data, dh = deg / 60;
+    for (var p = 0; p < d.length; p += 4) {
+      if (!d[p + 3]) continue;
+      var r = d[p], g = d[p + 1], b = d[p + 2], mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b), df = mx - mn;
+      if (!df) continue;
+      var h = mx == r ? (g - b) / df : mx == g ? (b - r) / df + 2 : (r - g) / df + 4;
+      if (keepReds && ((h > -.5 && h < .42) || h > 5.5) && df > .35 * mx) continue;
+      h = (h + dh) % 6; if (h < 0) h += 6;
+      var k = h | 0, f = h - k, pp = mx - df, q = mx - df * f, tt = mx - df * (1 - f);
+      switch (k) { case 0: r = mx; g = tt; b = pp; break; case 1: r = q; g = mx; b = pp; break; case 2: r = pp; g = mx; b = tt; break; case 3: r = pp; g = q; b = mx; break; case 4: r = tt; g = pp; b = mx; break; default: r = mx; g = pp; b = q; }
+      d[p] = r; d[p + 1] = g; d[p + 2] = b;
+    }
+    x.putImageData(im, 0, 0); return c;
+  }
+  // carrega (e recolore, se a cor escolhida não for a de fábrica) uma pose; guarda as últimas 40
+  function poseLoad(g, id, hue) {
+    var k = g + '/' + id + '/' + hue, e = pzC[k]; if (e) return e;
+    var m = PZ && PZ[g] && PZ[g][id]; if (!m) return Promise.reject(new Error('sem pose'));
+    var p = loadImg('/img/pose/' + g + '-' + id + '.webp').then(function (im) { return { img: hue ? hueRotate(im, hue, g == 'cut') : im, m: m }; });
+    pzC[k] = p; pzQ.push(k); while (pzQ.length > 40) delete pzC[pzQ.shift()];
+    p.catch(function () { if (pzC[k] === p) { delete pzC[k]; var j = pzQ.indexOf(k); if (j >= 0) pzQ.splice(j, 1); } });
+    return p;
+  }
+  function preload(g, hue) {                                     // com o app parado, deixa as poses desse personagem prontas (a vitória não espera a internet)
+    if (!PZ || !PZ[g] || reduce) return; var key = g + '/' + hue; if (pzPre[key]) return; pzPre[key] = 1;
+    var ids = Object.keys(PZ[g]);
+    function next() { if (ids.length) poseLoad(g, ids.shift(), hue).then(idle, idle); }
+    function idle() { (root.requestIdleCallback || function (f) { return setTimeout(f, 80); })(next, { timeout: 900 }); }
+    next();
+  }
+
+  // movimento de cada pose: função pura de (segundos desde que a pose entrou) → deslocamento (px da imagem), giro (rad) e esticada
+  function sm(x) { return smooth(x); }
+  function mot(n, u, d, kind) {
+    var a = kind == 'bust' ? .5 : 1, TAU = 6.2832, o = { x: 0, y: 0, r: 0, sx: 1, sy: 1 }, b, ph, q;
+    if (n == 'hop') { ph = (u % .62) / .62; b = Math.sin(Math.PI * ph); o.y = -52 * a * b; o.sy = 1 + .05 * b - (ph < .12 ? .07 * (1 - ph / .12) : 0) - (ph > .88 ? .06 * ((ph - .88) / .12) : 0); o.r = .02 * Math.sin(TAU * u / 1.24); }
+    else if (n == 'jump2') {                                     // agacha, dois pulos (o segundo mais alto) com os braços pra cima e pousa balançando
+      if (u < .28) o.sy -= .09 * Math.sin(Math.PI * u / .28);
+      [[.28, 92], [1, 122]].forEach(function (j) { var w = (u - j[0]) / .7; if (w >= 0 && w <= 1) { var bb = Math.sin(Math.PI * w); o.y -= j[1] * bb; o.sy += .06 * bb - (w < .1 ? .08 * (1 - w / .1) : 0) - (w > .9 ? .09 * ((w - .9) / .1) : 0); o.r += .045 * Math.sin(TAU * w); } });
+      if (u > 1.7) { o.sy += .012 * Math.sin(TAU * (u - 1.7) / 1.4); o.r += .02 * Math.sin(TAU * (u - 1.7) / 1.8); }
+    } else if (n == 'beat') {                                     // bate no ritmo (2,5 batidas por segundo), balançando de lado
+      ph = (u / .4) % 1; b = Math.sin(Math.PI * ph); q = Math.floor(u / .4) % 2 ? 1 : -1;
+      o.y = -22 * a * b; o.sy = 1 + .035 * (b - .5); o.r = q * .035 * b;
+    } else if (n == 'shake') {                                    // brava: treme de raiva e vai se acalmando
+      var am = u < 1 ? 1 : Math.max(.3, 1 - (u - 1) / 1.5);
+      o.r = .032 * am * Math.sin(TAU * 13 * u); o.x = 5 * am * Math.sin(TAU * 17 * u); o.sy = 1 + .012 * am * Math.sin(TAU * 9 * u);
+    } else if (n == 'tilt') {                                     // pensando: inclina a cabeça e fica balançando devagar
+      var e = sm(u / .35); o.r = -.075 * e + .018 * Math.sin(TAU * u / 1.7); o.x = -6 * e; o.y = -5 * (.5 + .5 * Math.sin(TAU * u / 1.7));
+    } else if (n == 'nod') {                                      // joinha: balança a cabeça concordando
+      o.y = -12 * a * (.5 + .5 * Math.sin(TAU * u * 1.8 - 1.57)); o.r = .04 * Math.sin(TAU * u * .9);
+    } else if (n == 'snap') {                                     // dab: encaixa a pose rápido e segue no balanço
+      o.r = .13 * (1 - sm(u / .2)) - .05 + .03 * Math.sin(TAU * u / .9); o.y = -14 * a * Math.abs(Math.sin(Math.PI * u / .45)); o.sy = 1 - .02 * (1 - sm(u / .2));
+    } else if (n == 'startle') {                                  // susto de alegria: pula de uma vez, treme e relaxa
+      var s0 = Math.min(u / .42, 1); o.y = -58 * Math.sin(Math.PI * s0); o.sy = 1 + .07 * Math.sin(Math.PI * s0); o.r = .035 * Math.exp(-4 * u) * Math.sin(TAU * 14 * u);
+      if (u > .42) { o.sy += .012 * Math.sin(TAU * (u - .42) / 1.3); o.r += .015 * Math.sin(TAU * (u - .42) / 1.7); }
+    } else if (n == 'walk') {                                     // andando (de costas): sobe e desce a cada passo, balançando de um pé pro outro
+      ph = (u / .56) % 1; o.y = -22 * Math.abs(Math.sin(Math.PI * ph)); o.r = .07 * Math.sin(Math.PI * 2 * ph); o.x = 8 * Math.sin(TAU * u / 1.12); o.sy = 1 + .02 * Math.cos(Math.PI * 2 * ph);
+    } else {                                                      // bob: respirando
+      o.sy = 1 + .014 * Math.sin(TAU * u / 1.5); o.r = .018 * Math.sin(TAU * u / 2.4); o.y = -5 * a * (.5 + .5 * Math.sin(TAU * u / 1.5));
+    }
+    o.sx = 1 + (1 - o.sy) * .55;                                  // massa constante: esticou na altura, afina na largura
+    return o;
+  }
+  function popIn(u, c) { if (u >= .34) return 1; var k = u / .34 - 1, e = 1 + (c + 1) * k * k * k + c * k * k; return .55 + .45 * e; }
+
+  // escolhe uma das variações da situação (sem repetir a anterior) e converte em passos
+  function reelSteps(g, name) {
+    var L = REELS[g] && REELS[g][name]; if (!L) return null;
+    var k = 0; if (L.length > 1) { do { k = Math.floor(Math.random() * L.length); } while (k == lastReel[g + name]); lastReel[g + name] = k; }
+    return L[k];
+  }
+  function mkSteps(raw) { return raw.map(function (s) { return { p: s[0], d: s[1], m: s[2] || DEF[s[0]] || 'bob', f: s[3] || FXP[s[0]] || null, b: s[4] || null }; }); }
+  function attachFx(i) {
+    ensureFx(i); if (i.fcv && !i.fcv.parentNode && i.el) { i.el.insertBefore(i.fcv, i.cv ? i.cv.nextSibling : i.el.firstChild); size(i); }
+  }
+  // toca uma sequência de poses nesse personagem. o = { delay (s, contado a partir de quando ele apareceu), period (repete a cada N s), keep (não vira a base) }
+  function startReel(i, raw, o) {
+    if (reduce || !PZ || !raw || !PZ[i.g]) return false;
+    o = o || {}; var steps = mkSteps(raw), R = { steps: steps, pics: {}, ready: false, t0: 0, total: 0, period: o.period || 0, req: now() };
+    steps.forEach(function (s) { R.total += s.d; if (!PZ[i.g][s.p]) steps = null; });
+    if (!steps) return false;
+    i.rl = R; attachFx(i);
+    Promise.all(steps.map(function (s) { return poseLoad(i.g, s.p, i.hue).then(function (pic) { R.pics[s.p] = pic; }); })).then(function () {
+      if (i.rl !== R) return;
+      var tn = now(), st = Math.max(tn, (o.delay ? (i.t0 || tn) + o.delay : tn));
+      if (o.delay && tn - ((i.t0 || tn) + o.delay) > 8) { i.rl = null; return; }     // chegou tarde demais (internet lenta): a comemoração já passou
+      R.t0 = st; R.ready = true; loop();
+    }, function () { if (i.rl === R) { i.rl = null; if (o.fail) o.fail(); } });
+    return true;
+  }
+  function endReel(i, t) {                                        // acabou: o corpo animado volta com um pulinho, e a sequência de base (se houver) recomeça depois
+    i.rl = null; i.tap = t; i.tapFx = -1;
+    if (i.base && i.base.o.period) i.baseAt = t + 7;
+  }
+  // estado da pose agora (ou null se o corpo animado é quem aparece): { p, m, d, u, a, sc, f, b, k, kind }
+  function pzState(i, t) {
+    var R = i.rl; if (!R || !R.ready) return null;
+    var T = t - R.t0; if (T < 0) return null;
+    if (R.period) T %= R.period;
+    var ex = T - R.total;
+    if (ex > .2) { if (!R.period) endReel(i, t); return null; }
+    var k = 0, acc = 0, n = R.steps.length, s;
+    for (; k < n; k++) { if (T < acc + R.steps[k].d) break; acc += R.steps[k].d; }
+    if (k >= n) { k = n - 1; acc -= R.steps[k].d; }
+    s = R.steps[k];
+    var a = Math.min(1, T / .1), sc = 1;
+    if (ex > 0) { a = Math.min(a, 1 - ex / .2); sc = 1 - .08 * ex / .2; }
+    return { p: s.p, m: s.m, d: s.d, u: Math.min(T - acc, s.d), a: a, sc: sc, f: s.f, b: s.b, k: k, R: R };
+  }
+  function pzDraw(i, cx, r, s, ox, oy) {
+    var ps = i.ps; if (!ps) return;
+    var pic = ps.R.pics[ps.p]; if (!pic) return;
+    var m = pic.m, img = pic.img, kd = KIND[m.k] || KIND.full, sc = Math.min(kd[0] / m.w, kd[1] / m.h);
+    var u = ps.u, mo = mot(ps.m, u, ps.d, m.k), pp = popIn(u, 2.6), Z = sc * s * r;
+    var X0 = (ox + (320 + mo.x) * s) * r, Y0 = (oy + (BASE + mo.y) * s) * r;
+    cx.save(); cx.globalAlpha = Math.max(0, ps.a); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.translate(X0, Y0); cx.rotate(mo.r);
+    cx.save(); cx.scale(Z * mo.sx * pp * ps.sc, Z * mo.sy * pp * ps.sc); cx.drawImage(img, 0, 0, m.w, m.h, -m.w / 2, -m.h, m.w, m.h); cx.restore();
+    var dl = m.d || [], fade = ps.d > 100 ? 1 : Math.max(0, Math.min(1, (ps.d - u) / .2));
+    for (var j = 0; j < dl.length; j++) {                          // rabiscos: pipocam um a um, sobem um pouquinho e ficam pulsando
+      var dd = dl[j], age = u - .12 - j * .07; if (age < 0) continue;
+      var lx = dd[4] + dd[2] / 2 - m.w / 2, ly = dd[5] + dd[3] / 2 - m.h, vx = lx, vy = ly + m.h * .5, vn = Math.sqrt(vx * vx + vy * vy) || 1;
+      var po = popIn(age, 3.2), off = (1 - Math.min(1, age / .3)) * 26;
+      cx.save(); cx.globalAlpha = Math.max(0, ps.a) * Math.min(1, age / .08) * fade;
+      cx.translate((lx + vx / vn * off) * Z, (ly + vy / vn * off) * Z); cx.rotate(.1 * Math.sin(TAU2 * 1.2 * age + j * 1.7)); var zz = Z * po * (1 + .07 * Math.sin(TAU2 * 2.2 * age + j)) * ps.sc;
+      cx.scale(zz, zz); cx.drawImage(img, dd[0], dd[1], dd[2], dd[3], -dd[2] / 2, -dd[3] / 2, dd[2], dd[3]); cx.restore();
+    }
+    cx.restore();
+    if (ps.b) {                                                   // balãozinho de fala ("Oi!")
+      var ag = u - .3, du = ps.d - .5; if (ag >= 0 && u < du + .3) {
+        var bp = ag < .14 ? ag / .14 * 1.12 : 1.12 - .12 * Math.min(1, (ag - .14) / .1), bl = u > du ? Math.max(0, 1 - (u - du) / .3) : 1;
+        cx.save(); cx.globalAlpha = bl; bubble(cx, (ox + 545 * s) * r, (oy + (BASE - m.h * sc + 54) * s) * r, Math.max(9, 62 * s * 1.35) * r * bp, ps.b); cx.restore();
+      }
+    }
+  }
+
   // ---- faíscas (estrelinhas e confete) ao redor do personagem, calculadas só pelo tempo: [instante, quantidade, anel?]
   var BURSTS = { good: [[.5, 10, 0]], pop: [[.2, 9, 0]], jump: [[.62, 8, 0], [1.37, 8, 0], [2.12, 16, 1]], clap: [[.3, 5, 0]], dance: [[.5, 5, 0], [1.5, 5, 0], [2.5, 7, 0]], epic1: [[.75, 24, 1], [1.65, 14, 0]], epic2: [[.75, 34, 1], [1.65, 26, 1], [2.4, 20, 0]] };
   function bursts(i) { return i.mode == 'epic' ? (i.fx > 1 ? BURSTS.epic2 : BURSTS.epic1) : BURSTS[i.mode] || null; }
@@ -308,12 +479,15 @@
     var cx = i.fx2d; if (!cx) return;
     var cv = i.fcv; cx.clearRect(0, 0, cv.width, cv.height);
     if (reduce) return;
+    var r = cv.width / (2.4 * i.bw), s = i.bh / H, ox = .7 * i.bw, oy = .45 * i.bh;
+    if (i.ps) pzDraw(i, cx, r, s, ox, oy);                       // a pose da folha (e os rabiscos dela) por baixo das faíscas
     var list = (bursts(i) || []).map(function (b) { return [b[0], b[1], b[2], t - i.t0]; });
+    if (i.ps && i.ps.f && FXN[i.ps.f]) FXN[i.ps.f].forEach(function (b) { list.push([b[0], b[1], b[2], i.ps.u, 40 + i.ps.k]); });
     if (i.tapFx >= 0) { if (t - i.tapFx > 2) i.tapFx = -1; else list.push([0, 8, 0, t - i.tapFx, 7]); }
     if (i.react && BURSTS[i.react.k]) BURSTS[i.react.k].forEach(function (b) { list.push([b[0], b[1], b[2], t - i.react.t, 11]); });
     var ics = icons(i, t);
     if (!list.length && !ics.length) return;
-    var r = cv.width / (2.4 * i.bw), s = i.bh / H, ox = .7 * i.bw, oy = .45 * i.bh, pal = [i.fxc, '#ffffff', '#ffd43b', i.fxl];
+    var pal = [i.fxc, '#ffffff', '#ffd43b', i.fxl];
     list.forEach(function (b) {
       var age = b[3] - b[0]; if (age < 0 || age > 2) return;
       var rnd = rng(7919 * (b[4] || 1) + Math.round(b[0] * 100) + 13 * i.fxs);
@@ -418,6 +592,15 @@
 
   // ------------------------------------------------------------------ desenho
   function draw(i, t, forced) {
+    if (!i.spr && (!E || !i.as)) return;
+    i.ps = reduce ? null : pzState(i, t);                          // pose da folha em cena? (null = só o corpo animado)
+    var pa = i.ps ? Math.max(0, Math.min(1, i.ps.a)) : 0;
+    if (i.cv) { var op = pa >= 1 ? 0 : 1 - pa; if (i.op !== op) { i.cv.style.opacity = op >= 1 ? '' : String(op); i.op = op; } }
+    else if (i.el) { var hid = pa > .5; if (hid !== i.hid) { var im0 = i.el.querySelector('img'); if (im0) im0.style.visibility = hid ? 'hidden' : ''; i.hid = hid; } }
+    if (!i.spr && pa < 1) drawRig(i, t, forced);                   // com a pose cobrindo tudo, nem gasta o WebGL
+    if (i.fx2d) fxDraw(i, t);
+  }
+  function drawRig(i, t, forced) {
     var en = E; if (!en || !i.as) return;
     var gl = en.gl, U = en.U, c = CH[i.g] || CH.tay, a = i.as, p = forced || pose(i, t);
     var cw = i.cv.width, chh = i.cv.height, k = cw / (W + 2 * PX);
@@ -442,13 +625,12 @@
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     i.cx.clearRect(0, 0, cw, chh);
     i.cx.drawImage(en.cv, 0, en.cv.height - chh, cw, chh, 0, 0, cw, chh);
-    if (i.fx2d) fxDraw(i, t);
   }
 
   function size(i) {
     var r = i.el.getBoundingClientRect(), h = r.height || parseFloat(i.el.style.height) || 200, dpr = Math.min(root.devicePixelRatio || 1, 2);
     var k = Math.min(h * dpr / H, KMAX), w = Math.round((W + 2 * PX) * k), hh = Math.round((H + PT) * k);
-    if (i.cv.width != w || i.cv.height != hh) { i.cv.width = w; i.cv.height = hh; i.dirty = true; }
+    if (i.cv && (i.cv.width != w || i.cv.height != hh)) { i.cv.width = w; i.cv.height = hh; i.dirty = true; }
     i.bw = r.width || h * 2 / 3; i.bh = h;
     if (i.fcv) { var rr = Math.min(dpr, 1000 / (2.4 * i.bw), 800 / (1.5 * i.bh)), fw = Math.round(2.4 * i.bw * rr), fh = Math.round(1.5 * i.bh * rr); if (i.fcv.width != fw || i.fcv.height != fh) { i.fcv.width = fw; i.fcv.height = fh; i.dirty = true; } }
   }
@@ -462,31 +644,59 @@
   }
 
   function mount(el) {
-    if (el.getAttribute('data-on') || failed) return;
+    if (el.getAttribute('data-on')) return;
     var g = el.getAttribute('data-g'); if (!CH[g]) return;
-    var en = engine(); if (!en) return;
+    var rn = el.getAttribute('data-reel') || '', rigless = el.getAttribute('data-rig') == '0';
+    var en = rigless || failed ? null : engine();
+    if (!en && !(rn && PZ && !reduce)) return;                     // sem WebGL (e sem pose para mostrar): fica a <img> parada
     el.setAttribute('data-on', '1');
-    var i = { el: el, g: g, src: el.getAttribute('data-src'), style: +el.getAttribute('data-o') || 0, mode: el.getAttribute('data-mode') || '', seed: Math.random() * 6, t0: now(), tap: -1, tapFx: -1, vis: true, dirty: true, as: null };
+    var i = { el: el, g: g, src: el.getAttribute('data-src'), style: +el.getAttribute('data-o') || 0, mode: el.getAttribute('data-mode') || '', seed: Math.random() * 6, t0: now(), tap: -1, tapFx: -1, vis: true, dirty: true, as: null, spr: !en, hue: +el.getAttribute('data-hue') || 0, reelName: rn, taps: [] };
+    if (rn && PZ && !reduce && i.mode == 'wave') i.mode = '';       // com as poses da folha, quem cumprimenta é a pose (o aceno do corpo fica de reserva)
     var fxc = el.getAttribute('data-fxc'); i.fxc = /^#[0-9a-f]{6}$/i.test(fxc || '') ? fxc : '#ffd43b'; i.fx = +el.getAttribute('data-fx') || 1; i.fxs = Math.floor(Math.random() * 1000);
     var fx3 = hex(i.fxc).map(function (v) { return v + (1 - v) * .35; }); i.fxr = fx3; i.fxl = 'rgb(' + fx3.map(function (v) { return Math.round(v * 255); }).join(',') + ')';
-    i.cv = document.createElement('canvas'); i.cv.className = 'ac'; i.cv.setAttribute('aria-hidden', 'true'); i.cx = i.cv.getContext('2d');
-    insts.push(i); size(i);
-    if (/^(epic|good|pop|jump|clap|dance|wave)$/.test(i.mode) && !reduce) ensureFx(i);
-    assets(i.src, g).then(function (a) {
-      if (!el.isConnected) { release(i); return; }
-      i.as = a; i.t0 = now(); el.insertBefore(i.cv, el.firstChild); if (i.fcv) el.insertBefore(i.fcv, i.cv.nextSibling); size(i);
-      draw(i, i.t0, reduce ? STILL : null); i.dirty = false;                       // primeiro quadro já na mesma hora, antes de esconder a <img> (sem piscar)
-      el.classList.add('on'); var im = el.querySelector('img'); if (im) im.style.visibility = 'hidden';
-      i.dirty = reduce; loop();
-    }).catch(function () { release(i); });
+    if (i.spr) {                                                  // só a pose (ex.: o personagem andando no mapa): sem WebGL e sem canvas do corpo
+      insts.push(i); size(i); i.t0 = now(); attachFx(i); kick(i); preloadLater(i); loop();
+    } else {
+      i.cv = document.createElement('canvas'); i.cv.className = 'ac'; i.cv.setAttribute('aria-hidden', 'true'); i.cx = i.cv.getContext('2d');
+      insts.push(i); size(i);
+      if (/^(epic|good|pop|jump|clap|dance|wave)$/.test(i.mode) && !reduce) ensureFx(i);
+      assets(i.src, g).then(function (a) {
+        if (!el.isConnected) { release(i); return; }
+        i.as = a; i.t0 = now(); el.insertBefore(i.cv, el.firstChild); if (i.fcv) el.insertBefore(i.fcv, i.cv.nextSibling); size(i);
+        draw(i, i.t0, reduce ? STILL : null); i.dirty = false;                       // primeiro quadro já na mesma hora, antes de esconder a <img> (sem piscar)
+        el.classList.add('on'); var im = el.querySelector('img'); if (im) im.style.visibility = 'hidden';
+        i.dirty = reduce; kick(i); preloadLater(i); loop();
+      }).catch(function () { release(i); });
+    }
     if ('IntersectionObserver' in root) { i.io = new IntersectionObserver(function (es) { i.vis = es[es.length - 1].isIntersecting; if (i.vis) { i.dirty = true; loop(); } }); i.io.observe(el); }
-    el.addEventListener('pointerdown', function () { trigger(i, null, false); });
+    if (!i.spr) el.addEventListener('pointerdown', function () { trigger(i, null, false); });
   }
-  // toque no personagem (ou botão do Perfil): faz um movimento — pulinho, tchau, pulo sorrindo, dança ou palmas (sem repetir o último)
+  function preloadLater(i) { if (PZ && !reduce) setTimeout(function () { preload(i.g, i.hue); }, 900); }
+  // a tela pediu uma sequência (data-reel): começa quando o personagem aparece; as que se repetem (period) viram a "base" e recomeçam sozinhas
+  function kick(i) {
+    var nm = i.reelName; if (!nm || !PZ || reduce) return;
+    var o = ROPT[nm] || {}, raw = reelSteps(i.g, nm); if (!raw) return;
+    if (o.period) i.base = { name: nm, o: o };
+    startReel(i, raw, o);
+  }
+  // toque no personagem (ou botão do Perfil): faz uma expressão da folha (sem repetir a última). Muitos toques seguidos o deixam bravinho — e ele ri de volta.
+  // Sem as poses (ou 'wave'/'dance'… pedidos de propósito), faz o movimento do corpo animado: pulinho, tchau, pulo, dança ou palmas.
   function trigger(i, k, force) {
     var tn = now();
+    if (PZ && PZ[i.g] && !reduce && (!k || k.indexOf('p:') == 0)) {
+      if (!force && i.rl && !i.rl.period && tn - i.rl.req < .45) return;
+      var id = k ? k.slice(2) : null, raw;
+      i.taps = (i.taps || []).filter(function (x) { return tn - x < 3.5; }); if (!k) i.taps.push(tn);
+      if (!k && i.taps.length >= 5) { i.taps = []; id = 'angry'; raw = [['angry', 1.7, 'shake'], [CALM[i.g], 1.5, 'bob', 'star']]; }
+      else {
+        if (!id) { do { id = TAPS[i.g][Math.floor(Math.random() * TAPS[i.g].length)]; } while (id == i.lastP); }
+        raw = [[id, 2.4, DEF[id] || 'bob', FXP[id] || null]];
+      }
+      i.lastP = id; i.react = null; i.tap = -1;
+      if (startReel(i, raw, { fail: function () { i.tap = i.tapFx = now(); loop(); } })) { loop(); return; }
+    }
     if (!force && i.react && tn - i.react.t < DUR[i.react.k] - .3) return;
-    if (!k) { do { k = KINDS[Math.floor(Math.random() * KINDS.length)]; } while (k == i.lastK); }
+    if (!k || k.indexOf('p:') == 0) { k = null; do { k = KINDS[Math.floor(Math.random() * KINDS.length)]; } while (k == i.lastK); }
     i.lastK = k;
     if (k == 'hop') { i.tap = i.tapFx = tn; i.react = null; } else { i.react = { k: k, t: tn }; i.tap = -1; }
     if (!reduce) { ensureFx(i); if (i.fcv && !i.fcv.parentNode && i.as) { i.el.insertBefore(i.fcv, i.cv.nextSibling); size(i); } }
@@ -509,9 +719,10 @@
       for (var n = insts.length - 1; n >= 0; n--) {
         var i = insts[n];
         if (!i.el.isConnected) { release(i); continue; }
-        if (!i.as) continue;
+        if (!i.as && !i.spr) continue;
         alive++;
         if (!i.vis) continue;
+        if (!i.rl && i.base && i.baseAt && t >= i.baseAt) { i.baseAt = 0; startReel(i, reelSteps(i.g, i.base.name), { period: i.base.o.period }); }
         size(i);
         if (reduce) { if (i.dirty) { draw(i, 0, STILL); i.dirty = false; } continue; }
         draw(i, t); i.dirty = false;
@@ -535,17 +746,32 @@
   // HTML do personagem animado: guia (tay|cut), arquivo colorido, estilo da roupa (número), altura em px, classes e modo (good|bad)
   function html(o) {
     var h = o.h || 200;
-    return '<span class="abody ' + (o.cls || '') + '" data-g="' + o.g + '" data-src="' + o.src + '" data-o="' + (o.o || 0) + '"' + (o.mode ? ' data-mode="' + o.mode + '"' : '') + (o.fx ? ' data-fx="' + (+o.fx || 1) + '"' : '') + (/^#[0-9a-f]{6}$/i.test(o.fxc || '') ? ' data-fxc="' + o.fxc + '"' : '') + ' style="height:' + h + 'px"><img class="body" src="' + o.src + '" alt="' + (o.alt || '') + '" style="height:100%"></span>';
+    return '<span class="abody ' + (o.cls || '') + '" data-g="' + o.g + '" data-src="' + o.src + '" data-o="' + (o.o || 0) + '"' + (o.mode ? ' data-mode="' + o.mode + '"' : '') + (o.fx ? ' data-fx="' + (+o.fx || 1) + '"' : '') + (/^#[0-9a-f]{6}$/i.test(o.fxc || '') ? ' data-fxc="' + o.fxc + '"' : '') + (/^[a-z]+$/.test(o.reel || '') ? ' data-reel="' + o.reel + '"' : '') + (+o.hue ? ' data-hue="' + Math.round(+o.hue) + '"' : '') + (o.rig === 0 ? ' data-rig="0"' : '') + ' style="height:' + h + 'px"><img class="body" src="' + o.src + '" alt="' + (o.alt || '') + '" style="height:100%"></span>';
   }
 
   root.CodeUpAnim = {
     html: html, scan: scan, ok: function () { return !!E; },
     // faz o personagem desse elemento fazer um movimento: 'hop' | 'wave' | 'jump' | 'dance' | 'clap' (sem nome, sorteia). Devolve false se ele ainda não está na tela.
-    play: function (el, k) { if (reduce) return false; var i = insts.filter(function (x) { return x.el == el; })[0]; if (!i || !i.as || (k && KINDS.indexOf(k) < 0)) return false; trigger(i, k || null, true); return true; },
+    // 'p:<pose>' mostra uma expressão da folha (ex.: 'p:love'); 'hop'|'wave'|'jump'|'dance'|'clap' são movimentos do corpo animado. Devolve false se não deu.
+    play: function (el, k) {
+      if (reduce) return false; var i = insts.filter(function (x) { return x.el == el; })[0]; if (!i || (!i.as && !i.spr)) return false;
+      if (k && k.indexOf('p:') == 0) { if (!PZ || !PZ[i.g] || !PZ[i.g][k.slice(2)]) return false; } else if (k && KINDS.indexOf(k) < 0) return false;
+      trigger(i, k || null, true); return true;
+    },
+    poses: function (g) { return PZ && PZ[g] ? Object.keys(PZ[g]) : []; },
+    preload: preload,
     // para testes: desenha um quadro fixo (sem esperar o relógio)
     _frame: function (el, t, over) {
       var i = insts.filter(function (x) { return x.el == el; })[0]; if (!i || !i.as) return false;
       size(i); var p = pose(i, t); if (over) for (var k in over) p[k] = over[k]; draw(i, t, p); return true;
+    },
+    // para testes: mostra uma pose parada no instante u (segundos) do movimento; devolve uma Promise (a pose precisa carregar)
+    _pose: function (el, id, u, mv, bub) {
+      var i = insts.filter(function (x) { return x.el == el; })[0]; if (!i || !PZ) return Promise.resolve(false);
+      return poseLoad(i.g, id, i.hue).then(function (pic) {
+        var R = { steps: [{ p: id, d: 99, m: mv || DEF[id] || 'bob', f: null, b: bub || null }], pics: {}, ready: true, t0: 0, total: 99, period: 0, req: 0 }; R.pics[id] = pic;
+        i.rl = R; attachFx(i); size(i); draw(i, u, null); return true;
+      }, function () { return false; });
     },
     _pause: function () { paused = true; }, _resume: function () { paused = false; loop(); },
     _inst: function () { return insts; }

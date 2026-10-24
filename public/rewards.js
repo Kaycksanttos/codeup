@@ -53,6 +53,8 @@
   const pick = (kind, xp, key, guide) => { const it = item(LISTS[kind], key); return it && it.tier <= tierOf(xp) && !(kind === 'color' && it.key === BASE[guide]) && !(kind === 'outfit' && !it.id) ? it.key : null; };
   const outfitId = key => { const it = item(OUTFITS, key); return it ? it.id : 0; };
   const colorFile = (guide, color, face) => { const g = guide === 'tay' ? 'tay' : 'cut'; return `/img/${g}${color && color !== BASE[g] && item(COLORS, color) ? '-' + color : ''}${face ? '-face' : ''}.webp`; };
-  const api = { TIERS, tierOf, nextTier, frameOf, BASE, COLORS, STICKERS, BACKS, OUTFITS, LISTS, item, pick, outfitId, colorFile };
+  // quantos graus o matiz da cor escolhida está da cor de fábrica do guia (-180 a 180): é a mesma conta que gerou as imagens coloridas, e o que recolore as poses (anim.js)
+  const hueShift = (guide, color) => { const g = guide === 'tay' ? 'tay' : 'cut', c = item(COLORS, color), b = item(COLORS, BASE[g]); return c && b && c.key !== b.key ? ((c.hue - b.hue) % 360 + 540) % 360 - 180 : 0; };
+  const api = { TIERS, tierOf, nextTier, frameOf, BASE, COLORS, STICKERS, BACKS, OUTFITS, LISTS, item, pick, outfitId, colorFile, hueShift };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.CodeUpRewards = api;
 })(typeof window !== 'undefined' ? window : globalThis);
