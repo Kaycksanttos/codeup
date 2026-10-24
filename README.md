@@ -22,6 +22,7 @@ codeup/
 │                     rewards.js: tabela de títulos/molduras por XP (8 níveis; um só arquivo usado pelo navegador e pelo servidor)
 │                     scene.js: cenários dos visuais "Azul" (floresta azul, padrão) e "Rosa"
 │                     mapscene.js: cenário do mapa de lições (floresta ao longo da trilha, lago, coruja, placa com a logo, lampião, vaga-lumes), só no visual Azul/Rosa
+│                     totp.js / qr.js: código de 6 dígitos do autenticador (TOTP, RFC 6238) e gerador de QR Code do painel admin, sem dependências
 │                     img/tay*.webp e img/cut*.webp: os personagens (Tay = feminino, rosa · Cut = masculino, azul), versão inteira e versão rosto; as variações de cor (tay-verde.webp, cut-rosa-face.webp…) são geradas das originais trocando só o matiz da roupa
 │                     Cadastro em 3 passos: "Você é feminino ou masculino?" (u.sex = f|m), "Quem vai te guiar?" (u.guide = tay|cut, escolha independente do gênero) e "Que nome você quer dar ao guia?" (u.gname, 2 a 14 caracteres, só o aluno vê); seguem junto no POST /api/register e no login Google. Contas antigas respondem uma vez ao entrar (POST /api/guide aceita sex e/ou guide). Dá para trocar em Perfil > Eu sou / Personagem; o painel mostra os dois (visão geral, ficha, CSV)
 │                     Estilos: Azul (floresta azul), Rosa, Azul escuro e Claro (Perfil > Ajustes > Aparência); escolher a Tay já liga o Rosa
@@ -97,6 +98,17 @@ Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/adm
 
 **Como ligar em outro lugar:** defina `ADMIN_KEY` com uma senha longa (16+ caracteres) — no `.env` do seu computador ou nas variáveis do Render — e reinicie. Sem `ADMIN_KEY` o painel fica **desligado** em produção (e qualquer endereço `/api/admin/...` responde 404, como se não existisse). No seu computador, se você não definir nada, o servidor gera uma chave sozinha e **mostra no terminal** quando inicia. O login vale 12 horas e só fica na aba do navegador; a chave em si nunca é guardada. A página `/admin` não aparece em buscadores (`noindex`).
 
+**Autenticador (código de 6 dígitos no celular) — recomendado.** Em vez de depender só da chave, o painel pode pedir o código do aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy, 1Password…), que muda a cada 30 segundos.
+1. Entre no painel com a chave → aba **Sistema** → **Ligar o autenticador**.
+2. No celular abra o aplicativo, toque em **+** e **escaneie o QR Code** (sem câmera, digite a chave que aparece embaixo do QR).
+3. Digite o código de 6 dígitos que o app mostrar, escolha como quer entrar e toque em **Ligar**:
+   - **Chave + código** (mais seguro, recomendado): o painel pede a `ADMIN_KEY` **e** o código. Deixe a chave salva no gerenciador de senhas do navegador e digite só o código.
+   - **Só o código** (mais prático): a chave deixa de ser pedida. Por segurança, **5 códigos errados seguidos travam o painel por 15 minutos**.
+- Cada código vale **uma vez só** (se acabou de entrar, espere o próximo para repetir) e é guardado no servidor sem aparecer em nenhum registro. Ligar ou desligar pede o código e encerra as outras sessões abertas.
+- Com o autenticador ligado, a chave sozinha **não abre mais nada**, nem as rotas de scripts (`x-admin-key`): só uma sessão do painel. Tudo fica na **Auditoria** (`ligou-autenticador`, `desligou-autenticador`, `login`, `login-falhou`).
+- **Perdeu o celular?** No servidor (Render → **Environment**, ou o `.env` do seu computador), crie `ADMIN_2FA_OFF=1` e reinicie: o painel volta a pedir só a chave. Entre, **desligue e ligue o autenticador de novo** com o celular novo (a aba Sistema avisa enquanto a variável existir) e depois **apague** a variável `ADMIN_2FA_OFF`. Por isso, quem controla o servidor controla o acesso: guarde bem o acesso ao Render.
+- Para o código funcionar, o relógio do celular precisa estar no horário automático (o servidor aceita até 30 s de diferença).
+
 **O que o painel faz**
 - **Visão geral:** quantos se cadastraram (hoje, 7 e 30 dias), quantos estudaram hoje, lições concluídas, provas, certificados, XP total, gráfico dos últimos 30 dias, funil “cadastro → certificado”, últimos cadastros, ranking de XP e quantos estão em cada trilha.
 - **Usuários:** lista de todos com busca por nome/e-mail, filtros (já estudaram, nunca estudaram, ativos/sumidos, e-mail sem confirmar, Google, curso liberado, com certificado, suspensos), ordenação, páginas e **baixar CSV** (abre direto no Excel).
@@ -111,7 +123,7 @@ Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/adm
 - **Sistema:** confere banco de dados, e-mail, Google, anúncios, correção de Python e de SQL e o endereço do site, com dica do que falta.
 - **Auditoria:** registro de tudo o que foi feito pelo painel (quem, o quê, quando e de qual IP). Nunca guarda senhas.
 
-**Para scripts:** as rotas antigas continuam valendo com o cabeçalho `x-admin-key: <ADMIN_KEY>` (`GET /api/admin/stats`, `POST /api/admin/reset-link`). O painel usa `x-admin-token`, obtido em `POST /api/admin/login`.
+**Para scripts:** as rotas antigas continuam valendo com o cabeçalho `x-admin-key: <ADMIN_KEY>` (`GET /api/admin/stats`, `POST /api/admin/reset-link`) **enquanto o autenticador estiver desligado**; ligado, elas passam a responder 404. O painel usa `x-admin-token`, obtido em `POST /api/admin/login`.
 
 **Painel em endereço separado (recomendado em produção).** O painel e o app dos alunos rodam no **mesmo servidor** — de propósito: o app guarda os dados em memória, então um segundo servidor mexendo no mesmo banco desatualizaria e até sobrescreveria o que o primeiro gravou (liberações e suspensões não valeriam). O que dá para separar é o **endereço**: o painel num subdomínio só seu, que não existe no site público.
 1. No Render, abra o serviço → **Settings → Custom Domains** → adicione `admin.seusite.com.br` (além do domínio do site). No seu provedor de domínio, crie o registro **CNAME** `admin` apontando para o endereço que o Render mostrar (algo como `codeup.onrender.com`).

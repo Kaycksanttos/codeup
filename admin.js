@@ -4,13 +4,16 @@
 // Como funciona o acesso:
 //  - Você entra em /admin com a ADMIN_KEY (variável de ambiente). O servidor devolve um token de sessão
 //    que vale 12 horas e só fica na aba do navegador (sessionStorage). A chave em si nunca é guardada.
+//  - Autenticador (opcional): em Sistema você liga o código de 6 dígitos do Google/Microsoft Authenticator, Authy etc.
+//    Dá para entrar com "chave + código" (mais seguro) ou "só o código". Cada código só vale uma vez, 5 erros bloqueiam por 15 min,
+//    e a variável ADMIN_2FA_OFF=1 desliga a exigência (se você perder o celular).
 //  - Sem credenciais, qualquer rota /api/admin/* responde 404 (ninguém descobre que o painel existe).
 //  - Cada ação importante (liberar curso, suspender, excluir...) fica registrada na Auditoria.
 //  - No seu computador (fora de produção), se ADMIN_KEY não estiver definida, uma chave é gerada
 //    sozinha e mostrada no terminal quando o servidor inicia.
 // ============================================================================
 'use strict';
-const crypto = require('crypto'), path = require('path');
+const crypto = require('crypto'), path = require('path'), totp = require('./totp'), qr = require('./qr');
 
 module.exports = function mountAdmin(app, X) {
   const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
@@ -24,11 +27,19 @@ module.exports = function mountAdmin(app, X) {
   function adminKey() {
     if (process.env.ADMIN_KEY) return process.env.ADMIN_KEY;
     if (PROD) return '';
-    DB.meta ??= {};
-    if (!DB.meta.admin) { DB.meta.admin = { devKey: crypto.randomBytes(12).toString('base64url') }; save(); }   // só para uso local
+    DB.meta ??= {}; DB.meta.admin ??= {};
+    if (!DB.meta.admin.devKey) { DB.meta.admin.devKey = crypto.randomBytes(12).toString('base64url'); save(); }   // só para uso local
     return DB.meta.admin.devKey;
   }
   const keyOk = k => { const K = adminKey(); return !!K && same(sha(String(k || '')), sha(K)); };
+
+  // ---------- autenticador (código de 6 dígitos) ----------
+  // guardado em DB.meta.admin.totp = { secret, needKey, on, last (último passo aceito: um código não vale duas vezes), at }
+  const tf = () => { const t = DB.meta && DB.meta.admin && DB.meta.admin.totp; return t && t.on && !process.env.ADMIN_2FA_OFF ? t : null; };
+  const bad = { n: 0, t: 0, until: 0 };                                        // erros seguidos de código: 5 erros travam por 15 minutos
+  const lockLeft = () => Math.max(0, bad.until - Date.now());
+  const badCode = () => { const now = Date.now(); if (now - bad.t > 15 * 60e3) bad.n = 0; bad.t = now; if (++bad.n >= 5) { bad.until = now + 15 * 60e3; bad.n = 0; } };
+  const dropOtherTokens = keep => { for (const k in DB.asessions) if (k !== keep) delete DB.asessions[k]; };
 
   // ---------- auditoria ----------
   function audit(req, action, target, detail) {
@@ -50,7 +61,7 @@ module.exports = function mountAdmin(app, X) {
       return res.status(401).json({ error: 'admin-login' });
     }
     const k = req.headers['x-admin-key'];
-    if (k) {
+    if (k && !tf()) {                                                           // com o autenticador ligado, só entra quem tem o código (sessão do painel)
       if (tooMany('admkey:' + req.ip, 20, 15 * 60e3)) return res.status(429).json({ error: 'Muitas tentativas.' });
       if (keyOk(k)) { req.admin = 'key'; return next(); }
     }
@@ -58,18 +69,61 @@ module.exports = function mountAdmin(app, X) {
   };
   const guard = [limit(600, 15 * 60e3), adm];
 
+  // a tela de entrada precisa saber o que pedir (só a chave, chave + código ou só o código)
+  app.get('/api/admin/login-info', limit(120, 15 * 60e3), (req, res) => { const T = tf(); res.set('Cache-Control', 'no-store').json({ ready: !!adminKey(), twofa: !!T, needKey: T ? T.needKey !== false : true }); });
   app.post('/api/admin/login', limit(8, 15 * 60e3), (req, res) => {
     if (!adminKey()) return res.status(503).json({ error: 'O painel admin está desligado: defina ADMIN_KEY nas variáveis do servidor (veja o README).' });
     if (tooMany('admlogin', 40, 15 * 60e3)) return res.status(429).json({ error: 'Muitas tentativas. Aguarde alguns minutos.' });
-    if (!keyOk(req.body.key)) { audit(req, 'login-falhou', '', ''); return res.status(401).json({ error: 'Chave incorreta.' }); }
+    const T = tf(); let used = -1;
+    if (!T) { if (!keyOk(req.body.key)) { audit(req, 'login-falhou', '', ''); return res.status(401).json({ error: 'Chave incorreta.' }); } }
+    else {
+      const wait = lockLeft(); if (wait > 0) { audit(req, 'login-bloqueado', '', 'código errado várias vezes'); return res.status(429).json({ error: `Muitos códigos errados. Aguarde ${Math.ceil(wait / 60e3)} min e tente de novo.` }); }
+      if (T.needKey !== false && !keyOk(req.body.key)) { audit(req, 'login-falhou', '', 'chave'); return res.status(401).json({ error: 'Chave ou código incorreto.' }); }
+      used = totp.check(T.secret, req.body.code);
+      if (used < 0) { badCode(); audit(req, 'login-falhou', '', 'código'); return res.status(401).json({ error: T.needKey !== false ? 'Chave ou código incorreto.' : 'Código incorreto. Ele muda a cada 30 segundos.' }); }
+      if (used <= (T.last ?? -1)) { audit(req, 'login-falhou', '', 'código repetido'); return res.status(401).json({ error: 'Esse código já foi usado. Espere o próximo (muda a cada 30 segundos).' }); }
+      T.last = used; bad.n = 0;
+    }
     const now = Date.now();
     for (const k in DB.asessions) if (DB.asessions[k].exp < now) delete DB.asessions[k];
     const token = crypto.randomBytes(32).toString('hex'), exp = now + 12 * 36e5;
     DB.asessions[sha(token)] = { exp, ip: req.ip };
-    audit(req, 'login', '', ''); res.json({ token, exp });
+    audit(req, 'login', '', T ? 'com autenticador' : ''); res.json({ token, exp });
   });
   app.post('/api/admin/logout', ...guard, (req, res) => { const t = req.headers['x-admin-token']; if (t) delete DB.asessions[sha(String(t))]; save(); res.json({ ok: true }); });
   app.get('/api/admin/ping', ...guard, (req, res) => res.json({ ok: true }));
+
+  // ligar/desligar o autenticador (precisa estar com a sessão do painel aberta)
+  const tokenOnly = (req, res, next) => req.admin === 'token' ? next() : res.sendStatus(404);
+  const A = () => { DB.meta ??= {}; DB.meta.admin ??= {}; return DB.meta.admin; };
+  const label = req => 'admin@' + String(adminHost || req.hostname || 'codeup').replace(/:\d+$/, '');
+  app.get('/api/admin/2fa', ...guard, tokenOnly, (req, res) => { const t = A().totp, T = tf(); res.json({ on: !!T, needKey: T ? T.needKey !== false : true, since: T ? T.at || null : null, stored: !!(t && t.on), envOff: !!process.env.ADMIN_2FA_OFF }); });
+  app.post('/api/admin/2fa/start', limit(20, 15 * 60e3), ...guard, tokenOnly, async (req, res) => {
+    if (A().totp && A().totp.on) return res.status(409).json({ error: process.env.ADMIN_2FA_OFF ? 'O autenticador está desligado pela variável ADMIN_2FA_OFF. Tire essa variável do servidor e reinicie para voltar a usá-lo.' : 'O autenticador já está ligado.' });
+    let p = A().pending; const now = Date.now();
+    if (!p || now - msOf(p.at) > 15 * 60e3) { p = A().pending = { secret: totp.newSecret(), at: new Date().toISOString() }; save(); }   // mesmo segredo por 15 min: dá para errar o código sem refazer o QR
+    const uri = totp.uri(p.secret, label(req), 'CodeUp');
+    res.json({ secret: p.secret, pretty: totp.pretty(p.secret), uri, svg: qr.svg(uri, { label: 'QR Code para o aplicativo autenticador' }) });
+  });
+  app.post('/api/admin/2fa/enable', limit(20, 15 * 60e3), ...guard, tokenOnly, (req, res) => {
+    const p = A().pending; if (A().totp && A().totp.on) return res.status(409).json({ error: 'O autenticador já está ligado.' });
+    if (!p || Date.now() - msOf(p.at) > 15 * 60e3) return res.status(400).json({ error: 'O QR Code expirou. Feche e abra “Ligar o autenticador” de novo.' });
+    if (lockLeft() > 0) return res.status(429).json({ error: 'Muitos códigos errados. Aguarde alguns minutos.' });
+    const hit = totp.check(p.secret, req.body.code);
+    if (hit < 0) { badCode(); return res.status(400).json({ error: 'Código incorreto. Confira se o relógio do celular está no horário automático e digite o código atual do app.' }); }
+    A().totp = { secret: p.secret, needKey: req.body.needKey !== false && req.body.needKey !== 'false' && req.body.needKey !== 0, on: true, last: hit, at: new Date().toISOString() }; delete A().pending; bad.n = 0;
+    dropOtherTokens(sha(String(req.headers['x-admin-token'])));                 // quem estava logado só com a chave sai
+    audit(req, 'ligou-autenticador', '', A().totp.needKey ? 'chave + código' : 'só o código'); res.json({ ok: true, needKey: A().totp.needKey });
+  });
+  app.post('/api/admin/2fa/disable', limit(20, 15 * 60e3), ...guard, tokenOnly, (req, res) => {
+    const T = tf(); if (!T) return res.status(409).json({ error: 'O autenticador não está ligado.' });
+    if (lockLeft() > 0) return res.status(429).json({ error: 'Muitos códigos errados. Aguarde alguns minutos.' });
+    const hit = totp.check(T.secret, req.body.code);
+    if (hit < 0) { badCode(); return res.status(400).json({ error: 'Código incorreto.' }); }
+    if (hit <= (T.last ?? -1)) return res.status(400).json({ error: 'Esse código acabou de ser usado. Espere o próximo (muda a cada 30 segundos) e tente de novo.' });
+    delete A().totp; bad.n = 0; dropOtherTokens(sha(String(req.headers['x-admin-token'])));
+    audit(req, 'desligou-autenticador', '', ''); res.json({ ok: true });
+  });
 
   // a tela
   app.get('/admin', (req, res) => { res.set({ 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' }).sendFile(path.join(__dirname, 'public', 'admin.html')); });
@@ -293,7 +347,7 @@ module.exports = function mountAdmin(app, X) {
     res.json({
       db: store.kind, node: process.version, uptime: Math.round(process.uptime()), memMB: Math.round(m.rss / 1048576), prod: PROD, base: BASE,
       users: Object.keys(DB.users).length, sessions: Object.keys(DB.sessions).length, certs: Object.keys(DB.certs || {}).length, audit: Object.keys(DB.audit || {}).length,
-      keyFromEnv: !!process.env.ADMIN_KEY, adminHost: adminHost || '', now: new Date().toISOString(), ...info()
+      keyFromEnv: !!process.env.ADMIN_KEY, twofa: !!tf(), twofaKey: tf() ? tf().needKey !== false : null, twofaStored: !!(DB.meta && DB.meta.admin && DB.meta.admin.totp && DB.meta.admin.totp.on), twofaEnvOff: !!process.env.ADMIN_2FA_OFF, adminHost: adminHost || '', now: new Date().toISOString(), ...info()
     });
   });
   app.get('/api/admin/audit', ...guard, (req, res) => {

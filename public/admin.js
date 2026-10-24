@@ -65,14 +65,20 @@ function ask({ title, text, fields = [], ok = 'Confirmar', danger = false, html 
 }
 
 // ---------------------------------------------------------------- login
-function showLogin(msg, setup) {
-  root.innerHTML = `<div class="lg"><form class="box" id="lf"><h1 class="logo"><b>Code</b><span>Up</span></h1><h2>Painel admin</h2><p>Entre com a chave de administrador.</p>
-    ${msg ? `<div class="err">${esc(msg)}</div>` : ''}<input class="in" type="password" id="key" placeholder="ADMIN_KEY" autocomplete="current-password" autofocus><div style="height:12px"></div>
+async function showLogin(msg, setup) {
+  let li = { twofa: false, needKey: true };                                                  // o servidor diz o que pedir: só a chave, chave + código ou só o código
+  try { const r = await fetch('/api/admin/login-info', { cache: 'no-store' }); if (r.ok) li = await r.json(); } catch { }
+  const key = li.needKey !== false, two = !!li.twofa;
+  root.innerHTML = `<div class="lg"><form class="box" id="lf"><h1 class="logo"><b>Code</b><span>Up</span></h1><h2>Painel admin</h2><p>${two ? (key ? 'Entre com a chave de administrador e o código do aplicativo autenticador.' : 'Entre com o código do aplicativo autenticador.') : 'Entre com a chave de administrador.'}</p>
+    ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+    ${key ? `<input class="in" type="password" id="key" placeholder="ADMIN_KEY" autocomplete="current-password"${two ? '' : ' autofocus'}><div style="height:12px"></div>` : ''}
+    ${two ? `<input class="in code" type="text" id="code" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" placeholder="000 000" autocomplete="one-time-code" aria-label="Código de 6 dígitos do autenticador"${key ? '' : ' autofocus'}><div class="hint">O código muda a cada 30 segundos.</div><div style="height:12px"></div>` : ''}
     <button class="btn pri" style="width:100%" id="lb">${ic('lock', 16)} Entrar</button>
     ${setup ? `<div class="help"><b>Como ligar o painel:</b><br>Abra o arquivo <span class="mono">.env</span> na pasta do projeto, escreva <span class="mono">ADMIN_KEY=uma-senha-longa-sua</span> e reinicie o servidor. No Render, é a variável <span class="mono">ADMIN_KEY</span>.</div>` : ''}</form></div>`;
+  const k = $('#key'), c = $('#code'); if (k && !two) k.focus(); else if (c && !key) c.focus(); else if (k) k.focus();
   $('#lf').onsubmit = async e => {
     e.preventDefault(); const b = $('#lb'); b.disabled = true;
-    try { const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: $('#key').value }) }), j = await r.json().catch(() => ({}));
+    try { const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k ? k.value : '', code: c ? c.value : '' }) }), j = await r.json().catch(() => ({}));
       if (!r.ok) { showLogin(j.error || 'Não foi possível entrar.', r.status === 503); return; }
       ST.token = j.token; try { sessionStorage.setItem('adm', j.token); } catch { } shell();
     } catch { showLogin('Sem conexão com o servidor.'); }
@@ -242,7 +248,8 @@ const VIEWS = {
       ${it(s.prod ? 'ok' : 'warn', s.prod ? 'Modo produção' : 'Modo de teste', s.prod ? 'NODE_ENV=production.' : 'Você está rodando localmente. Tudo bem para testar.')}
       ${it(/^https:/.test(s.base) || !s.prod ? 'ok' : 'err', 'Endereço do site (BASE_URL)', `<span class="mono">${esc(s.base)}</span>${/^https:/.test(s.base) || !s.prod ? '' : '<br>Em produção use https://.'}`)}
       ${it(s.adminHost || !s.prod ? 'ok' : 'warn', 'Endereço do painel', s.adminHost ? `Só abre em <span class="mono">${esc(s.adminHost)}</span>; no site público ele não existe.` : s.prod ? 'Abre no mesmo endereço do site (…/admin). Para separar, defina ADMIN_HOST=admin.seu-dominio.com.br (veja o README).' : 'No seu computador tudo fica no mesmo endereço. Tudo bem.')}
-      ${it(s.keyFromEnv ? 'ok' : 'warn', 'Chave do admin', s.keyFromEnv ? 'Vem de ADMIN_KEY (variável do servidor).' : 'Chave temporária gerada para este computador. Para fixar a sua, defina ADMIN_KEY no .env.')}</div>
+      ${it(s.keyFromEnv ? 'ok' : 'warn', 'Chave do admin', s.keyFromEnv ? 'Vem de ADMIN_KEY (variável do servidor).' : 'Chave temporária gerada para este computador. Para fixar a sua, defina ADMIN_KEY no .env.')}
+      ${it(s.twofa ? 'ok' : s.twofaStored ? 'warn' : s.prod ? 'warn' : 'ok', 'Autenticador (código de 6 dígitos)', s.twofa ? `Ligado: o painel pede ${s.twofaKey ? 'a chave e o código' : 'só o código'} do aplicativo autenticador. <a href="#" data-a="2fa-off">Desligar</a>` : s.twofaStored ? 'Está ligado, mas a variável ADMIN_2FA_OFF no servidor desliga a exigência. Tire a variável e reinicie para voltar a usar.' : 'Desligado: só a chave protege o painel. <a href="#" data-a="2fa-on">Ligar o autenticador</a> (Google Authenticator, Microsoft Authenticator, Authy…).')}</div>
     <div class="card" style="margin-top:16px"><h3>Números do servidor</h3><dl class="kv"><dt>Usuários</dt><dd>${num(s.users)}</dd><dt>Sessões abertas</dt><dd>${num(s.sessions)}</dd><dt>Certificados</dt><dd>${num(s.certs)}</dd><dt>Registros de auditoria</dt><dd>${num(s.audit)}</dd><dt>Memória em uso</dt><dd>${s.memMB} MB</dd><dt>Ligado há</dt><dd>${up >= 86400 ? Math.floor(up / 86400) + ' dia(s) ' : ''}${Math.floor(up % 86400 / 3600)} h ${Math.floor(up % 3600 / 60)} min</dd><dt>Node.js</dt><dd>${esc(s.node)}</dd><dt>Hora do servidor</dt><dd>${esc(dt(s.now, true))}</dd></dl></div>`;
   },
 
@@ -323,6 +330,18 @@ const H = {
     try { await api('settings', { body: { ads: { on, client, slot } } }); toast(on ? (slot ? 'Anúncios ligados.' : 'Ligado. Falta o ID do bloco para os quadros aparecerem.') : 'Salvo. Os anúncios estão desligados.'); go('settings'); } catch (e) { fail(e); }
   },
   'ad-reset': async () => { if (!await ask({ title: 'Voltar ao padrão do servidor?', text: 'Apaga o que foi salvo aqui. Os anúncios passam a seguir as variáveis ADSENSE_CLIENT e ADSENSE_SLOT do servidor (se não existirem, ficam desligados).', ok: 'Voltar ao padrão' })) return; try { await api('settings', { body: { ads: { reset: true } } }); toast('Voltou ao padrão do servidor.'); go('settings'); } catch (e) { fail(e); } },
+  '2fa-on': async () => {
+    let s; try { s = await api('2fa/start', { body: {} }); } catch (e) { return fail(e); }
+    const html = `<div class="qrbox">${s.svg}</div><p class="qrtx"><b>1.</b> No celular, abra o aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy…).<br><b>2.</b> Toque em <b>+</b> e escaneie o QR Code acima.<br><b>3.</b> Digite aqui o código de 6 dígitos que aparecer no app.<br><span class="qrsm">Sem câmera? Digite esta chave no app: <span class="mono">${esc(s.pretty)}</span></span></p>`;
+    const v = await ask({ title: 'Ligar o autenticador', html, fields: [{ id: 'code', label: 'Código de 6 dígitos', ph: '000 000' }, { id: 'mode', label: 'Como entrar no painel', type: 'select', value: '1', options: [['1', 'Chave + código (mais seguro, recomendado)'], ['0', 'Só o código (mais prático)']] }], ok: 'Ligar' });
+    if (!v) return;
+    try { await api('2fa/enable', { body: { code: v.code, needKey: v.mode === '1' } }); toast('Autenticador ligado. Guarde o app: sem ele você só entra com a variável ADMIN_2FA_OFF (veja o README).'); go('system'); } catch (e) { fail(e); }
+  },
+  '2fa-off': async () => {
+    const v = await ask({ title: 'Desligar o autenticador?', text: 'Depois disso o painel volta a pedir só a chave. Digite o código atual do aplicativo para confirmar (se acabou de entrar, espere o próximo código).', fields: [{ id: 'code', label: 'Código de 6 dígitos', ph: '000 000' }], ok: 'Desligar', danger: true });
+    if (!v) return;
+    try { await api('2fa/disable', { body: { code: v.code } }); toast('Autenticador desligado.'); go('system'); } catch (e) { fail(e); }
+  },
   'ann-off': async () => { try { await api('settings', { body: { announce: { on: false, text: $('#at').value, kind: $('#ak').value } } }); toast('Comunicado desligado.'); go('settings'); } catch (e) { fail(e); } }
 };
 document.addEventListener('click', e => {

@@ -465,7 +465,7 @@ test('SQL: resposta certa é aprovada (inclusive várias de uma vez) e o autotes
 
 test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de marcar como errado', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nosql-'));
-  for (const f of ['server.js', 'admin.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -495,7 +495,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
 
 test('SQL: com a cópia vendor/sql do projeto, corrige mesmo sem o pacote sql.js instalado (caso do "npm install" não rodado)', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vend-'));
-  for (const f of ['server.js', 'admin.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools', 'vendor']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -1430,4 +1430,84 @@ test('mapa com cenário: floresta ao longo da trilha, personagem no pedestal e c
   assert.match(css, /body\.wild \.tl \.ti \.tb,body\.wild \.tl \.ti\.rs \.tb\{position:absolute;[^}]*clip:rect\(0 0 0 0\)/);
   // a lógica do mapa não mudou: lição, checkpoint e prova continuam abrindo pelo toque na linha toda
   assert.ok(ui.includes("onclick=\"openL('${l.id}')\"") && ui.includes("onclick=\"openTest('${c.id}')\""));
+});
+
+test('admin: autenticador (código de 6 dígitos) — TOTP, QR Code, uma vez só, bloqueio e recuperação', async () => {
+  const totp = require('../totp'), qr = require('../qr');
+  // a conta do código bate com os exemplos oficiais da RFC 6238 (segredo "12345678901234567890")
+  const sec = totp.b32enc(Buffer.from('12345678901234567890'));
+  assert.equal(sec, 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'); assert.equal(totp.hotp(Buffer.from('12345678901234567890'), 1, 8), '94287082');
+  assert.equal(totp.code(sec, 59e3), '287082'); assert.equal(totp.code(sec, 1111111109e3), '081804'); assert.equal(totp.code(sec, 1234567890e3), '005924');
+  assert.equal(totp.b32dec(sec).toString(), '12345678901234567890');
+  assert.ok(totp.check(sec, '287082', 59e3) >= 0 && totp.check(sec, '287082', 59e3 + 30e3) >= 0 && totp.check(sec, '287082', 59e3 + 95e3) < 0, 'aceita só o passo anterior e o seguinte');
+  assert.equal(totp.check(sec, '12345', 59e3), -1); assert.equal(totp.check(sec, 'abcdef', 59e3), -1); assert.equal(totp.check(sec, '', 59e3), -1);
+  const ns = totp.newSecret(); assert.match(ns, /^[A-Z2-7]{32}$/); assert.notEqual(ns, totp.newSecret());
+  assert.match(totp.uri(ns, 'admin@site.com', 'CodeUp'), /^otpauth:\/\/totp\/CodeUp:admin%40site\.com\?secret=[A-Z2-7]{32}&issuer=CodeUp&algorithm=SHA1&digits=6&period=30$/);
+  // QR Code: tamanho certo por versão, três quadrados de canto, sem dependência externa
+  const m = qr.matrix(totp.uri(ns, 'admin@localhost', 'CodeUp')); assert.ok(m.length >= 41 && m.length <= 57 && (m.length - 17) % 4 == 0);
+  for (const [x, y] of [[0, 0], [m.length - 7, 0], [0, m.length - 7]]) { assert.ok(m[y][x] && m[y][x + 6] && m[y + 6][x] && m[y + 6][x + 6] && !m[y + 1][x + 1] && m[y + 3][x + 3], 'quadrado de canto'); }
+  const sv = qr.svg('https://exemplo.com'); assert.match(sv, /^<svg [^>]*viewBox="0 0 \d+ \d+"[^>]*>/); assert.ok(sv.includes('<path d="M') && !sv.includes('<script'));
+  assert.throws(() => qr.matrix('x'.repeat(400), 'M'), /grande demais/);
+
+  const port = PORT + 860, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tfa-')), 'data.json'), KEY = 'chave-2fa-1234567890';
+  const boot = async env => { let lg = ''; const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, ADMIN_KEY: KEY, DATABASE_URL: '', ADMIN_2FA_OFF: '', ...env } }); p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x); for (let i = 0; i < 150 && !/rodando/.test(lg); i++) await sleep(100); return p; };
+  const j = async (pth, body, tok, hd) => { const x = await fetch(base + pth, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.77.' + (++IP % 200) + '.1', ...(tok ? { 'x-admin-token': tok } : {}), ...hd }, body: body ? JSON.stringify(body) : undefined }); return { status: x.status, j: await x.json().catch(() => ({})) }; };
+  let IP = 0;
+  const at = k => totp.code(SEC, Date.now() + k * 30e3);                         // código do passo de agora + k
+  let SEC = '', p = await boot();
+  try {
+    // 1) sem autenticador: só a chave (como sempre) e a tela sabe disso
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: false, needKey: true });
+    const t1 = (await j('/api/admin/login', { key: KEY })).j.token, t2 = (await j('/api/admin/login', { key: KEY })).j.token; assert.ok(t1 && t2);
+    assert.equal((await j('/api/admin/2fa', null, t1)).j.on, false);
+    assert.equal((await j('/api/admin/2fa/start', {})).status, 404, 'sem sessão do painel não existe'); assert.equal((await j('/api/admin/2fa/start', {}, null, { 'x-admin-key': KEY })).status, 404, 'a chave de scripts não liga o autenticador');
+    assert.equal((await j('/api/admin/stats', null, null, { 'x-admin-key': KEY })).status, 200, 'scripts com a chave seguem valendo enquanto o autenticador está desligado');
+    // 2) ligar: QR + chave em texto; código errado não liga
+    const st = (await j('/api/admin/2fa/start', {}, t1)).j; assert.match(st.secret, /^[A-Z2-7]{32}$/); assert.match(st.svg, /^<svg /); assert.match(st.uri, /^otpauth:\/\/totp\/CodeUp:admin%40localhost\?secret=/); assert.equal(st.pretty.replace(/ /g, ''), st.secret);
+    assert.equal((await j('/api/admin/2fa/start', {}, t1)).j.secret, st.secret, 'o mesmo QR vale por uns minutos (dá para errar o código sem refazer)');
+    SEC = st.secret; assert.equal((await j('/api/admin/2fa/enable', { code: '000000', needKey: true }, t1)).status, 400);
+    assert.equal((await j('/api/admin/2fa/enable', { code: at(-1), needKey: true }, t1)).status, 200);
+    assert.equal((await j('/api/admin/ping', null, t2)).status, 401, 'quem estava logado só com a chave sai quando o autenticador liga'); assert.equal((await j('/api/admin/ping', null, t1)).status, 200);
+    assert.equal((await j('/api/admin/stats', null, null, { 'x-admin-key': KEY })).status, 404, 'com o autenticador ligado a chave sozinha não abre mais nada');
+    // 3) entrar: chave + código
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: true, needKey: true });
+    assert.equal((await j('/api/admin/login', { key: KEY })).status, 401, 'só a chave não entra'); assert.equal((await j('/api/admin/login', { code: at(0) })).status, 401, 'só o código não entra neste modo');
+    assert.equal((await j('/api/admin/login', { key: 'errada', code: at(0) })).status, 401);
+    const bad = (await j('/api/admin/login', { key: KEY, code: '123456' })); assert.equal(bad.status, 401); assert.equal(bad.j.error, 'Chave ou código incorreto.', 'a mensagem não diz qual dos dois errou');
+    const ok = await j('/api/admin/login', { key: KEY, code: at(0) }); assert.equal(ok.status, 200); assert.match(ok.j.token, /^[a-f0-9]{64}$/);
+    const re = await j('/api/admin/login', { key: KEY, code: at(0) }); assert.equal(re.status, 401); assert.match(re.j.error, /já foi usado/, 'o mesmo código não vale duas vezes');
+    assert.equal((await j('/api/admin/login', { key: KEY, code: at(-1) })).status, 401, 'nem um código mais antigo que o último usado');
+    assert.equal((await j('/api/admin/stats', null, ok.j.token)).status, 200);
+    const sys = (await j('/api/admin/system', null, ok.j.token)).j; assert.equal(sys.twofa, true); assert.equal(sys.twofaKey, true);
+    // 4) desligar pede o código do app (um código novo, não o que acabou de entrar)
+    assert.equal((await j('/api/admin/2fa/disable', { code: at(0) }, ok.j.token)).status, 400); assert.equal((await j('/api/admin/2fa/disable', { code: '111111' }, ok.j.token)).status, 400);
+    assert.equal((await j('/api/admin/2fa/disable', { code: at(1) }, ok.j.token)).status, 200);
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: false, needKey: true }); assert.equal((await j('/api/admin/login', { key: KEY })).status, 200);
+    // 5) "só o código": a chave deixa de ser pedida
+    const t3 = (await j('/api/admin/login', { key: KEY })).j.token, s2 = (await j('/api/admin/2fa/start', {}, t3)).j; assert.notEqual(s2.secret, SEC, 'ligar de novo gera outro segredo'); SEC = s2.secret;
+    assert.equal((await j('/api/admin/2fa/enable', { code: at(-1), needKey: false }, t3)).j.needKey, false);
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: true, needKey: false });
+    assert.equal((await j('/api/admin/login', { code: '000000' })).status, 401); const o2 = await j('/api/admin/login', { code: at(0) }); assert.equal(o2.status, 200); assert.ok(o2.j.token);
+    assert.equal((await j('/api/admin/login', { code: at(0) })).status, 401, 'também não repete');
+    const au = (await j('/api/admin/audit?limit=60', null, o2.j.token)).j.rows.map(r => r.action); assert.ok(['ligou-autenticador', 'desligou-autenticador', 'login'].every(a => au.includes(a)), 'tudo fica na auditoria'); assert.ok(!JSON.stringify((await j('/api/admin/audit?limit=60', null, o2.j.token)).j).includes(SEC), 'o segredo nunca vai para a auditoria');
+  } finally { p.kill(); await sleep(300); }
+  // 6) perdeu o celular: ADMIN_2FA_OFF=1 no servidor volta a pedir só a chave (os dados continuam salvos)
+  p = await boot({ ADMIN_2FA_OFF: '1' });
+  try {
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: false, needKey: true });
+    const t = (await j('/api/admin/login', { key: KEY })).j.token; assert.ok(t);
+    const s = (await j('/api/admin/2fa', null, t)).j; assert.equal(s.on, false); assert.equal(s.stored, true); assert.equal(s.envOff, true);
+    assert.match((await j('/api/admin/2fa/start', {}, t)).j.error, /ADMIN_2FA_OFF/);
+  } finally { p.kill(); await sleep(300); }
+  // 7) servidor normal de novo: o autenticador volta a valer, e 5 códigos errados seguidos travam o painel por 15 minutos
+  p = await boot();
+  try {
+    assert.equal((await j('/api/admin/login-info')).j.twofa, true);
+    for (let i = 0; i < 5; i++) assert.equal((await j('/api/admin/login', { code: '00000' + i })).status, 401);
+    const lk = await j('/api/admin/login', { code: at(0) }); assert.equal(lk.status, 429); assert.match(lk.j.error, /Aguarde/, 'travado mesmo com o código certo');
+  } finally { p.kill(); await sleep(300); }
+  // a tela do painel
+  const adm = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.js'), 'utf8'), acss = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.css'), 'utf8');
+  for (const k of ["fetch('/api/admin/login-info'", 'autocomplete="one-time-code"', 'inputmode="numeric"', "'2fa-on'", "'2fa-off'", "api('2fa/start'", "api('2fa/enable'", "api('2fa/disable'", 'class="qrbox"', 'Chave + código (mais seguro, recomendado)', 'Só o código (mais prático)', 'Autenticador (código de 6 dígitos)', 'ADMIN_2FA_OFF']) assert.ok(adm.includes(k), 'admin.js: ' + k);
+  assert.ok(acss.includes('.qrbox{') && acss.includes('.lg .in.code{'));
 });
