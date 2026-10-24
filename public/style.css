@@ -375,7 +375,7 @@ body.neo .fb.srv{background:#eaf1ff;border-color:#5b8def;color:#1e3a8a}body.neo 
 
 
 /* ===== MAPA EM CURVA (caminho de jogo) ===== */
-.tl{--row:170px;--top:44px;position:relative;height:calc(var(--top) + var(--n) * var(--row) + 10px);margin:6px 0}
+.tl{--row:170px;--top:100px;position:relative;height:calc(var(--top) + var(--n) * var(--row) + 10px);margin:6px 0}
 .tl .ti{position:absolute;left:0;right:0;top:calc(var(--top) + var(--i) * var(--row));height:var(--row);display:block;padding:0;width:auto;z-index:1}
 .tl .ti .rail{position:absolute;left:var(--x);top:8px;transform:translateX(-50%);width:auto;z-index:2}
 .tl .ti .tb{position:absolute;left:var(--x);top:86px;transform:translateX(-50%);width:156px;max-width:52%;text-align:center;padding:5px 10px;border-radius:14px;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -929,3 +929,76 @@ body.neo .boot .bootm{color:#4d5678}body.neo .boot .bb{background:#d9def0}
 .soon .sbadge{flex:none;font-size:11px;font-weight:800;letter-spacing:.4px;padding:4px 10px;border-radius:999px;background:var(--panel2);color:var(--mute)}
 body.neo .jr small,body.neo .lv2>small,body.neo .trk2 .th small,body.neo .nx2 small,body.neo .soon small{color:#4d5678}
 @media (prefers-reduced-motion:no-preference){.trk2 .rf{transition:stroke-dasharray .8s ease}}
+
+/* ============================================================================================================
+   Mapa com cenário (visual Azul): floresta à noite ao longo da trilha, personagem num pedestal brilhante e cartão da lição.
+   O desenho das peças está em /mapscene.js. Só aparece com body.wild (o Rosa usa as mesmas peças em outra cor).
+   ============================================================================================================ */
+.scn{display:none}
+body.wild .scn{display:block;position:absolute;left:-16px;right:-16px;top:0;bottom:0;z-index:0;pointer-events:none;overflow:hidden;
+  background:radial-gradient(120% 34% at 50% 0%,rgba(52,120,245,.16),transparent 72%),linear-gradient(180deg,rgba(6,20,62,0),rgba(6,20,62,.62) 8%,rgba(5,18,58,.66) 92%,rgba(6,20,62,0));
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 46px,#000 calc(100% - 70px),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 46px,#000 calc(100% - 70px),transparent 100%)}
+body.rose .scn{filter:hue-rotate(72deg) saturate(1.05)}
+.scn .sp{position:absolute;display:block;overflow:visible}
+.scn .f{scale:-1 1}
+.scn .sway{transform-origin:50% 100%;animation:msSw 4.8s ease-in-out infinite}@keyframes msSw{50%{transform:rotate(2.6deg)}}
+.scn .glow{filter:drop-shadow(0 0 6px rgba(120,232,255,.75))}
+.scn .sign{aspect-ratio:130/156}.scn .sign svg{display:block;width:100%;height:100%}
+.scn .sign img{position:absolute;left:25%;top:11%;width:41%;height:auto;filter:drop-shadow(0 0 7px rgba(140,210,255,.9));transform:rotate(-4deg)}
+.scn .lamp{aspect-ratio:90/160}.scn .lamp svg{display:block;width:100%;height:100%}
+.scn .lamp .lgl{position:absolute;left:69%;top:32%;width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:50%;background:radial-gradient(circle,rgba(255,205,96,.46),rgba(255,170,60,.14) 46%,transparent 70%);animation:msFl 3.6s ease-in-out infinite}
+@keyframes msFl{0%,100%{opacity:.82}45%{opacity:1}70%{opacity:.7}}
+.scn .owl .br{transform-box:fill-box;transform-origin:50% 100%;animation:msBr 3.8s ease-in-out infinite}@keyframes msBr{50%{transform:scaleY(1.04)}}
+.scn .owl .zz text{opacity:0;animation:msZ 4.2s ease-in-out infinite}.scn .owl .z2{animation-delay:.9s}.scn .owl .z3{animation-delay:1.8s}
+@keyframes msZ{0%{opacity:0;transform:translateY(8px)}30%{opacity:.95}80%{opacity:0;transform:translateY(-8px)}100%{opacity:0}}
+.scn .pond .rip{transform-box:fill-box;transform-origin:center;animation:msRip 5.4s ease-in-out infinite}@keyframes msRip{50%{transform:scale(1.07);opacity:.55}}
+.scn .ffl{position:absolute;width:5px;height:5px;border-radius:50%;background:#fff3a0;box-shadow:0 0 8px 3px rgba(255,236,120,.6);opacity:.2;animation:msFf var(--d,7s) ease-in-out infinite}
+@keyframes msFf{0%,100%{transform:translate(0,0);opacity:.12}50%{transform:translate(var(--dx),var(--dy));opacity:1}}
+@media (min-width:600px){body.wild .scn{left:0;right:0;border-radius:28px}}
+@media (prefers-reduced-motion:reduce){.scn *{animation:none!important}}
+
+/* personagem de pé no pedestal que brilha (a lição do momento) + cartão com o título e o INICIAR */
+body.wild .tl .ti.cur .rail span.nd,body.wild .tl .ti.exam.cur .rail span.nd,body.wild .tl .ti.cp.av.cur .rail span.nd{width:104px;height:38px;margin:14px 0;border-radius:50%;color:transparent;background:radial-gradient(ellipse at 50% 32%,#e2fcff 0,#86e0ff 34%,#34a2f4 68%,#1b65d6 100%);box-shadow:0 9px 0 #12469c,0 0 0 6px rgba(130,225,255,.26),0 0 36px 10px rgba(80,190,255,.5);animation:msPed 2.6s ease-in-out infinite}
+@keyframes msPed{50%{box-shadow:0 9px 0 #12469c,0 0 0 9px rgba(130,225,255,.2),0 0 46px 16px rgba(80,190,255,.62)}}
+body.wild .tl .ti.cur .rail span.nd svg{display:none}
+body.wild .tl .ti.cur .rail span.nd:before{content:"";position:absolute;left:50%;bottom:56%;width:156px;height:178px;transform:translateX(-50%);background:linear-gradient(to top,rgba(130,225,255,.34),rgba(130,225,255,0));clip-path:polygon(23% 100%,77% 100%,100% 0,0 0);z-index:-1;pointer-events:none}
+body.wild .tl .ti.cur .rail span.abody.pm,body.wild .tl .ti.cur .rail img.pm,body.wild .tl .ti.cur.rs .rail span.abody.pm{position:absolute;left:50%;right:auto;top:auto;bottom:calc(50% - 3px);margin:0;transform:translateX(-50%);height:132px;animation:none;z-index:2}
+body.wild .tl .ti.cur .tb{display:none}
+.tl .ti .lc{display:none}
+body.wild .tl .ti.cur .lc{display:block;position:absolute;bottom:calc(50% - 20px);left:calc(50% + 46px);width:var(--lw,170px);max-width:198px;padding:11px 13px 12px;border-radius:20px;text-align:left;z-index:3;background:linear-gradient(160deg,rgba(28,66,146,.94),rgba(12,38,96,.95));border:1.5px solid rgba(150,205,255,.38);box-shadow:0 14px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.14);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:msLc .5s .1s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes msLc{from{opacity:0;transform:translateY(8px) scale(.94)}}
+body.wild .tl .ti.cur.rs .lc{left:auto;right:calc(50% + 46px)}
+body.wild .tl .ti.cur .lc:before{content:"";position:absolute;left:-7px;bottom:50px;width:12px;height:12px;background:rgba(24,58,132,.96);border:1.5px solid rgba(150,205,255,.38);border-right:0;border-top:0;transform:rotate(45deg)}
+body.wild .tl .ti.cur.rs .lc:before{left:auto;right:-7px;transform:rotate(-135deg)}
+body.wild .tl .ti.cur .lc small{display:block;color:#bcd8ff;font-size:12.5px;font-weight:700}
+body.wild .tl .ti.cur .lc b{display:block;color:#fff;font-size:15.5px;line-height:1.2;font-weight:800;margin:1px 0 9px;overflow-wrap:anywhere}
+body.wild .tl .ti.cur .lc .lcb{display:block;font-style:normal;text-align:center;background:#fff;color:#0c2a66;border-radius:999px;padding:8px 0;font-weight:900;letter-spacing:.9px;font-size:13px;box-shadow:0 3px 0 #b3c7ee}
+
+/* sem textos ao lado dos botões (como no modelo): só o número da lição num selinho; o título fica no cartão da lição atual (e continua na página para leitores de tela) */
+.tl .ti .rail span.nd .nn{display:none}
+body.wild .tl .ti .tb,body.wild .tl .ti.rs .tb{position:absolute;left:0;right:auto;top:0;transform:none;width:1px;height:1px;max-width:none;overflow:hidden;clip:rect(0 0 0 0);padding:0;margin:-1px;border:0;white-space:nowrap}
+body.wild .tl .ti:not(.cur) .rail span.nd .nn{display:grid;place-items:center;position:absolute;right:-7px;bottom:-5px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:#0b2258;border:2px solid rgba(160,205,255,.55);color:#e2eeff;font:900 12px/1 Nunito,system-ui,sans-serif;font-style:normal;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+body.wild .tl .ti.ok:not(.cur) .rail span.nd .nn{background:#6a4a00;border-color:#ffd46b;color:#fff3c9}
+body.wild{--lk-a:#7487b6;--lk-b:#3e4e7f;--lk-fg:#eaf1ff}
+body.wild.rose{--lk-a:#a07ab8;--lk-b:#5b3a78;--lk-fg:#f6e8ff}
+body.wild .tl .ti.lk .rail span.nd{border-color:rgba(255,255,255,.32);box-shadow:0 0 0 5px rgba(170,190,235,.12),0 8px 14px rgba(0,0,0,.4),inset 0 -6px 10px rgba(10,20,50,.25)}
+body.wild .tl .ti.lk{opacity:1}
+body.wild .scn{background:radial-gradient(90% 420px at 50% 120px,rgba(48,112,240,.3),transparent 74%),linear-gradient(180deg,rgba(8,26,76,0),rgba(8,26,76,.97) 56px,rgba(7,24,70,.97) calc(100% - 90px),rgba(8,26,76,0))}
+
+/* topo da tela Início no visual Azul: cartão da trilha (como no modelo), níveis em uma linha só e sem o bloco repetido "Nível 1 de 3" */
+body.wild .card.tkc{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;cursor:pointer;background:linear-gradient(135deg,rgba(var(--accrgb),.28),rgba(9,30,80,.82));margin-top:12px}
+body.wild .tkc .bd b{display:block;font-size:22px;font-weight:900;line-height:1.1;color:#fff}
+body.wild .tkc .bd small{display:block;color:var(--hi);font-size:14.5px;margin:3px 0 9px}
+body.wild .tkb{height:9px;border-radius:6px;background:rgba(3,12,36,.62);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+body.wild .tkb i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#8bec8f,#3dcb62);box-shadow:0 0 10px rgba(110,230,130,.55);min-width:4px}
+body.wild .tkn{font-weight:800;color:var(--hi);font-size:15px;white-space:nowrap}body.wild .tkn b{color:#fff;font-size:19px}
+body.wild .tkc .go{color:var(--hi)}
+body.wild .unit.slim{display:none}
+body.wild .tabs{margin:10px 0 12px}
+body.wild .tabs button{display:grid;grid-template-columns:auto auto;justify-content:center;align-items:center;column-gap:6px;row-gap:0;padding:8px 4px 7px;border-radius:16px}
+body.wild .tabs button small{grid-column:1/3;text-align:center;font-size:12px}
+body.wild .who small{line-height:1.25;font-size:13px}
+body.wild .tl .ti.cur .lc b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.rose .tl .ti.cur .lc{background:linear-gradient(160deg,rgba(120,44,128,.94),rgba(62,22,84,.95));border-color:rgba(255,190,235,.4)}
+body.rose .tl .ti.cur .lc:before{background:rgba(110,40,122,.96);border-color:rgba(255,190,235,.4)}
+body.rose .tl .ti.cur .rail span.nd{filter:hue-rotate(78deg)}

@@ -1400,3 +1400,30 @@ test('trilhas: logos novas do Python e do SQL e a tela Trilhas redesenhada', asy
   assert.ok(!css.includes('.soon .sn') && !css.includes('.soon .chip'), 'sem colidir com .sn (número da sequência) e .chip (botões)');
   assert.match(ui, /Certificado ao passar nas 3 provas finais/); assert.match(ui, /Análise de Dados/); assert.match(ui, /Projetos Reais/);
 });
+
+test('mapa com cenário: floresta ao longo da trilha, personagem no pedestal e cartão da lição (visual Azul)', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js'), ms = rd('mapscene.js'), html = rd('index.html');
+  // o cenário é um arquivo próprio, carregado antes do app e guardado para uso offline
+  assert.ok(html.includes('<script src="/mapscene.js"></script>') && html.indexOf('/mapscene.js') < html.indexOf('/app.js'));
+  assert.ok(sw.includes("'/mapscene.js'")); assert.equal((await fetch(`${U}/mapscene.js`)).status, 200);
+  // peças desenhadas: pinheiros (claros e escuros), pedras, capim, moitas, cogumelos, flores, colina, lago, coruja dormindo, placa com a logo da trilha e lampião
+  for (const k of ['msPineA', 'msPineDC', 'msRockA', 'msTuftC', 'msBushB', 'msShroom', 'msFlow', 'msMound', 'class="sp pond"', 'class="sp owl"', 'class="sp sign"', '/img/logo-${logo}.webp', 'class="sp lamp"', 'class="ffl"', 'window.mapScene']) assert.ok(ms.includes(k), 'mapscene.js: ' + k);
+  assert.match(ms, /const rg = s => \(\) => \(s = s \* 16807 % 2147483647\)/, 'sorteio com semente fixa (o cenário não muda de lugar a cada abertura)');
+  // o app só usa o cenário no visual Azul e passa a linha da lição atual para o cartão não ficar em cima de uma peça grande
+  assert.match(ui, /window\.mapScene && document\.body\.classList\.contains\('wild'\) \? mapScene\(\{ X, M: MAP, NR, track: T, cur: curK/);
+  assert.match(ui, /<div class=tl style="--n:\$\{NR\};--row:\$\{MAP\.row\}px;--top:\$\{MAP\.top\}px">\$\{scene\}\$\{pathSvg\}/);
+  assert.match(ui, /Math\.sin\(\(r - 1\) \* Math\.PI \/ 4\)/, 'a trilha começa à esquerda, como no modelo');
+  // lição, checkpoint e prova final do momento: personagem em pé no pedestal e cartão "INICIAR" (nos outros visuais continua o "COMEÇAR")
+  assert.equal((ui.match(/walker\(\) \+ lcard\(/g) || []).length, 3, 'os três tipos de passo têm o cartão');
+  assert.equal((ui.match(/<span class=start>COMEÇAR<\/span>/g) || []).length, 3); assert.match(ui, /<em class=lcb>INICIAR<\/em>/);
+  assert.match(ui, /<i class=nn>\$\{l\.n\}<\/i>/, 'número da lição no botão (os títulos saem do mapa no visual Azul)');
+  assert.match(ui, /class="card cont tkc"/); assert.match(ui, /<div class=tkb><i style="width:/); assert.match(ui, /Vamos continuar seus estudos\?/);
+  assert.match(ui, /class=cprog/, 'os outros visuais mantêm o cartão Continuar com o progresso');
+  for (const k of ['body.wild .scn{display:block;position:absolute', '.scn .sp{position:absolute', '.scn .f{scale:-1 1}', 'body.wild .tl .ti.cur .rail span.nd,', 'body.wild .tl .ti.cur .lc{display:block', '.lcb{display:block', 'body.wild .card.tkc{display:flex', 'body.wild .unit.slim{display:none}', 'body.rose .scn{filter:hue-rotate']) assert.ok(css.includes(k), 'CSS: ' + k);
+  assert.ok(css.includes('@media (prefers-reduced-motion:reduce){.scn *{animation:none!important}}'), 'sem animação quando o aparelho pede menos movimento');
+  assert.match(css, /\.tl\{--row:170px;--top:100px;/);
+  // o texto de cada passo continua na página (escondido só da vista) para leitores de tela
+  assert.match(css, /body\.wild \.tl \.ti \.tb,body\.wild \.tl \.ti\.rs \.tb\{position:absolute;[^}]*clip:rect\(0 0 0 0\)/);
+  // a lógica do mapa não mudou: lição, checkpoint e prova continuam abrindo pelo toque na linha toda
+  assert.ok(ui.includes("onclick=\"openL('${l.id}')\"") && ui.includes("onclick=\"openTest('${c.id}')\""));
+});
