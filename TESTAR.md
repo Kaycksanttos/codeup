@@ -44,7 +44,7 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Enquanto você digita, **nada** aparece (nem resultado, nem erro, nem dica de correção) e o botão **Concluído** fica preso ao rodapé da tela, sempre no mesmo lugar (teste também com o teclado do celular aberto).
 - [ ] Ao tocar em **Concluído** (ou Ctrl+Enter): o resultado do código aparece na caixa "Saída/Resultado"; se errou, aparece abaixo o aviso com onde corrigir; se acertou, vêm XP e a próxima lição abre.
 - [ ] Os botões **Dica**, **Ver dados** e **Solução** funcionam (no SQL a solução aparece organizada em linhas).
-- [ ] Em toda lição, a teoria mostra 4 cartões: **O que é**, **Para que serve**, **Como se faz** e **Retorno esperado** (e na prática o botão "Como fazer e o que esperar" abre os dois últimos).
+- [ ] Em toda lição, a teoria mostra o **"o que é" dentro do balão do personagem** e 3 cartões: **Para que serve**, **Como se faz** e **Retorno esperado**. A tela de prática fica limpa (só o desafio, o editor e os botões).
 - [ ] Depois da lição 10 (e da 20) aparece o **checkpoint**: tela de abertura com as regras, **2 corações** (chances), sem Dica/Solução/Teoria. Errar 1 vez: sobra 1 coração. Errar a 2ª: **voltam 5 lições** (6 a 10, ou 16 a 20) e aparece a lista delas. A lição 11 (ou 21) só abre depois de passar.
 
 **4. Perfil**

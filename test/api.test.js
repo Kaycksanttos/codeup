@@ -1258,10 +1258,10 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
 
 test('app: cartões de explicação, provas com chances, tela de voltar lições e mapa com checkpoints e prova final', () => {
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
-  // as 4 explicações aparecem na teoria (o que é e para que serve antes do exemplo; como se faz e retorno esperado depois) e a prática guarda "como fazer"
+  // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como se faz e retorno esperado depois) e a prática fica limpa (só o desafio, o editor e os botões)
   for (const k of ['O que é', 'Para que serve', 'Como se faz', 'Retorno esperado']) assert.ok(ui.includes(`'${k}'`), k);
-  assert.match(ui, /infoCards\(l\.info, \['oque', 'serve'\]\)\}\$\{codeBox\(l\.example, l\.type, 'Exemplo'\)\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
-  assert.match(ui, /<details class=infod>/);
+  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{codeBox\(l\.example, l\.type, 'Exemplo'\)\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
+  assert.ok(!/class=infod/.test(ui), 'a prática não tem o bloco "como fazer e o que esperar"');
   // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada
   for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
@@ -1273,6 +1273,6 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.ok(!/examIntro|examStart|examQ\(|examFinish|execOnly|api\('exam\//.test(ui), 'a prova antiga de 10 questões saiu do app');
   assert.ok(!/S\.me\.exams/.test(ui));
   assert.match(ui, /Passe nas 3 provas finais/);
-  for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span', '.infod summary']) assert.ok(css.includes(c), 'css ' + c);
+  for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span']) assert.ok(css.includes(c), 'css ' + c);
   assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
 });

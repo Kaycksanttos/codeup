@@ -761,10 +761,3 @@ body.wild .inf .ih b{color:var(--hi)}
 .fb .tip .ht{vertical-align:-3px;margin-right:2px}
 .infot{margin:16px 2px -2px;text-align:left;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
 .res h1.bad{color:#fb923c}
-.infod{margin:10px 0;text-align:left}
-.infod summary{cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-weight:700;font-size:13.5px;color:var(--text)}
-.infod summary::-webkit-details-marker{display:none}
-.infod summary:after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .2s}
-.infod[open] summary:after{transform:rotate(-135deg)}
-.infod .infos{margin:8px 0 0}
-body.wild .infod summary{background:linear-gradient(180deg,var(--gl1),var(--gl2));border:1px solid var(--gline)}

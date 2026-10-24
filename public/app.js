@@ -790,7 +790,7 @@ function lesson() {   // etapa 1: teoria
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
   ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor><img src="${IMG().full}" alt="${esc(gnm())}"><div class=sb>${esc(l.explain)}</div></div>${infoCards(l.info, ['oque', 'serve'])}${codeBox(l.example, l.type, 'Exemplo')}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}
+  <div class=tutor><img src="${IMG().full}" alt="${esc(gnm())}"><div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${codeBox(l.example, l.type, 'Exemplo')}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
   window.scrollTo(0, 0);
@@ -802,7 +802,6 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>`}</div>
   ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span></div>
   <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : 'Desafio'}</small>${esc(l.task)}</div></div>
-  ${T || !l.info ? '' : `<details class=infod><summary>${ic('info', 16)} Como fazer e o que esperar</summary>${infoCards(l.info, ['como', 'retorno'])}</details>`}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${edBox(l, l.starter)}
   <div class=acts>${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 16)} Dica</button>`}<button class="btn ghost" onclick=peek()>${ic('eye', 16)} Ver dados</button>${T ? '' : `<button class="btn ghost" onclick=sol()>Solução</button><button class="btn ghost" onclick=lesson()>${ic('file', 16)} Teoria</button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar">${ic('eraser', 16)}</button></div>
