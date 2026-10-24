@@ -1140,7 +1140,7 @@ test('personalização: /api/guide só aceita itens que o título já libera e o
 test('personalização: o app tem a tela, usa as imagens coloridas e o cache offline foi trocado', () => {
   const rd = f => fs.readFileSync(path.join(__dirname, '..', ...f.split('/')), 'utf8'), ui = rd('public/app.js'), css = rd('public/style.css'), sw = rd('public/sw.js');
   assert.match(ui, /function czView\(/); assert.match(ui, /async function czSet\(/); assert.match(ui, /CR\.colorFile\(g, c, true\)/, 'todas as telas usam a imagem da cor escolhida'); assert.match(ui, /\$\{czView\(\)\}/);
-  assert.match(ui, /avatar\(88, 'ring big'\)/, 'perfil mostra o adesivo'); assert.match(ui, /stkBadge\(r\.sticker, 20\)/, 'ranking mostra o adesivo dos outros alunos'); assert.match(ui, /colorFile\(r\.guide, r\.color, true\)/);
+  assert.match(ui, /avatar\(\d+, 'ring big'\)/, 'perfil mostra o adesivo'); assert.match(ui, /stkBadge\(r\.sticker, Math\.round\(s \* \.45\)\)/, 'ranking mostra o adesivo dos outros alunos'); assert.match(ui, /colorFile\(r\.guide, r\.color, true\)/);
   assert.match(ui, /aria-pressed=\$\{on\}/, 'botões de escolha dizem se estão marcados'); assert.match(ui, /bloqueado: /, 'e leem o bloqueio em voz alta');
   for (const c of ['.czi', '.czp', '.czg', '.stk', '.av']) assert.ok(css.includes(c), 'CSS de ' + c); assert.match(sw, /codeup-v(3[1-9]|[4-9]\d)/, 'cache novo para quem já tinha o app instalado');
 });
@@ -1339,4 +1339,22 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.match(ui, /function unlocksOf\(lk0, xb, s\)/); assert.match(ui, /S\.unl = unlocksOf\(lk0, xb, s\)/); assert.match(ui, /Desbloqueado!/);
   assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
   for (const c of ['.unl{', '.unl .uig', '.unl .uic', '.unl .sw']) assert.ok(css.includes(c), 'css ' + c);
+});
+
+test('Perfil em abas e Ranking com pódio: telas, estilos e regras de privacidade no app', () => {
+  const pub = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pub, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pub, 'style.css'), 'utf8');
+  // Perfil: cabeçalho + 3 abas (Resumo, Personagem, Ajustes), cada uma com o que já existia
+  for (const f of ['function profileView(', 'function pfTab(', 'function pfHero(', 'function pfProg(', 'function pfRes(', 'function pfChar(', 'function pfSet(', 'function tiersView(', 'function czTab(']) assert.ok(ui.includes(f), f);
+  assert.match(ui, /\['res', 'Resumo'\], \['per', 'Personagem'\], \['aju', 'Ajustes'\]/, 'as 3 abas do Perfil');
+  for (const a of ['editName()', 'editGname()', "setSex('", "setGuide('", "setFrame('", 'rkVis(${k})', 'setSfx(${k})', "setSkin('", 'changePw()', 'exportData()', 'logout()', 'delAccount()', "studyTrack('"]) assert.ok(ui.includes(a), 'o Perfil continua com ' + a);
+  assert.match(ui, /Eu sou/); assert.match(ui, /Zona de perigo/); assert.match(ui, /class="czg ex"/, 'as 18 expressões continuam no Perfil'); assert.match(ui, /playMove\('p:\$\{k\}'\)/);
+  assert.match(ui, /CZG = \[\['ex', 'Expressões'\], \['color', 'Cor'\], \['outfit', 'Estilo'\], \['sticker', 'Adesivo'\], \['bg', 'Fundo'\]\]/, 'personalizar em grupos');
+  // Ranking: pódio, linhas, "sua posição" e privacidade
+  for (const f of ['function rankView(', 'class=podium', 'class="panel rkme"', 'class="panel rkpv"', 'class=rbar', 'Faltam ${nf(d)} XP para o']) assert.ok(ui.includes(f), f);
+  assert.match(ui, /\[top\[1\], top\[0\], top\[2\]\]\.filter\(Boolean\)/, 'pódio com 2º, 1º e 3º (funciona com menos de 3)');
+  assert.match(ui, /r\.name/); assert.ok(!/r\.email|\.email\b[^;]{0,40}rkx/.test(ui.slice(ui.indexOf('function rankView('), ui.indexOf('function rkPer('))), 'o ranking nunca usa e-mail de outros alunos');
+  assert.ok(!/r\.gname|r\.surname|r\.fullName/.test(ui.slice(ui.indexOf('function rankView('), ui.indexOf('function rkPer('))), 'nem o nome dado ao personagem');
+  for (const c of ['.pfh', '.pft', '.kpg', '.kp ', '.tg{', '.tgi', '.setc', '.sg ', '.lrow', '.dz', '.czt', '.podium', '.pdc', '.rkx', '.rkl', '.rkpv', '.rkme']) assert.ok(css.includes(c), 'CSS de ' + c);
+  assert.ok(!/\.rkr\b|\.tri\b/.test(css), 'sem estilos velhos do ranking/títulos');
+  for (const t of ['neo', 'wild']) assert.match(css, new RegExp('body\\.' + t + ' \\.kp'), 'tema ' + t + ' cobre os cartões novos');
 });

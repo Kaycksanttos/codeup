@@ -41,7 +41,14 @@ const IC = {
   flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
-  crown: '<path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 19h14"/>'
+  crown: '<path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 19h14"/>',
+  shield: '<path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.3c1.8.8 3 2.6 3 4.7"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  volume: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  palette: '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>',
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>'
 };
 const ic = (n, s = 18) => `<svg class=i width=${s} height=${s} viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.8 stroke-linecap=round stroke-linejoin=round aria-hidden=true>${IC[n] || ''}</svg>`;
 const LS = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { } } };
@@ -533,33 +540,7 @@ function render() {
         <button class="btn ${m.track == t ? 'ghost' : 'pri'} block" onclick="studyTrack('${t}')">${m.track == t ? 'Continuar estudando' : 'Estudar ' + TN[t]}</button></div>`;
     }).join('') + `<div class="card lk"><span class=ib>${ic('chart', 20)}</span><div class=bd><b>Dashboards e Visualização</b><small>Gráficos e Power BI</small></div><span class=r>Em breve</span></div>`;
   }
-  if (S.tab == 'pf') {
-    const n = L.filter(done).length, np = Object.keys(m.passed).length, lvl = Math.floor(m.xp / 100) + 1,
-      ach = [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', ['python', 'sql'].some(t => passedLv(t, 2))],
-        ['trophy', 'Avançado aprovado', ['python', 'sql'].some(t => passedLv(t, 3))], ['award', 'Certificado', Object.keys(m.certs).length > 0], ['chart', 'Meio caminho', trackPct(T) >= 50]];
-    h = `<div class=prof>${avatar(88, 'ring big')}<div><h2>${esc(m.name)} <button class=ibtn onclick=editName() aria-label="Editar nome">${ic('pencil', 16)}</button></h2><small class=mut>${esc(m.email)}</small><div style="margin-top:6px"><span class=badge>Nível ${lvl}</span><span class="badge gold">${CR.TIERS[CR.tierOf(m.xp)].title}</span></div></div></div>
-    <div class=panel><div class=ph><span>XP do nível ${lvl}</span><b>${m.xp % 100} / 100</b></div><div class=bar><i style="width:${m.xp % 100}%"></i></div></div>
-    <div class=stats><div>${ic('flame', 20)}<b>${m.streak}</b><small>dias de treino</small></div><div>${ic('file', 20)}<b>${n}</b><small>lições feitas</small></div><div>${ic('cap', 20)}<b>${np}</b><small>provas aprovadas</small></div><div>${ic('bolt', 20)}<b>${m.xp}</b><small>pontos totais</small></div></div>
-    <div class=sec>Conquistas</div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
-    ${tiersView()}
-    <div class=sec>Eu sou</div><div class='skins s4 gsw'>${[['f', 'Feminino'], ['m', 'Masculino']].map(([k, n]) => `<button class="btn ${m.sex == k ? 'pri' : 'ghost'}" onclick="setSex('${k}')">${n}</button>`).join('')}</div>
-    <div class=sec>Personagem</div><div class='skins s4 gsw'>${['tay', 'cut'].map(g => `<button class="btn ${gid() == g ? 'pri' : 'ghost'}" onclick="setGuide('${g}')"><img src="/img/${g}-face.webp" class="g-${g}" alt="" width=28 height=28> ${GUIDES[g].name}</button>`).join('')}</div>
-    <button class="btn ghost block" onclick=editGname()>${ic('pencil', 16)} Nome do personagem: <b>${esc(gnm())}</b></button>
-    ${czView()}
-    <div class=sec>Ranking</div><div class='skins s4 gsw'>${[[true, 'Aparecer'], [false, 'Ficar de fora']].map(([k, n]) => `<button class="btn ${!m.rankOff == k ? 'pri' : 'ghost'}" onclick="rkVis(${k})">${n}</button>`).join('')}</div>
-    <p class=tn style="margin:4px 2px 0">No ranking aparecem só o seu primeiro nome, a inicial do sobrenome, o personagem e o XP.</p>
-    <div class=sec>Sons</div><div class='skins s4 gsw'>${[[true, 'Ligados'], [false, 'Desligados']].map(([k, n]) => `<button class="btn ${(window.CodeUpSfx ? CodeUpSfx.enabled() : true) == k ? 'pri' : 'ghost'}" onclick="setSfx(${k})">${n}</button>`).join('')}</div>
-    <p class=tn style="margin:4px 2px 0">Efeitos sonoros quando você acerta, passa na prova ou mantém a sequência de dias. Fica salvo neste aparelho.</p>
-    <div class=sec>Aparência</div><div class='skins s4'>${[['wild', 'Azul'], ['rose', 'Rosa'], ['', 'Azul escuro'], ['neo', 'Claro']].map(x => `<button class="btn ${(['rose', 'neo', ''].includes(LS.get('skin')) ? LS.get('skin') : 'wild') == x[0] ? 'pri' : 'ghost'}" onclick="setSkin('${x[0]}')">${x[1]}</button>`).join('')}</div>
-    <div class=sec>Minha conta</div>
-    <button class="btn ghost block" onclick="studyTrack('${T == 'python' ? 'sql' : 'python'}')">${ic('swap', 16)} Estudar ${T == 'python' ? 'SQL' : 'Python'}</button>
-    <button class="btn ghost block" onclick=changePw()>${ic('key', 16)} ${m.hasPassword ? 'Alterar senha' : 'Criar senha'}</button>
-    <button class="btn ghost block" onclick="go('home').then(() => startTour(true))">${ic('bulb', 16)} Rever o tour</button>
-    <button class="btn ghost block" onclick=exportData()>${ic('down', 16)} Baixar meus dados</button>
-    <button class="btn ghost block" onclick=logout()>${ic('out', 16)} Sair</button>
-    <button class="btn danger block" onclick=delAccount()>${ic('trash', 16)} Excluir minha conta</button>
-    <p class=legal>${S.cfg.contact ? `Precisa de ajuda? <a href="mailto:${esc(S.cfg.contact)}">${esc(S.cfg.contact)}</a><br>` : ''}<a href="/termos" target="_blank">Termos de Uso</a> · <a href="/privacidade" target="_blank">Política de Privacidade</a></p>`;
-  }
+  if (S.tab == 'pf') h = profileView(L, T);
   A.innerHTML = `<div class=c>${h}${S.tab == 'home' ? '' : adSlot()}</div>${nav()}`; loadAds(); countUp(); if (S.tab == 'home') setTimeout(startTour, 700);
   if (S.tab == 'home' && S.scroll) { S.scroll = false; const c = document.querySelector('.ti.cur'); if (c) c.scrollIntoView({ block: 'center' }); }
 }
@@ -609,34 +590,105 @@ function startTour(force) {
 // ============================================================ RANKING E CONQUISTAS POR XP
 // Ranking: semanal (recomeça na segunda-feira) e geral. Mostra só primeiro nome + inicial do sobrenome; quem não quer aparecer sai em Ranking ou Perfil.
 function rankView() {
-  const k = S.rk, per = S.rkp, m = S.me;
+  const k = S.rk, per = S.rkp, m = S.me, unit = per == 'semana' ? 'nesta semana' : 'no total';
   const head = `<h2 class=ttl>Ranking</h2><p class=sub>${per == 'semana' ? 'Quem mais ganhou XP nesta semana. Recomeça toda segunda-feira.' : 'Quem mais ganhou XP desde o começo.'}</p>
     <div class=pseg role=tablist aria-label="Período do ranking">${[['semana', 'Esta semana'], ['geral', 'Geral']].map(([p, t]) => `<button role=tab aria-selected=${per == p} class="${per == p ? 'on' : ''}" onclick="rkPer('${p}')">${t}</button>`).join('')}</div>`;
   if (!k) return head + `<div class=panel><p>Não foi possível carregar o ranking agora.</p><button class="btn pri block" onclick="go('rk')">Tentar de novo</button></div>`;
-  let me;
-  if (k.me.hidden) me = `<b>Você está fora do ranking</b><small>Ninguém vê o seu nome. Quer voltar?</small><button class="btn pri" onclick="rkVis(true)">Aparecer no ranking</button>`;
-  else if (!m.verified) me = `<b>Confirme seu e-mail</b><small>Só contas com e-mail confirmado aparecem no ranking.</small>`;
-  else if (k.me.pos) me = `<b>Você está em ${k.me.pos}º lugar</b><small>${nf(k.me.xp)} XP ${per == 'semana' ? 'nesta semana' : 'no total'}</small>`;
-  else me = `<b>Você ainda não pontuou${per == 'semana' ? ' nesta semana' : ''}</b><small>Conclua uma lição para entrar no ranking.</small>`;
-  let fim = ''; if (per == 'semana' && k.resets) { const ms = Math.max(0, Date.parse(k.resets) - Date.now()), d = Math.floor(ms / 864e5), hh = Math.floor(ms % 864e5 / 36e5); fim = `<small class=mut>Recomeça em ${d ? d + (d == 1 ? ' dia e ' : ' dias e ') : ''}${hh} h</small>`; }
-  const av = r => { const fr = r.frame ? `--fr:${CR.TIERS[r.frame].color};` : '', bg = bgCss(r.bg, r.color && r.color !== CR.BASE[r.guide] ? r.color : ''), st = fr + (bg ? `--bgc:${bg};` : ''); return `<span class=av style="width:44px;height:44px"><img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${st ? ` style="${st}"` : ''} src="${CR.colorFile(r.guide, r.color, true)}" width=44 height=44 alt="">${stkBadge(r.sticker, 20)}</span>`; };
-  const row = r => `<div class="rkr${r.me ? ' me' : ''}${r.pos <= 3 ? ' p' + r.pos : ''}"><span class=pos>${r.pos <= 3 ? ic('crown', 16) : ''}<b>${r.pos}º</b></span>${av(r)}<div class=bd><b>${esc(r.name)}${r.me ? ' <span class=badge>você</span>' : ''}</b><small>${esc(CR.TIERS[r.tier].title)}</small></div><span class=rxp><b>${nf(r.xp)}</b><small>XP</small></span></div>`;
-  const list = k.top.length ? k.top.map(row).join('') + (k.me.row ? `<div class=rkgap aria-hidden=true>· · ·</div>${row(k.me.row)}` : '')
-    : `<div class=panel><p style="margin:0">Ninguém pontuou${per == 'semana' ? ' nesta semana' : ''} ainda. Conclua uma lição e seja ${fm('o primeiro', 'a primeira')}!</p></div>`;
-  return head + `<div class="panel rkme">${avatar(54, 'ring')}<div class=bd>${me}</div></div>${fim ? `<div class=rkfim>${fim}${k.total ? `<small class=mut>${nf(k.total)} ${k.total == 1 ? 'aluno' : 'alunos'}</small>` : ''}</div>` : ''}${list}
-    <p class=tn style="margin-top:14px">Aparecem só o primeiro nome, a inicial do sobrenome, o personagem e o XP.${k.me.hidden ? '' : ' <a onclick="rkVis(false)">Sair do ranking</a>'}</p>`;
+  const top = k.top || [], pos = k.me.pos, ahead = pos && pos > 1 ? top.find(r => r.pos == pos - 1) : null, lead = Math.max(1, top.length ? top[0].xp : 1);
+  // cartão "sua posição"
+  let big, sub = '', extra = '';
+  if (k.me.hidden) { big = 'Fora do ranking'; sub = 'Ninguém vê o seu nome. Quer voltar?'; extra = `<button class="btn pri" onclick="rkVis(true)">Aparecer no ranking</button>`; }
+  else if (!m.verified) { big = 'Confirme seu e-mail'; sub = 'Só contas com e-mail confirmado aparecem no ranking.'; }
+  else if (pos) {
+    big = `Você está em ${pos}º lugar`; sub = `${nf(k.me.xp)} XP ${unit}`;
+    if (pos == 1) extra = `<p class=rkup>${ic('crown', 15)} Você lidera ${unit}. Continue assim!</p>`;
+    else if (ahead) { const d = ahead.xp - k.me.xp; extra = `<div class=rkup><div class=ph><span>${d > 0 ? `Faltam ${nf(d)} XP para o ${pos - 1}º lugar` : `Empate em XP com o ${pos - 1}º lugar`}</span><b>${nf(k.me.xp)} / ${nf(ahead.xp)}</b></div><div class=bar><i style="width:${Math.min(100, Math.round(k.me.xp / Math.max(1, ahead.xp) * 100))}%"></i></div></div>`; }
+  } else { big = `Você ainda não pontuou${per == 'semana' ? ' nesta semana' : ''}`; sub = 'Conclua uma lição para entrar no ranking.'; }
+  let fim = ''; if (per == 'semana' && k.resets) { const ms = Math.max(0, Date.parse(k.resets) - Date.now()), d = Math.floor(ms / 864e5), hh = Math.floor(ms % 864e5 / 36e5); fim = `<span>${ic('clock', 14)} Recomeça em ${d ? d + (d == 1 ? ' dia e ' : ' dias e ') : ''}${hh} h</span>`; }
+  const meta = fim || k.total ? `<div class=rkmeta>${fim}${k.total ? `<span>${ic('users', 14)} ${nf(k.total)} ${k.total == 1 ? 'aluno' : 'alunos'}</span>` : ''}</div>` : '';
+  const av = (r, s) => { const fr = r.frame ? `--fr:${CR.TIERS[r.frame].color};` : '', bg = bgCss(r.bg, r.color && r.color !== CR.BASE[r.guide] ? r.color : ''), st = fr + (bg ? `--bgc:${bg};` : ''); return `<span class=av style="width:${s}px;height:${s}px"><img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${st ? ` style="${st}"` : ''} src="${CR.colorFile(r.guide, r.color, true)}" width=${s} height=${s} alt="">${stkBadge(r.sticker, Math.round(s * .45))}</span>`; };
+  const pod = r => `<div class="pdc p${r.pos}${r.me ? ' me' : ''}">${r.pos == 1 ? `<span class=cr>${ic('crown', 22)}</span>` : ''}${av(r, r.pos == 1 ? 68 : 54)}<b class=nm>${esc(r.name)}</b><small class=tt>${r.me ? 'você · ' : ''}${esc(CR.TIERS[r.tier].title)}</small><span class=px>${nf(r.xp)} XP</span><div class=stp><b>${r.pos}º</b></div></div>`;
+  const row = r => `<div class="rkx${r.me ? ' me' : ''}"><b class=pn>${r.pos}º</b>${av(r, 42)}<div class=bd><b>${esc(r.name)}${r.me ? ' <span class=badge>você</span>' : ''}</b><small>${esc(CR.TIERS[r.tier].title)}</small><span class=rbar><i style="width:${Math.max(3, Math.round(r.xp / lead * 100))}%"></i></span></div><span class=rxp><b>${nf(r.xp)}</b><small>XP</small></span></div>`;
+  const rest = top.slice(3);
+  const list = top.length
+    ? `<div class=podium>${[top[1], top[0], top[2]].filter(Boolean).map(pod).join('')}</div>${rest.length || k.me.row ? `<div class="panel rkl">${rest.map(row).join('')}${k.me.row ? `<div class=rkgap aria-hidden=true>· · ·</div>${row(k.me.row)}` : ''}</div>` : ''}`
+    : `<div class="panel rkem">${poseChip('pensando', 76)}<b>Ninguém pontuou${per == 'semana' ? ' nesta semana' : ''} ainda</b><small>Conclua uma lição e seja ${fm('o primeiro', 'a primeira')}!</small></div>`;
+  return head + meta + `<div class="panel rkme"><div class=rkh><span class=rkv>${avatar(56, 'ring')}</span><div class=bd><small class=lbl>Sua posição</small><b>${big}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>${extra}</div>${list}
+    <div class="panel rkpv">${ic('shield', 20)}<div class=bd><b>Sua privacidade</b><small>Aparecem só o primeiro nome, a inicial do sobrenome, o personagem e o XP.</small></div>${k.me.hidden ? '' : `<button class="btn ghost" onclick="rkVis(false)">Ocultar meu nome do ranking</button>`}</div>`;
 }
 function rkPer(p) { if (S.rkp === p) return; S.rkp = p; go('rk'); }
 async function rkVis(show) {
   if (!show && !confirm('Sair do ranking? Seu nome deixa de aparecer para os outros alunos. Você pode voltar quando quiser, em Ranking ou no Perfil.')) return;
   try { S.me = await api('ranking/visibility', { body: { show } }); toast(show ? 'Você voltou ao ranking.' : 'Pronto! Você saiu do ranking.'); go(S.tab); } catch (e) { fail(e); }
 }
+// ============================================================ PERFIL: cabeçalho com progresso + 3 abas (Resumo, Personagem e Ajustes)
+function profileView(L, T) {
+  const t = ['res', 'per', 'aju'].includes(S.pft) ? S.pft : 'res';
+  return `${pfHero()}<div class="pseg pft" role=tablist aria-label="Seções do perfil">${[['res', 'Resumo'], ['per', 'Personagem'], ['aju', 'Ajustes']].map(([k, n]) => `<button role=tab aria-selected=${t == k} class="${t == k ? 'on' : ''}" onclick="pfTab('${k}')">${n}</button>`).join('')}</div>${t == 'res' ? pfRes(L, T) : t == 'per' ? pfChar() : pfSet(T)}`;
+}
+function pfTab(k) {
+  if (S.pft === k) return; S.pft = k; render();
+  const b = document.querySelector('.pft'); if (b && window.scrollY > b.offsetTop - 8) window.scrollTo(0, Math.max(0, b.offsetTop - 8));
+}
+function pfHero() {
+  const m = S.me, lvl = Math.floor(m.xp / 100) + 1, tier = CR.TIERS[CR.tierOf(m.xp)], cur = CR.frameOf(m.xp, m.frame);
+  return `<div class="panel pfh" style="--fr:${CR.TIERS[cur].color}"><div class=pfi>${avatar(80, 'ring big')}<div class=bd><h2>${esc(m.name)}<button class=ibtn onclick=editName() aria-label="Editar nome">${ic('pencil', 16)}</button></h2><small class=mut>${esc(m.email)}</small>
+      <div class=pfb><span class="badge gold">${ic('crown', 12)} ${tier.title}</span><span class=badge>Nível ${lvl}</span><span class=badge>${nf(m.xp)} XP</span></div></div></div></div>`;
+}
+// progresso até o próximo título e até o próximo nível (primeiro cartão da aba Resumo)
+function pfProg() {
+  const m = S.me, lvl = Math.floor(m.xp / 100) + 1, tier = CR.TIERS[CR.tierOf(m.xp)], nxt = CR.nextTier(m.xp);
+  return `<div class="panel pfg"><div class=pfp><div class=ph><span>${nxt ? 'Próximo título: ' + nxt.title : 'Você chegou ao topo: Lenda!'}</span><b>${nxt ? 'faltam ' + nf(nxt.xp - m.xp) + ' XP' : nf(m.xp) + ' XP'}</b></div><div class=bar><i style="width:${nxt ? Math.round((m.xp - tier.xp) / (nxt.xp - tier.xp) * 100) : 100}%"></i></div></div>
+    <div class=pfp><div class=ph><span>Nível ${lvl} → ${lvl + 1}</span><b>${m.xp % 100} / 100 XP</b></div><div class="bar thin"><i style="width:${m.xp % 100}%"></i></div></div></div>`;
+}
+function pfRes(L, T) {
+  const m = S.me, n = L.filter(done).length, np = Object.keys(m.passed).length, nc = Object.keys(m.certs).length;
+  const ach = [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', ['python', 'sql'].some(t => passedLv(t, 2))],
+    ['trophy', 'Avançado aprovado', ['python', 'sql'].some(t => passedLv(t, 3))], ['award', 'Certificado', nc > 0], ['chart', 'Meio caminho', trackPct(T) >= 50], ['bolt', '1.000 XP', m.xp >= 1000]];
+  const kp = (i, v, l) => `<div class=kp><span class=kpi>${ic(i, 17)}</span><b>${v}</b><small>${l}</small></div>`;
+  return `${pfProg()}<div class=kpg>${kp('flame', m.streak, 'dias de treino') + kp('file', n, 'lições feitas') + kp('cap', np, 'provas aprovadas') + kp('bolt', nf(m.xp), 'XP total') + kp('chart', nf(m.wk), 'XP na semana') + kp('award', nc, nc == 1 ? 'certificado' : 'certificados')}</div>
+    <div class=sec>Conquistas <span class=cnt>${ach.filter(a => a[2]).length} de ${ach.length}</span></div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
+    ${tiersView()}`;
+}
+function pfChar() {
+  const m = S.me;
+  return `<div class=sec>Meu personagem</div>
+    <div class="panel setc">
+      <div class=set><div class=sl>Eu sou</div><div class=sg>${[['f', 'Feminino'], ['m', 'Masculino']].map(([k, n]) => `<button class="${m.sex == k ? 'on' : ''}" aria-pressed=${m.sex == k} onclick="setSex('${k}')">${n}</button>`).join('')}</div></div>
+      <div class=set><div class=sl>Personagem</div><div class="sg gsw">${['tay', 'cut'].map(g => `<button class="${gid() == g ? 'on' : ''}" aria-pressed=${gid() == g} onclick="setGuide('${g}')"><img src="/img/${g}-face.webp" class="g-${g}" alt="" width=26 height=26> ${GUIDES[g].name}</button>`).join('')}</div></div>
+      <button class=lrow onclick=editGname()><span class=si>${ic('pencil', 17)}</span><span class=bd><small>Nome do personagem</small><b>${esc(gnm())}</b></span>${ic('chev', 16)}</button>
+    </div>
+    ${czView()}`;
+}
+function pfSet(T) {
+  const m = S.me, sf = window.CodeUpSfx ? CodeUpSfx.enabled() : true, sk = ['rose', 'neo', ''].includes(LS.get('skin')) ? LS.get('skin') : 'wild';
+  const sh = (i, t, d) => `<div class=sh><span class=si>${ic(i, 18)}</span><div class=bd><b>${t}</b><small>${d}</small></div></div>`;
+  const row = (i, t, fn, d) => `<button class=lrow onclick="${fn}"><span class=si>${ic(i, 17)}</span><span class=bd><b>${t}</b>${d ? `<small>${d}</small>` : ''}</span>${ic('chev', 16)}</button>`;
+  return `<div class=sec>Preferências</div>
+    <div class="panel setc">
+      <div class=set>${sh('crown', 'Ranking', 'No ranking aparecem só o seu primeiro nome, a inicial do sobrenome, o personagem e o XP.')}<div class=sg>${[[true, 'Aparecer'], [false, 'Ficar de fora']].map(([k, n]) => `<button class="${!m.rankOff == k ? 'on' : ''}" onclick="rkVis(${k})">${n}</button>`).join('')}</div></div>
+      <div class=set>${sh('volume', 'Sons', 'Efeitos sonoros quando você acerta, passa na prova ou mantém a sequência de dias. Fica salvo neste aparelho.')}<div class=sg>${[[true, 'Ligados'], [false, 'Desligados']].map(([k, n]) => `<button class="${sf == k ? 'on' : ''}" onclick="setSfx(${k})">${n}</button>`).join('')}</div></div>
+      <div class=set>${sh('palette', 'Aparência', 'Escolha as cores do aplicativo.')}<div class="sg sk">${[['wild', 'Azul', '#2f63b8'], ['rose', 'Rosa', '#c0398f'], ['', 'Azul escuro', '#111a2e'], ['neo', 'Claro', '#eef1ff']].map(x => `<button class="${sk == x[0] ? 'on' : ''}" onclick="setSkin('${x[0]}')"><i style="background:${x[2]}"></i>${x[1]}</button>`).join('')}</div></div>
+    </div>
+    <div class=sec>Minha conta</div>
+    <div class="panel lst">
+      ${row('swap', `Estudar ${T == 'python' ? 'SQL' : 'Python'}`, `studyTrack('${T == 'python' ? 'sql' : 'python'}')`, 'Trocar de trilha')}
+      ${row('key', m.hasPassword ? 'Alterar senha' : 'Criar senha', 'changePw()')}
+      ${row('bulb', 'Rever o tour', "go('home').then(() => startTour(true))")}
+      ${row('down', 'Baixar meus dados', 'exportData()')}
+      ${row('out', 'Sair', 'logout()')}
+    </div>
+    <div class=sec>Zona de perigo</div>
+    <div class="panel dz"><div class=bd><b>Excluir minha conta</b><small>Apaga seu progresso e seus certificados. Não dá para desfazer.</small></div><button class="btn danger" onclick=delAccount()>${ic('trash', 16)} Excluir</button></div>
+    <p class=legal>${S.cfg.contact ? `Precisa de ajuda? <a href="mailto:${esc(S.cfg.contact)}">${esc(S.cfg.contact)}</a><br>` : ''}<a href="/termos" target="_blank">Termos de Uso</a> · <a href="/privacidade" target="_blank">Política de Privacidade</a></p>`;
+}
 // Títulos e molduras: cada título novo chega com um XP; a moldura aparece no aro do personagem (topo, perfil e ranking). Dá para escolher qualquer moldura já conquistada.
 function tiersView() {
-  const m = S.me, top = CR.tierOf(m.xp), tier = CR.TIERS[top], nxt = CR.nextTier(m.xp), cur = CR.frameOf(m.xp, m.frame);
+  const m = S.me, cur = CR.frameOf(m.xp, m.frame);
   return `<div class=sec>Títulos e molduras</div>
-    <div class=panel><div class=ph><span>${nxt ? 'Próximo título: ' + nxt.title : 'Você chegou ao topo: Lenda!'}</span><b>${nxt ? 'faltam ' + nf(nxt.xp - m.xp) + ' XP' : nf(m.xp) + ' XP'}</b></div><div class=bar><i style="width:${nxt ? Math.round((m.xp - tier.xp) / (nxt.xp - tier.xp) * 100) : 100}%"></i></div></div>
-    <div class=tiers>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp; return `<div class="tri ${on ? 'on' : 'lk'}" style="--fr:${t.color}"><span class=sw2></span><div class=bd><b>${t.title}</b><small>${t.frame ? 'Moldura ' + t.frame : 'Título inicial'} · ${nf(t.xp)} XP</small></div>${k == 0 ? '' : on ? `<button class="btn ${cur == k ? 'pri' : 'ghost'}" onclick="setFrame('${t.key}')">${cur == k ? 'Em uso' : 'Usar'}</button>` : `<span class=r>${ic('lock', 16)}</span>`}</div>`; }).join('')}</div>`;
+    <p class=tn style="margin:0 2px 8px">Toque numa moldura conquistada para usá-la no seu personagem.</p>
+    <div class=tg>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp, use = cur == k, bx = `<span class=sw2>${on ? '' : ic('lock', 14)}</span><b>${t.title}</b><small>${k == 0 ? 'Início' : nf(t.xp) + ' XP'}</small>${use && k ? `<span class=ck>${ic('check', 11)}</span>` : ''}`;
+      return k == 0 || !on ? `<div class="tgi ${on ? 'on' : 'lk'}${use ? ' use' : ''}" style="--fr:${t.color}" title="${t.frame ? 'Moldura ' + t.frame + ' · ' + nf(t.xp) + ' XP' : 'Título inicial'}">${bx}</div>` : `<button class="tgi on${use ? ' use' : ''}" style="--fr:${t.color}" onclick="setFrame('${t.key}')" aria-pressed=${use} aria-label="Moldura ${t.frame}${use ? ' (em uso)' : ''}">${bx}</button>`; }).join('')}</div>`;
 }
 // miniatura (só CSS) de cada estilo de roupa, na cor escolhida
 const STAR_SVG = c => `url(data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'><path fill='${c}' d='M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z'/></svg>`).replace(/'/g, '%27')})`;
@@ -660,15 +712,18 @@ function czView() {
   const outs = chip('outfit', 'auto', !m.outfit, `<i class=sw style="background:${outBg('liso', hue)}"></i>`, 'Liso') + CR.OUTFITS.filter(o => o.id).map(o => chip('outfit', o.key, m.outfit == o.key, `<i class=sw style="background:${outBg(o.key, hue)}"></i>`, o.name, o)).join('');
   const pbg = bgCss(m.bg, m.color && m.color != CR.BASE[g] ? m.color : '');
   const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS, CR.OUTFITS.filter(o => o.id)].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length + CR.OUTFITS.length - 1;
+  const CZG = [['ex', 'Expressões'], ['color', 'Cor'], ['outfit', 'Estilo'], ['sticker', 'Adesivo'], ['bg', 'Fundo']], gt = CZG.some(x => x[0] == S.czt) ? S.czt : 'ex';
   return `<div class=sec>Personalizar personagem</div>
     <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190, S.pop ? 'pop' : '', '', '#ffd43b')}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
     <p class=tn style="margin:8px 2px 0">${free == all ? 'Você liberou todos os itens. É uma lenda!' : `${free} de ${all} itens liberados. Ganhe XP para subir de título e liberar o resto.`}</p>
-    <div class=czh>Expressões <small style="font-weight:700">(tocar no personagem também sorteia uma)</small></div><div class="czg ex">${EXPR[g].map(([k, n]) => `<button class=czi onclick="playMove('p:${k}')" aria-label="${n}"><i class="sw pz" style="background-image:url(/img/pose/${g}-${k}.webp);${HUE() ? `filter:hue-rotate(${HUE()}deg)` : ''}"></i><small>${n}</small></button>`).join('')}</div>
-    <div class=czh>Cor da roupa</div><div class=czg>${colors}</div>
-    <div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>
-    <div class=czh>Adesivo</div><div class=czg>${stk}</div>
-    <div class=czh>Fundo</div><div class=czg>${bgs}</div>`;
+    <div class=czt role=tablist aria-label="O que personalizar">${CZG.map(([k, n]) => `<button role=tab aria-selected=${gt == k} class="${gt == k ? 'on' : ''}" onclick="czTab('${k}')">${n}</button>`).join('')}</div>
+    ${gt == 'ex' ? `<div class=czh>Expressões <small style="font-weight:700">(tocar no personagem também sorteia uma)</small></div><div class="czg ex">${EXPR[g].map(([k, n]) => `<button class=czi onclick="playMove('p:${k}')" aria-label="${n}"><i class="sw pz" style="background-image:url(/img/pose/${g}-${k}.webp);${HUE() ? `filter:hue-rotate(${HUE()}deg)` : ''}"></i><small>${n}</small></button>`).join('')}</div>` : ''}
+    ${gt == 'color' ? `<div class=czh>Cor da roupa</div><div class=czg>${colors}</div>` : ''}
+    ${gt == 'outfit' ? `<div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>` : ''}
+    ${gt == 'sticker' ? `<div class=czh>Adesivo</div><div class=czg>${stk}</div>` : ''}
+    ${gt == 'bg' ? `<div class=czh>Fundo</div><div class=czg>${bgs}</div>` : ''}`;
 }
+function czTab(k) { if (S.czt === k) return; S.czt = k; const y = window.scrollY; render(); window.scrollTo(0, y); }
 async function czSet(kind, key) {
   const it = key == 'auto' ? null : CR.item(CR.LISTS[kind], key);
   if (it && it.tier > CR.tierOf(S.me.xp)) { const t = CR.TIERS[it.tier]; return toast(`Libera com o título ${t.title} (${nf(t.xp)} XP).`); }
