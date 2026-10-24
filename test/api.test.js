@@ -1237,7 +1237,7 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
   assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.match(ui, /body\(285, 'wave', 'hb', '', 'hello'\)/, 'oi da tela inicial'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
-  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'oops'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 3, 'o mapa usa o personagem nas três paradas (lição, checkpoint e prova final)');
+  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 3, 'o mapa usa o personagem nas três paradas (lição, checkpoint e prova final)');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
   assert.match(sw, /codeup-v(3[6-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
@@ -1272,7 +1272,7 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
   for (const c of ['.fxo{', '.fxo .rays', '.trophy', '.flw', '.sn .n', '.wk{', '.spk{', '.fb .fbc', '@keyframes fxSpark', '@keyframes fxTrophy', '@keyframes fxFl']) assert.ok(css.includes(c), 'css ' + c);
 });
 
-test('app: cartões de explicação, provas com chances, tela de voltar lições e mapa com checkpoints e prova final', () => {
+test('app: cartões de explicação, provas com chances, tela de voltar lições e mapa com checkpoints e prova final', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
   // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
   for (const k of ['O que é', 'Para que serve', 'Como você vai usar aqui', 'O que vai aparecer na tela']) assert.ok(ui.includes(`'${k}'`), k);
@@ -1283,6 +1283,9 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>Solução<\/button>/, 'prova não tem Solução nem Teoria');
   assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
+  // prova reprovada: o personagem desanimado (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
+  assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\/img\/fail-\$\{gid\(\)\}\.webp"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
+  for (const g of ['cut', 'tay']) { const f = path.join(pubDir, 'img', `fail-${g}.webp`), b = fs.readFileSync(f); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 10000 && b.length < 200000, `fail-${g} tem tamanho razoável`); assert.equal((await fetch(`${U}/img/fail-${g}.webp`)).status, 200, `fail-${g} é servida`); }
   assert.ok(!ui.includes('nada é gasto: você corrige'), 'a regra antiga (erro não gasta chance) saiu das regras da prova');
   assert.match(ui, /if \(T && s\.rewind\)/, 'acabaram as chances: tela de voltar lições'); assert.match(ui, /voltar|volta \$\{r\.back\} lições|você volta/i);
   assert.match(ui, /openTest\('\$\{fin\.id\}'\)/, 'o mapa tem o nó da prova final'); assert.match(ui, /Prova final · \$\{LV\[lv - 1\]\}/);

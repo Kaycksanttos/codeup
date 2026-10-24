@@ -91,7 +91,8 @@ const OUTF = () => CR.outfitId(S.me && S.me.outfit);
 const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 'pop' : (/\b(jump|clap|dance|wave)\b/.exec(cls) || [])[1] || (/\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '');
 // reel: a sequência de expressões da folha (poses) que esta tela pede: win | cp | big | think | oops | intro | hello (veja REELS em anim.js); sem poses, vale o movimento do corpo (cls)
 const HUE = () => CR.hueShift(gid(), S.me && S.me.color);   // a cor escolhida também vale nas poses
-const body = (h = 200, cls = '', extra = '', fxc = '', reel = '') => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, reel, hue: HUE(), alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+// reel 'fail' (prova reprovada): a imagem do personagem desanimado, azul (Cut) ou rosa (Tay) conforme o guia da pessoa (img/fail-<guia>.webp)
+const body = (h = 200, cls = '', extra = '', fxc = '', reel = '') => reel == 'fail' ? `<img class="body fimg" src="/img/fail-${gid()}.webp" style="height:${h}px" alt="${esc(gnm())} desanimad${gid() == 'tay' ? 'a' : 'o'}">` : window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, reel, hue: HUE(), alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
 const stage = (h, text, cls = '', fxc = '', reel = '') => `<div class="stage ${cls}"${(b => { const v = [b ? '--gl:' + b.c1 : '', /^#[0-9a-f]{6}$/i.test(fxc) ? '--fx:' + fxc : ''].filter(Boolean).join(';'); return v ? ` style="${v}"` : ''; })(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls, '', fxc, reel)}<span class=gn>${esc(gnm())}</span></div>`;
 // personagem do mapa: de frente, com o corpo animado (respira, pisca) e, de tempos em tempos, uma expressãozinha (reel 'mapa')
 const walker = () => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h: 120, cls: 'pm', reel: 'mapa', hue: HUE(), alt: '' }) : `<img class=pm src="${IMG().full}" alt="">`;
@@ -1087,7 +1088,7 @@ function testPass(r) {
 function testFail(s) {
   delete document.body.dataset.calm;
   const l = S.cur, r = s.rewind, ls = S.ls.filter(x => x.track == l.track && x.lv == l.lv && x.n >= r.from && x.n <= r.to), first = ls[0];
-  sfx('fail'); A.innerHTML = `<div class="c res">${stage(220, 'Calma, vamos relembrar!', 'bad', '', 'oops')}<h1 class=bad>Não foi dessa vez</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · ${l.fin ? 'prova final' : 'checkpoint da lição ' + l.after}</p>
+  sfx('fail'); window.scrollTo(0, 0); A.innerHTML = `<div class="c res">${stage(270, 'Calma, vamos relembrar!', 'bad', '', 'fail')}<h1 class=bad>Não foi dessa vez</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · ${l.fin ? 'prova final' : 'checkpoint da lição ' + l.after}</p>
   <div class=chances>${chHearts(0, l.chances, 26)}<small>As ${l.chances} chances acabaram</small></div>
   <p class=gl>Para fixar o conteúdo, você volta <b>${r.back} lições</b>: da ${r.from} à ${r.to}. O XP que você já ganhou continua seu e, quando terminar, a prova abre de novo com ${l.chances} chances novas.</p>
   <div class="panel backl"><b>Lições para refazer</b>${ls.map(x => `<div class=bk><span>${x.n}</span>${esc(x.title)}</div>`).join('')}</div>

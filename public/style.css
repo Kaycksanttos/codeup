@@ -785,3 +785,7 @@ body.wild .inf .ih b{color:var(--hi)}
 .unl .sw svg{display:block}
 .unl .ulk{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:13px;color:var(--acc2);cursor:pointer}
 @media (prefers-reduced-motion:reduce){.unl{animation:none}}
+/* tela "Não foi dessa vez": a imagem do personagem desanimado (sem o filtro cinza das outras telas de erro) balança bem devagar */
+.stage.bad .body.fimg{width:auto;max-width:78vw;object-fit:contain;filter:drop-shadow(0 12px 16px #000b);animation:sadsway 4.6s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes sadsway{50%{transform:translateY(-5px) rotate(1deg)}}
+@media (prefers-reduced-motion:reduce){.stage.bad .body.fimg{animation:none}}
