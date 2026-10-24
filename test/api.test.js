@@ -1419,6 +1419,10 @@ test('mapa com cenário: floresta ao longo da trilha, personagem no pedestal e c
   assert.match(ui, /<i class=nn>\$\{l\.n\}<\/i>/, 'número da lição no botão (os títulos saem do mapa no visual Azul)');
   assert.match(ui, /class="card cont tkc"/); assert.match(ui, /<div class=tkb><i style="width:/); assert.match(ui, /Vamos continuar seus estudos\?/);
   assert.match(ui, /class=cprog/, 'os outros visuais mantêm o cartão Continuar com o progresso');
+  // se ajusta ao tamanho do celular: posições em %, cartão com largura calculada (mínimo 96 px, nunca passa da borda), refaz o mapa ao girar a tela
+  assert.match(ui, /Math\.max\(96, Math\.round\(\(X\[k\] > 50\.5 \? X\[k\] : 100 - X\[k\]\) \* Wm \/ 100 - 58\)\)/);
+  assert.match(ui, /addEventListener\('resize'[\s\S]{0,260}Math\.abs\(innerWidth - \(S\.rw \|\| innerWidth\)\) >= 40[\s\S]{0,80}render\(\); scrollTo\(0, y\)/);
+  assert.match(css, /@media \(max-width:340px\)\{\.nav button\{font-size:10\.5px\}/, 'menu de baixo cabe em 320 px');
   for (const k of ['body.wild .scn{display:block;position:absolute', '.scn .sp{position:absolute', '.scn .f{scale:-1 1}', 'body.wild .tl .ti.cur .rail span.nd,', 'body.wild .tl .ti.cur .lc{display:block', '.lcb{display:block', 'body.wild .card.tkc{display:flex', 'body.wild .unit.slim{display:none}', 'body.rose .scn{filter:hue-rotate']) assert.ok(css.includes(k), 'CSS: ' + k);
   assert.ok(css.includes('@media (prefers-reduced-motion:reduce){.scn *{animation:none!important}}'), 'sem animação quando o aparelho pede menos movimento');
   assert.match(css, /\.tl\{--row:170px;--top:100px;/);

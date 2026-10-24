@@ -513,7 +513,8 @@ function render() {
     const pathSvg = mapSvg(X, pi, MAP);
     const curK = cur >= 0 ? rows.findIndex(r => r.l && r.i == cur) : (c => c >= 0 ? c : finReady ? rows.length : -1)(rows.findIndex(r => r.c && !cpOk(r.c) && !r.c.lock && !done(ls.find(l => l.n == r.c.after + 1) || {})));
     const scene = window.mapScene && document.body.classList.contains('wild') ? mapScene({ X, M: MAP, NR, track: T, cur: curK, W: Math.min(488, innerWidth - 32) }) : '';
-    const WL = document.body.classList.contains('wild'), Wm = Math.min(488, innerWidth - 32), lcard = (k, kick, title) => `<div class=lc style="--lw:${Math.max(128, Math.round((X[k] > 50.5 ? X[k] : 100 - X[k]) * Wm / 100 - 58))}px"><small>${kick}</small><b>${esc(String(title).replace(/^Checkpoint:\s*/i, ''))}</b><em class=lcb>INICIAR</em></div>`;
+    S.rw = innerWidth;
+    const WL = document.body.classList.contains('wild'), Wm = Math.min(488, innerWidth - 32), lcard = (k, kick, title) => `<div class=lc style="--lw:${Math.max(96, Math.round((X[k] > 50.5 ? X[k] : 100 - X[k]) * Wm / 100 - 58))}px"><small>${kick}</small><b>${esc(String(title).replace(/^Checkpoint:\s*/i, ''))}</b><em class=lcb>INICIAR</em></div>`;
     const rowHtml = (r, k) => r.l ? (l => { const i = r.i; return `<div class="ti ${done(l) ? 'ok' : i == cur ? 'cur' : l.lock ? 'lk' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openL('${l.id}')"><div class=rail>${i == cur && !WL ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${done(l) ? ic('check', 28) : l.lock ? ic('lock', 24) : ic('star', 28)}<i class=nn>${l.n}</i></span>${i == cur ? walker() + lcard(k, 'Lição ' + l.n, l.title) : ''}</div><div class=tb><b>${esc(l.title)}</b><small>Lição ${l.n}${done(l) ? '' : ' · +' + l.xp + ' XP'}</small></div></div>`; })(r.l)
       : (c => { const need = !cpOk(c) && !c.lock && !done(ls.find(l => l.n == c.after + 1) || {}); return `<div class="ti cp ${cpOk(c) ? 'ok' : c.lock ? 'lk' : 'av'}${need ? ' cur' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openTest('${c.id}')"><div class=rail>${need && !WL ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${cpOk(c) ? ic('check', 28) : c.lock ? ic('lock', 24) : ic('flag', 28)}</span>${need ? walker() + lcard(k, 'Checkpoint', c.title) : ''}</div><div class=tb><b>${esc(c.title)}</b><small>${cpOk(c) ? 'Checkpoint concluído' : c.lock ? 'Checkpoint · depois da lição ' + c.after : 'Checkpoint · ' + chTxt(c) + ' · +' + c.xp + ' XP'}</small></div></div>`; })(r.c);
     const prog = `<div class=cprog><div class=ph><span>Progresso em ${TN[T]}</span><b>${pct}%</b></div><div class=segs>${[1, 2, 3].map(x => `<div class=seg><i style="width:${lvPct(T, x)}%"></i></div>`).join('')}</div><div class=sl><span>Básico</span><span>Intermediário</span><span>Avançado</span></div></div>`;
@@ -1243,6 +1244,9 @@ async function syncAccess(force) {
   } catch { } finally { syncing = false; }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncAccess(true); });
+// girou o celular ou mudou o tamanho da janela: o mapa (cenário e cartão da lição) é desenhado para a largura da tela, então se refaz na tela do mapa
+let rzT = 0;
+addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (S.tab == 'home' && $('.nav') && $('.tl') && Math.abs(innerWidth - (S.rw || innerWidth)) >= 40) { const y = scrollY; render(); scrollTo(0, y); } }, 300); });
 addEventListener('focus', () => syncAccess());
 addEventListener('online', () => syncAccess(true));
 setInterval(() => syncAccess(), 60e3);

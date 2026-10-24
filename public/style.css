@@ -1002,3 +1002,4 @@ body.wild .tl .ti.cur .lc b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box
 body.rose .tl .ti.cur .lc{background:linear-gradient(160deg,rgba(120,44,128,.94),rgba(62,22,84,.95));border-color:rgba(255,190,235,.4)}
 body.rose .tl .ti.cur .lc:before{background:rgba(110,40,122,.96);border-color:rgba(255,190,235,.4)}
 body.rose .tl .ti.cur .rail span.nd{filter:hue-rotate(78deg)}
+@media (max-width:340px){.nav button{font-size:10.5px}body.wild .nav button{margin:0 1px}.nav button span{overflow:visible;text-overflow:clip}}
