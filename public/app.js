@@ -96,7 +96,7 @@ const avatar = (s, cls = '') => `<span class=av style="width:${s}px;height:${s}p
 const OUTF = () => CR.outfitId(S.me && S.me.outfit);
 // cls: 'good' (passou), 'bad' (errou), 'epic'/'epic2' (conquista: nível novo, prova, título novo → pulo grande, brilho e faíscas na cor fxc), 'pop' (acabou de trocar um item)
 const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 'pop' : (/\b(jump|clap|dance|wave)\b/.exec(cls) || [])[1] || (/\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '');
-// reel: a sequência de expressões da folha (poses) que esta tela pede: win | cp | big | think | oops | intro | hello (veja REELS em anim.js); sem poses, vale o movimento do corpo (cls)
+// reel: a sequência de expressões da folha (poses) que esta tela pede: win | cp | big | think | oops | intro (veja REELS em anim.js); sem poses, vale o movimento do corpo (cls)
 const HUE = () => CR.hueShift(gid(), S.me && S.me.color);   // a cor escolhida também vale nas poses
 // reel 'fail' (prova reprovada): o personagem chorando. O Cut usa a pose "chorando" da folha de expressões; a Tay, a imagem dela (img/fail-tay.webp)
 const failImg = () => gid() == 'cut' ? '/img/pose/cut-chorando.webp' : '/img/fail-tay.webp';
@@ -249,7 +249,7 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div>${window.CodeUpAnim ? body(285, 'wave', 'hb', '', 'hello') : `<img class=hb src="${IMG().full}" alt="${esc(gnm())}">`}<div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
     <div class=feat><span>${ic('code', 16)} 180 lições práticas</span><span>${ic('cap', 16)} 3 níveis com provas</span><span>${ic('award', 16)} Certificado</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };

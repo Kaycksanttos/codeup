@@ -1235,12 +1235,12 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   // motor: sequências, movimentos, rabiscos, balão, toque, brincadeira dos muitos toques e respeito a "reduzir movimento"
   for (const f of ['function poseLoad(', 'function startReel(', 'function pzState(', 'function pzDraw(', 'function mot(', 'function preload(', 'function kick(']) assert.ok(anim.includes(f), f);
   for (const k of ['hop', 'jump2', 'beat', 'shake', 'tilt', 'nod', 'snap', 'startle', 'walk', 'snooze', 'wave']) assert.match(anim, new RegExp(`n == '${k}'`), 'movimento ' + k);
-  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'hello', 'mapa', 'ok', 'perfect', 'pass', 'streak', 'streak7', 'sleep', 'wake', 'idea', 'explain']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
+  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'mapa', 'ok', 'perfect', 'pass', 'streak', 'streak7', 'sleep', 'wake', 'idea', 'explain']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
   assert.match(anim, /i\.taps\.length >= 5/, 'muitos toques seguidos deixam bravinho'); assert.match(anim, /CALM/); assert.match(anim, /k\.indexOf\('p:'\) == 0/); assert.match(anim, /_pose: function/);
   assert.match(anim, /if \(reduce \|\| !PZ/, 'com "reduzir movimento" as poses não entram'); assert.match(anim, /if \(reduce\) return false;/);
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
-  assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.match(ui, /body\(285, 'wave', 'hb', '', 'hello'\)/, 'oi da tela inicial'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
+  assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.ok(!/const hero = [^\n]*(body\(|class=hb\b|<img)/.test(ui) && !/'hello'/.test(ui), 'a tela de entrada (login/cadastro) não tem personagem: só a marca CodeUp'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
   assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 3, 'o mapa usa o personagem nas três paradas (lição, checkpoint e prova final)');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');

@@ -75,7 +75,8 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] No Ranking, a linha de cada aluno mostra o rostinho na cor escolhida, com o fundo e o adesivo no canto.
 
 **4d. Personagem animado e estilo da roupa**
-- [ ] O personagem de corpo inteiro (tela de resultado da lição/prova, escolha de trilha, tela de entrada e a prévia do Perfil) **se mexe sozinho**: respira, balança de leve, inclina a cabeça e **pisca**. A Tay mexe o cabelo; o Cut balança o joinha.
+- [ ] **Tela de entrada** (login e cadastro): só a marca **CodeUp** e a frase, **sem personagem**.
+- [ ] O personagem de corpo inteiro (tela de resultado da lição/prova, escolha de trilha e a prévia do Perfil) **se mexe sozinho**: respira, balança de leve, inclina a cabeça e **pisca**. A Tay mexe o cabelo; o Cut balança o joinha.
 - [ ] **Tocar no personagem** faz ele mudar de expressão. Ao **passar** numa lição/prova ele **comemora** (pulinhos); ao **errar** a prova ele fica de cabeça baixa e balança a cabeça dizendo "não".
 - [ ] No **Perfil → Personagem → Personalizar personagem** há a aba **Estilo** (estilo da roupa) (Liso, Listrado, Bolinhas, Xadrez, Degradê, Estrelas, Camuflado, Tie-dye, Galáxia, Dourado, Holográfico). A prévia muda na hora, e a estampa vale para o moletom e a calça (logos, corações, coroas e partes brancas dos tênis ficam como são). A cor escolhida em **Cor da roupa** colore as estampas simples; Tie-dye, Galáxia, Dourado e Holográfico têm cores próprias.
 - [ ] Livres desde o começo: **Liso** e **Listrado**. Os outros pedem título (Bolinhas: Aprendiz · Xadrez e Degradê: Praticante · Estrelas e Camuflado: Destaque · Tie-dye: Craque · Galáxia: Expert · Dourado: Mestre · Holográfico: Lenda). Bloqueados aparecem com cadeado.

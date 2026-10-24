@@ -276,13 +276,13 @@
   var FXN = { jump: [[.98, 8, 0], [1.76, 14, 1]], star: [[.2, 10, 0]], clap: [[.3, 5, 0], [1.2, 5, 0]] };
   // sequências de pose por situação: [pose, segundos, movimento, faíscas, balão]
   // win/cp/big: fim de lição, checkpoint e conquistas · ok/perfect: acerto e acerto de primeira · pass: prova aprovada · streak/streak7: dias seguidos
-  // think/oops/intro/hello/mapa: telas de apoio · sleep/wake: aluno que voltou depois de muito tempo · idea: dica · explain: teoria
+  // think/oops/intro/mapa: telas de apoio · sleep/wake: aluno que voltou depois de muito tempo · idea: dica · explain: teoria
   var SEQ = {
     win: [[['pulo', 2.1, 'jump2', 'jump'], ['joinha', 1.6, 'nod', 'star']], [['vitoria', 2.1, 'jump2', 'jump'], ['piscada', 1.5, 'hop', 'star']], [['apaixonado', 1.2, 'bob'], ['coracao', 1.8, 'beat', 'star'], ['joinha', 1.4, 'nod', 'star']]],
     cp: [[['vitoria', 2.1, 'jump2', 'jump'], ['estiloso', 1.6, 'snap', 'star'], ['joinha', 1.4, 'nod', 'star']]],
     big: [[['ops', 1, 'startle'], ['pulo', 2.1, 'jump2', 'jump'], ['vitoria', 1.9, 'jump2', 'jump'], ['estiloso', 1.7, 'snap', 'star']]],
     think: [[['pensando', 3.2, 'tilt']]], oops: [[['ops', 3.4, 'startle']]], intro: [[['joinha', 2.6, 'nod', 'star']], [['oi', 2.4, 'bob', 'star']]],
-    hello: [[['tchau', 2.6, 'wave', 'star', 'Oi!']]], mapa: [[['piscada', 1.7, 'hop', 'star']], [['joinha', 1.6, 'nod', 'star']], [['explica', 1.7, 'bob']], [['aponta2', 1.6, 'nod']]],
+    mapa: [[['piscada', 1.7, 'hop', 'star']], [['joinha', 1.6, 'nod', 'star']], [['explica', 1.7, 'bob']], [['aponta2', 1.6, 'nod']]],
     ok: [[['joinha', 1.5, 'nod', 'star']], [['piscada', 1.5, 'hop', 'star']], [['estiloso', 1.5, 'snap', 'star']], [['apontando', 1.5, 'bob', 'star']]],
     perfect: [[['ops', .9, 'startle'], ['vitoria', 2.1, 'jump2', 'jump']]],
     pass: [[['vitoria', 2.1, 'jump2', 'jump'], ['pulo', 1.9, 'jump2', 'jump'], ['coracao', 1.5, 'beat', 'star'], ['estiloso', 1.6, 'snap', 'star'], ['joinha', 1.6, 'nod', 'star']]],
@@ -306,7 +306,7 @@
     return c;
   })();
   var REELS = { tay: SEQ, cut: SEQ_CUT };
-  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, mapa: { delay: 2.5, period: 11 }, ok: { delay: .1, period: 'loop' }, perfect: { delay: .1, period: 'loop' }, pass: { delay: .15, period: 'loop' }, streak: { delay: .3, period: 'loop' }, streak7: { delay: .3, period: 'loop' }, sleep: { delay: .15, period: 'loop' }, wake: { delay: .1 }, idea: { delay: .2 }, explain: { delay: .6, period: 12 } };
+  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, mapa: { delay: 2.5, period: 11 }, ok: { delay: .1, period: 'loop' }, perfect: { delay: .1, period: 'loop' }, pass: { delay: .15, period: 'loop' }, streak: { delay: .3, period: 'loop' }, streak7: { delay: .3, period: 'loop' }, sleep: { delay: .15, period: 'loop' }, wake: { delay: .1 }, idea: { delay: .2 }, explain: { delay: .6, period: 12 } };
   var TAPS = { tay: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'aponta2'], cut: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'dab', 'correndo', 'serio'] };
   var CALM = { tay: 'apontando', cut: 'joinha' };      // depois da bravinha (muitos toques seguidos), ele(a) volta a sorrir
   var lastReel = {};
