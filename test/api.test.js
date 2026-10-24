@@ -1384,3 +1384,19 @@ test('acabamento: abertura com a marca, falha de carregamento, sessão expirada,
   // o logo da Python (.tg) não pode ser sobrescrito pela grade de títulos do Perfil (.tgr): era isso que cortava o "py"
   assert.ok(!/(^|\n)\.tg\{display:grid/.test(css), '.tg do logo não vira grade'); assert.match(css, /\.tgr\{display:grid/); assert.match(ui, /<div class=tgr>/);
 });
+
+test('trilhas: logos novas do Python e do SQL e a tela Trilhas redesenhada', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js');
+  // as duas logos (recortadas da imagem do dono, com fundo transparente) valem em todas as telas no lugar do "py" e do ícone de banco
+  for (const f of ['logo-python.webp', 'logo-sql.webp']) {
+    const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 8000 && b.length < 80000, `${f} tem tamanho razoável (${b.length})`);
+    assert.equal((await fetch(`${U}/img/${f}`)).status, 200, f + ' é servida'); assert.ok(sw.includes(`/img/${f}`), f + ' fica no cache offline');
+  }
+  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{t == 'python' \? 'python' : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
+  assert.ok(!/\.tg\.py|\.tg\.sq/.test(css), 'sem o CSS antigo do "py" e do ícone de banco');
+  // Trilhas: resumo, cartão por trilha (logo, anel, níveis com estado, próximo passo, certificado) e "Em breve"
+  for (const k of ['class=jr', 'panel trk2', 'class=ringw', 'class="lv2 ${st}"', 'class=nx2', 'class="cert2', "onclick=\"studyTrack('${t}')\"", 'class=sec2>Em breve', 'class="panel soon"', 'class=sr>', 'class=sbadge']) assert.ok(ui.includes(k), 'Trilhas: ' + k);
+  for (const k of ['.jr{', '.trk2{', '.lv2{', '.nx2{', '.cert2{', '.soon{', '.soon .sr{']) assert.ok(css.includes(k), 'CSS de ' + k);
+  assert.ok(!css.includes('.soon .sn') && !css.includes('.soon .chip'), 'sem colidir com .sn (número da sequência) e .chip (botões)');
+  assert.match(ui, /Certificado ao passar nas 3 provas finais/); assert.match(ui, /Análise de Dados/); assert.match(ui, /Projetos Reais/);
+});

@@ -114,7 +114,7 @@ const winStage = (h, text, base = 'win', big = false) => {
   if (/epic/.test(base)) return stage(h, text, 'good epic', '#fbbf24', 'big');
   return stage(h, text, 'good', '', base == 'cp' ? 'cp' : 'win');
 };
-const tg = (t, s = 40) => t == 'python' ? `<span class="tg py" style="--s:${s}px">py</span>` : `<span class="tg sq" style="--s:${s}px">${ic('db', Math.round(s * .5))}</span>`;
+const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${t == 'python' ? 'python' : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo da trilha (Python ou SQL)
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
 // destaque de sintaxe simples (só para exemplos e soluções exibidos)
@@ -537,13 +537,24 @@ function render() {
   }
   if (S.tab == 'rk') h = rankView();
   if (S.tab == 'tr') {
-    h = `<h2 class=ttl>Trilhas</h2><p class=sub>Escolha onde estudar. O progresso de cada trilha é separado.</p>` + ['python', 'sql'].map(t => {
-      const p = trackPct(t);
-      return `<div class="panel trk ${t}">
-        <div class=trh>${tg(t, 46)}<div class=bd><b>${TN[t]}${m.track == t ? ' <span class=badge>Atual</span>' : ''}</b><small>${p}% concluído</small></div></div>
-        ${[1, 2, 3].map(lv => `<div class=lr><span>${bars(lv)} ${LV[lv - 1]}</span><div class=bar><i style="width:${lvPct(t, lv)}%"></i></div><small>${passedLv(t, lv) ? 'Aprovado' : lvDone(t, lv) + '/30'}</small></div>`).join('')}
-        <button class="btn ${m.track == t ? 'ghost' : 'pri'} block" onclick="studyTrack('${t}')">${m.track == t ? 'Continuar estudando' : 'Estudar ' + TN[t]}</button></div>`;
-    }).join('') + `<div class="card lk"><span class=ib>${ic('chart', 20)}</span><div class=bd><b>Dashboards e Visualização</b><small>Gráficos e Power BI</small></div><span class=r>Em breve</span></div>`;
+    const TAG = { python: 'Da lógica de programação à análise de dados com Pandas', sql: 'Do primeiro SELECT às funções de janela' };
+    const nDone = S.ls.filter(done).length, nPass = ['python', 'sql'].reduce((a, t) => a + [1, 2, 3].filter(lv => passedLv(t, lv)).length, 0), nCert = ['python', 'sql'].filter(t => m.certs[t]).length;
+    const ring = p => `<span class=ringw role=img aria-label="${p}% concluído"><svg viewBox="0 0 60 60" aria-hidden=true><circle class=rb cx=30 cy=30 r=24 /><circle class=rf cx=30 cy=30 r=24 stroke-dasharray="${(p / 100 * 150.8).toFixed(1)} 150.8" transform="rotate(-90 30 30)" /></svg><b>${p}%</b></span>`;
+    const SOON = [['code', 'Análise de Dados', 'Pandas e análise na prática'], ['chart', 'Dashboards e Visualização', 'Gráficos e Power BI'], ['target', 'Projetos Reais', 'Do dado ao relatório']];
+    h = `<h2 class=ttl>Trilhas</h2><p class=sub>Escolha onde estudar. O progresso de cada trilha é separado.</p>
+    <div class=jr><div><b>${nDone}<i>/${S.ls.length}</i></b><small>lições feitas</small></div><div><b>${nPass}<i>/6</i></b><small>provas finais</small></div><div><b>${nCert}<i>/2</i></b><small>certificados</small></div></div>`
+      + ['python', 'sql'].map(t => {
+        const p = trackPct(t), cur = m.track == t, cl = curLevel(t), nx = nextStep(t), np = [1, 2, 3].filter(lv => passedLv(t, lv)).length, started = S.ls.some(l => l.track == t && done(l));
+        const nxt = nx ? (nx.cp ? (nx.cp.fin ? `Prova final · ${LV[nx.cp.lv - 1]}` : nx.cp.title) : `Lição ${nx.n} · ${nx.title}`) : 'Trilha concluída. Parabéns!';
+        return `<div class="panel trk2 ${t}${cur ? ' cur' : ''}">
+        <div class=th>${tg(t, 64)}<div class=bd><b>${TN[t]}${cur ? ' <span class=badge>Atual</span>' : ''}</b><small>${TAG[t]}</small></div>${ring(p)}</div>
+        <div class=tb2>${[1, 2, 3].map(lv => { const ps = passedLv(t, lv), op = lvOpen(t, lv), st = ps ? 'ok' : !op ? 'lk' : lv == cl ? 'cur' : 'op';
+          return `<div class="lv2 ${st}"><span class=lvi>${ps ? ic('check', 16) : !op ? ic('lock', 15) : lv == cl ? ic('play', 14) : bars(lv)}</span><div class=lvb><b>${LV[lv - 1]}</b><div class=bar><i style="width:${lvPct(t, lv)}%"></i></div></div><small>${ps ? 'Aprovado' : op ? lvDone(t, lv) + '/30' : 'Bloqueado'}</small></div>`; }).join('')}
+        ${nx || cur || started ? `<div class=nx2>${ic('play', 14)}<span><small>Próximo passo</small><b>${esc(nxt)}</b></span></div>` : ''}
+        <div class="cert2${m.certs[t] ? ' ok' : trackPassed(t) ? ' rdy' : ''}"${m.certs[t] || trackPassed(t) ? ` onclick="certFlow('${t}')" role=button tabindex=0` : ''}>${ic('award', 18)}<span>${m.certs[t] ? 'Certificado emitido · toque para abrir' : trackPassed(t) ? 'Pronto para emitir o certificado' : `Certificado ao passar nas 3 provas finais (${np}/3)`}</span></div>
+        <button class="btn ${cur ? 'ghost' : 'pri'} block" onclick="studyTrack('${t}')">${cur ? 'Continuar estudando' : started ? 'Continuar ' + TN[t] : 'Começar ' + TN[t]}</button></div></div>`;
+      }).join('')
+      + `<div class=sec2>Em breve</div><div class="panel soon">${SOON.map(([i, n, d]) => `<div class=sr><span class=ib>${ic(i, 20)}</span><div class=bd><b>${n}</b><small>${d}</small></div><span class=sbadge>Em breve</span></div>`).join('')}</div>`;
   }
   if (S.tab == 'pf') h = profileView(L, T);
   A.innerHTML = `<div class=c>${h}${S.tab == 'home' ? '' : adSlot()}</div>${nav()}`; loadAds(); countUp(); if (S.tab == 'home') setTimeout(startTour, 700);
