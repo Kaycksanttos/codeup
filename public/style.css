@@ -767,3 +767,21 @@ body.wild .inf .ih b{color:var(--hi)}
 .resbox .obh{color:var(--ok);font-weight:700}
 .resbox .out{white-space:normal}
 .resbox .out pre.inl{white-space:pre-wrap}
+
+/* "Desbloqueado!": o que a conquista abriu (lição, checkpoint, prova, nível, certificado, título, moldura e itens de personalização) */
+.unl{margin:14px 0;padding:14px 14px 12px;border-radius:18px;border:2px solid var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--panel));text-align:left;animation:pop .5s ease;display:flex;flex-direction:column;gap:10px}
+.unl .uh{display:flex;align-items:center;gap:8px;color:var(--ok);font-size:17px;flex-wrap:wrap}
+.unl .uh span{color:var(--mute);font-size:12.5px;font-weight:700;margin-left:auto}
+.unl .ui{display:flex;align-items:center;gap:12px}
+.unl .ux,.unl .tring{width:38px;height:38px;flex:none;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--ok) 18%,var(--panel2));color:var(--ok)}
+.unl .bd{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}.unl .bd small{color:var(--mute)}
+.unl .ut{padding:10px;border-radius:14px;border:2px solid var(--fr);background:color-mix(in srgb,var(--fr) 12%,var(--panel2));display:flex;flex-direction:column;gap:10px}
+.unl .ut .tring{border-radius:50%;color:var(--fr);border:3px solid var(--fr);background:transparent;box-shadow:0 0 0 4px color-mix(in srgb,var(--fr) 22%,transparent)}
+.unl .uig{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.unl .uic{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 2px 6px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.unl .uic small{font-size:10.5px;line-height:1.2;text-align:center;color:var(--mute);display:flex;flex-direction:column}.unl .uic small b{color:var(--text);font-size:11.5px;overflow-wrap:anywhere}
+.unl .sw{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid #ffffff3a;box-sizing:border-box;color:var(--sc,#fff)}
+.unl .sw[style*="--sc"]{background:#0b1030;border-color:var(--sc)}
+.unl .sw svg{display:block}
+.unl .ulk{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:13px;color:var(--acc2);cursor:pointer}
+@media (prefers-reduced-motion:reduce){.unl{animation:none}}

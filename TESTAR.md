@@ -59,7 +59,8 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Nunca aparece e-mail, sobrenome inteiro nem o nome que você deu ao personagem (esse é só seu).
 - [ ] **Perfil → Ranking → Ficar de fora** (ou **Sair do ranking** na aba): você some da lista para todos; na aba aparece "Você está fora do ranking" com o botão **Aparecer no ranking**.
 - [ ] **Perfil → Títulos e molduras:** 8 títulos (Iniciante 0 XP, Aprendiz 100, Praticante 300, Destaque 700, Craque 1.200, Expert 2.000, Mestre 3.200, Lenda 4.500). Os já conquistados têm **Usar** / **Em uso**; os outros mostram cadeado e quanto falta. Escolher uma moldura troca o aro do personagem no app e no ranking.
-- [ ] Ao concluir uma lição que cruza o limite (ex.: de 95 para 110 XP) aparece o cartão **"Nova conquista! Você virou Aprendiz e ganhou a moldura Bronze."** com o link **Ver**. (Dica: no painel do dono, ajuste o XP da pessoa para 95 e faça uma lição.)
+- [ ] Ao concluir uma lição que cruza o limite (ex.: de 95 para 110 XP) aparece o cartão verde **"Desbloqueado!"** com o **título novo** (Aprendiz), a **moldura** (Bronze) e os **itens de personalização** que ele libera (cor Laranja, adesivo Foguete, fundo Floresta e estampa Bolinhas), mais o link **Personalizar meu personagem**. (Dica: no painel do dono, ajuste o XP da pessoa para 95 e faça uma lição.)
+- [ ] O mesmo cartão **"Desbloqueado!"** lista o que a conquista abriu: depois de uma lição, a **próxima lição**; depois da lição 10 ou 20, o **checkpoint**; depois do checkpoint, a **lição 11 ou 21**; depois da lição 30, a **prova final**; depois da prova final, o **próximo nível** (e, no Avançado, o **certificado**). Se a pessoa repetir uma atividade que já tinha feito, o cartão não aparece.
 
 **4c. Personalizar o personagem**
 - [ ] No **Perfil → Personalizar personagem** aparece uma prévia do personagem inteiro (com o fundo e o adesivo escolhidos) e três grupos: **Cor da roupa**, **Adesivo** e **Fundo**.
