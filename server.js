@@ -116,7 +116,8 @@ const unlocked = (u, track) => unlockAllOn() || !!(u.unlock && u.unlock[track]);
 const pub = u => ({
   name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
   track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, fails: u.fails || {},
-  unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true]))
+  unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true])),
+  away: u.away ? { days: Math.max(1, Math.floor((Date.now() - Date.parse(u.away.from)) / 864e5)) } : null          // dias sem entrar (só enquanto a tela "dormindo" não foi vista)
 });
 const idx = id => lessons.findIndex(l => l.id === String(id));
 const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                       // lições + checkpoints + provas finais
@@ -282,11 +283,15 @@ if (TESTE) app.post('/api/teste/reset', (req, res) => {
 // Autenticação
 // ============================================================================
 const BAN_MSG = () => 'Sua conta foi suspensa.' + (CONTACT ? ' Fale com ' + CONTACT + '.' : ' Fale com o suporte.');
+// Aluno que ficou dias sem entrar: quando volta, o personagem aparece dormindo (tela "Acordar"). Vale a partir de AWAY_DAYS dias sem acessar (padrão 3).
+const AWAY_MS = (+process.env.AWAY_DAYS > 0 ? +process.env.AWAY_DAYS : 3) * 864e5;
 function auth(req, res, next) {
   const s = DB.sessions[tokOf(req)], u = s && s.exp > Date.now() && DB.users[s.id];
   if (!u) return res.status(401).json({ error: 'login' });
   if (u.banned) return res.status(403).json({ error: BAN_MSG(), banned: true });
-  if (!u.seen || Date.now() - Date.parse(u.seen) > 10 * 60e3) { u.seen = new Date().toISOString(); save(); }   // "último acesso" (gravado no máximo a cada 10 min)
+  const gap = u.seen ? Date.now() - Date.parse(u.seen) : 0;
+  if (u.seen && !u.away && gap > AWAY_MS) { u.away = { from: u.seen }; u.seen = new Date().toISOString(); save(); }   // voltou depois de muito tempo: a tela do personagem dormindo fica pendente até ele tocar em "Acordar"
+  else if (!u.seen || gap > 10 * 60e3) { u.seen = new Date().toISOString(); save(); }   // "último acesso" (gravado no máximo a cada 10 min)
   req.u = ensure(u); next();
 }
 
@@ -394,6 +399,10 @@ app.post('/api/resend-verification', auth, limit(10, 3600e3), async (req, res) =
 });
 
 app.get('/api/me', auth, (req, res) => res.json(pub(req.u)));
+// o aluno acordou o personagem: a tela "dormindo" não volta até ele ficar outro tempo sem entrar
+app.post('/api/away/ack', auth, (req, res) => { if (req.u.away) { delete req.u.away; save(); } res.json({ ok: true }); });
+// modo teste: finge que a pessoa ficou 5 dias sem entrar (para ver a tela do personagem dormindo sem esperar)
+if (TESTE) app.post('/api/teste/ausente', auth, (req, res) => { req.u.away = { from: new Date(Date.now() - 5 * 864e5).toISOString() }; save(); res.json(pub(req.u)); });
 
 app.post('/api/profile', auth, (req, res) => {
   const name = String(req.body.name || '').trim().slice(0, 30);

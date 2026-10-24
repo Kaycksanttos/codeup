@@ -1208,21 +1208,21 @@ test('animação: conquistas (título novo, nível novo, prova, trilha) e troca 
 
 test('animação: expressões da folha (poses) valem no motor, nas comemorações, no toque, no mapa e no Perfil', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), sw = rd('sw.js'), css = rd('style.css'), CRw = require('../public/rewards.js');
-  // tabela das poses (gerada por tools/anim/poses.py) e os 22 arquivos
+  // tabela das poses (gerada por tools/anim/pacote.py) e os 36 arquivos (18 expressões por personagem)
   const win = {}; new Function('window', rd('poses.js'))(win); const T = win.CodeUpPoses.poses;
-  const expected = { tay: ['jump', 'peace', 'love', 'laugh', 'wink', 'angry', 'think', 'clap', 'peace2', 'sit', 'back'], cut: ['jump', 'peace', 'cool', 'thumbs', 'shy', 'wow', 'think', 'angry', 'dab', 'peace2', 'back'] };
+  const IDS18 = ['oi', 'piscada', 'pulo', 'apaixonado', 'pensando', 'ideia', 'codando', 'vitoria', 'coracao', 'apontando', 'estiloso', 'bravo', 'ops', 'dormindo', 'tchau', 'aponta2', 'explica', 'joinha'], expected = { tay: IDS18, cut: IDS18 };
   for (const g of ['tay', 'cut']) {
     assert.deepEqual(Object.keys(T[g]).sort(), expected[g].slice().sort(), 'poses de ' + g);
     for (const id of expected[g]) {
       const m = T[g][id], f = path.join(pubDir, 'img', 'pose', `${g}-${id}.webp`), b = fs.readFileSync(f);
-      assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 4000 && b.length < 140000, `${g}-${id} tem um tamanho razoável (${b.length})`);
-      assert.ok(m.w > 100 && m.h > 100 && ['full', 'sit', 'bust'].includes(m.k), `${g}-${id} tem tamanho e tipo`); assert.ok(Array.isArray(m.d) && m.d.every(d => d.length === 6 && d[2] > 0 && d[3] > 0), `${g}-${id} rabiscos bem formados`);
+      assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 8000 && b.length < 90000, `${g}-${id} tem um tamanho razoável (${b.length})`);
+      assert.ok(m.w > 300 && m.h > 300 && ['full', 'sit', 'bust'].includes(m.k), `${g}-${id} tem tamanho (qualidade nova: poses grandes) e tipo`); assert.equal(m.k, id == 'codando' || id == 'dormindo' ? 'sit' : 'full', `${g}-${id} tipo`); assert.ok(Array.isArray(m.d) && m.d.every(d => d.length === 6 && d[2] > 0 && d[3] > 0), `${g}-${id} rabiscos bem formados`);
       assert.equal((await fetch(`${U}/img/pose/${g}-${id}.webp`)).status, 200, `${g}-${id} é servida`);
     }
   }
   // os botões do Perfil cobrem exatamente as poses que existem
   const ex = new Function('return ' + /const EXPR = (\{[\s\S]*?\n\});/.exec(ui)[1])();
-  for (const g of ['tay', 'cut']) assert.deepEqual(ex[g].map(x => x[0]).sort(), expected[g].filter(k => k != 'back').sort(), 'botões do Perfil de ' + g + ' (sem a pose de costas)');
+  for (const g of ['tay', 'cut']) assert.deepEqual(ex[g].map(x => x[0]).sort(), expected[g].slice().sort(), 'botões do Perfil de ' + g + ' (as 18 expressões)');
   assert.match(ui, /function playMove\(/); assert.match(ui, /playMove\('p:\$\{k\}'\)/); assert.match(ui, /Expressões/);
   // a cor escolhida vale nas poses: mesma conta do matiz que gerou as imagens coloridas do corpo
   assert.equal(CRw.hueShift('tay', 'verde'), 162); assert.equal(CRw.hueShift('tay', 'azul'), -116); assert.equal(CRw.hueShift('cut', 'verde'), -82); assert.equal(CRw.hueShift('cut', 'vermelho'), 134);
@@ -1230,8 +1230,8 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.match(ui, /hue: HUE\(\)/); assert.match(anim, /function hueRotate\(/); assert.match(anim, /data-hue/);
   // motor: sequências, movimentos, rabiscos, balão, toque, brincadeira dos muitos toques e respeito a "reduzir movimento"
   for (const f of ['function poseLoad(', 'function startReel(', 'function pzState(', 'function pzDraw(', 'function mot(', 'function preload(', 'function kick(']) assert.ok(anim.includes(f), f);
-  for (const k of ['hop', 'jump2', 'beat', 'shake', 'tilt', 'nod', 'snap', 'startle', 'walk']) assert.match(anim, new RegExp(`n == '${k}'`), 'movimento ' + k);
-  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'hello', 'mapa', 'ok', 'perfect', 'pass', 'streak', 'streak7']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
+  for (const k of ['hop', 'jump2', 'beat', 'shake', 'tilt', 'nod', 'snap', 'startle', 'walk', 'snooze', 'wave']) assert.match(anim, new RegExp(`n == '${k}'`), 'movimento ' + k);
+  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'hello', 'mapa', 'ok', 'perfect', 'pass', 'streak', 'streak7', 'sleep', 'wake', 'idea', 'explain']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
   assert.match(anim, /i\.taps\.length >= 5/, 'muitos toques seguidos deixam bravinho'); assert.match(anim, /CALM/); assert.match(anim, /k\.indexOf\('p:'\) == 0/); assert.match(anim, /_pose: function/);
   assert.match(anim, /if \(reduce \|\| !PZ/, 'com "reduzir movimento" as poses não entram'); assert.match(anim, /if \(reduce\) return false;/);
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
@@ -1241,6 +1241,43 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
   assert.match(sw, /codeup-v(3[6-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+  // cada uma das 18 expressões tem uma ação no app (anim.js: movimento padrão e/ou sequência; app.js: cartões e telas)
+  const seq = anim.slice(anim.indexOf('var SEQ = {'), anim.indexOf('var REELS')), used = new Set([...seq.matchAll(/\['([a-z0-9]+)', [\d.]+/g)].map(m => m[1]));
+  for (const k of ['poseChip(st == \'err\' ? \'ops\' : \'pensando\'', 'poseChip(\'ideia\'', 'poseChip(\'explica\'', 'poseChip(\'codando\'', 'poseChip(\'apontando\'']) assert.ok(ui.includes(k), 'ação no app: ' + k);
+  for (const k of ['ops', 'pensando', 'ideia', 'explica', 'codando', 'apontando']) used.add(k);
+  const taps = anim.slice(anim.indexOf('var TAPS'), anim.indexOf('var CALM')); for (const m of taps.matchAll(/'([a-z0-9]+)'/g)) used.add(m[1]); used.add('bravo');
+  for (const k of IDS18) assert.ok(used.has(k), 'a expressão ' + k + ' tem uma ação no app');
+  for (const k of IDS18) assert.match(anim, new RegExp(`\\b${k}: '[a-z0-9]+'`), 'movimento padrão de ' + k);
+});
+
+test('aluno que ficou dias sem entrar: o servidor marca a ausência uma vez e o app mostra o personagem dormindo', async () => {
+  // servidor com limite de ausência de ~2 s (AWAY_DAYS=0.00002) para não esperar dias
+  const port = PORT + 955, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'away-')), 'data.json'); let lg = '';
+  const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, RELAX_SUBMIT_LIMIT: '1', DEV_SHOW_RESET_LINK: '1', AWAY_DAYS: '0.00002', DATABASE_URL: '' } });
+  p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x);
+  try {
+    for (let i = 0; i < 150 && !/rodando/.test(lg); i++) await new Promise(r => setTimeout(r, 100));
+    const post = async (u, body, tk) => { const r = await fetch(base + u, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(tk ? { 'x-token': tk } : {}) }, body: JSON.stringify(body || {}) }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+    const get = async (u, tk) => { const r = await fetch(base + u, { headers: { 'x-token': tk } }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+    const tk = (await post('/api/register', { name: 'Dorminhoco', email: 'zzz@teste.com', password: 'segredo1', accept: true, sex: 'm', guide: 'cut', gname: 'Cut' })).j.token; assert.ok(tk);
+    assert.equal((await get('/api/me', tk)).j.away, null, 'quem acabou de entrar não está ausente');
+    await new Promise(r => setTimeout(r, 2600));
+    // a primeira volta depois de um bom tempo marca a ausência e ela segue pendente até ele acordar o personagem
+    const back = (await get('/api/me', tk)).j; assert.ok(back.away && back.away.days >= 1, 'voltou: tela do personagem dormindo pendente');
+    assert.ok((await get('/api/me', tk)).j.away, 'continua pendente até ele tocar em Acordar (recarregar a página não some com ela)');
+    assert.equal((await post('/api/away/ack', {}, tk)).j.ok, true);
+    assert.equal((await get('/api/me', tk)).j.away, null, 'depois de acordar o personagem, não aparece de novo');
+    assert.equal((await post('/api/away/ack', {})).status, 401, 'precisa estar logado');
+    assert.equal((await post('/api/teste/ausente', {}, tk)).status, 404, 'o atalho de teste não existe fora do modo teste');
+  } finally { p.kill(); }
+  // app: a tela, o clique em "Acordar", o ack e o atalho do modo teste
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), css = rd('style.css'), srvSrc = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  for (const f of ['function showAway(', 'const sleepHero', 'const awayFor', "api('away/ack'", "sleepHero('sleep'", "sleepHero('wake'", "openOv('sleep'"]) assert.ok(ui.includes(f), f);
+  assert.match(ui, /S\.me\.away && !S\.awaySeen/, 'aparece uma vez por visita, depois de desenhar o app'); assert.match(ui, /visibilitychange/, 'app aberto na memória do celular também confere ao voltar'); assert.match(ui, /teste\/ausente/, 'botão "Simular ausência" no modo teste');
+  assert.match(ui, /S\.awaySeen = 0/, 'sair da conta zera a flag');
+  assert.match(css, /\.fxo\.sleep/); assert.match(css, /\.zsky/); assert.match(css, /\.zmoon/);
+  assert.match(srvSrc, /AWAY_DAYS/); assert.match(srvSrc, /\/api\/away\/ack/); assert.match(srvSrc, /if \(TESTE\) app\.post\('\/api\/teste\/ausente'/);
+  assert.match(anim, /sleep: \[\[\['dormindo'/); assert.match(anim, /wake: \[\[\['ops'/); assert.match(anim, /sleep: \{ delay/);
 });
 
 test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência de dias e efeitos sonoros', async () => {

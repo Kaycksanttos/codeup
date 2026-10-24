@@ -789,3 +789,28 @@ body.wild .inf .ih b{color:var(--hi)}
 .stage.bad .body.fimg{width:auto;max-width:78vw;object-fit:contain;filter:drop-shadow(0 12px 16px #000b);animation:sadsway 4.6s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes sadsway{50%{transform:translateY(-5px) rotate(1deg)}}
 @media (prefers-reduced-motion:reduce){.stage.bad .body.fimg{animation:none}}
+
+/* ---- expressões novas (18 por personagem): carinha no cartão de dica, na teoria, na prática e nas conquistas ---- */
+.tutor .tpz{flex:none;display:block;filter:drop-shadow(0 6px 8px #000a)}.tutor .tpz .pzc{display:block;background-repeat:no-repeat;background-size:100% auto;background-position:center 0}
+.hintb{align-items:flex-start}.hintb .pzc{flex:none;display:block;background-repeat:no-repeat;background-size:100% auto;background-position:center 0;margin:-6px 0 -4px;filter:drop-shadow(0 4px 5px #0008)}
+.crumb .cdp{margin-left:auto;flex:none;display:block;line-height:0}.crumb .cdp .pzc{display:block;background-repeat:no-repeat;background-size:100% auto;background-position:center 0}
+.unl{position:relative}.unl .unlc{position:absolute;right:12px;top:-50px;pointer-events:none;filter:drop-shadow(0 5px 6px #0009);animation:fbPz .55s cubic-bezier(.3,1.7,.5,1) .15s both}.unl .unlc .pzc{display:block;background-repeat:no-repeat;background-size:100% auto;background-position:center 0}
+@media (prefers-reduced-motion:reduce){.unl .unlc{animation:none}}
+
+/* ---- aluno que voltou depois de dias: o personagem estava dormindo (noite estrelada); ao tocar em "Acordar" o fundo esquenta ---- */
+body .fxo.sleep{--fc:#93c5fd;--fo1:#1b2a66;cursor:default;background:radial-gradient(120% 90% at 50% 30%,#1d2d70 0%,#0b1233 56%,#050818 100%);transition:background .8s}
+body .fxo.sleep.awake{--fc:#fde68a;background:radial-gradient(120% 90% at 50% 34%,#6b4d12 0%,#241a0a 58%,#080a14 100%)}
+.fxo.sleep .rays{display:none}
+.fxo.sleep .zsky{position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(2px 2px at 9% 14%,#fff 55%,transparent),radial-gradient(1.6px 1.6px at 23% 31%,#dbe4ff 55%,transparent),radial-gradient(2.4px 2.4px at 37% 9%,#fff 55%,transparent),radial-gradient(1.6px 1.6px at 52% 21%,#cfd9ff 55%,transparent),
+  radial-gradient(2px 2px at 66% 12%,#fff 55%,transparent),radial-gradient(1.6px 1.6px at 79% 27%,#dbe4ff 55%,transparent),radial-gradient(2.2px 2.2px at 91% 8%,#fff 55%,transparent),radial-gradient(1.6px 1.6px at 14% 52%,#cfd9ff 55%,transparent),
+  radial-gradient(2px 2px at 88% 47%,#fff 55%,transparent),radial-gradient(1.6px 1.6px at 6% 78%,#dbe4ff 55%,transparent),radial-gradient(2px 2px at 95% 74%,#fff 55%,transparent);animation:zTw 3.4s ease-in-out infinite alternate}
+.fxo.sleep.awake .zsky{opacity:.25;transition:opacity 1s}
+.fxo.sleep .zmoon{position:absolute;right:14%;top:7%;width:46px;height:46px;border-radius:50%;box-shadow:inset -13px -5px 0 0 #fde68a;filter:drop-shadow(0 0 14px #fde68a99);transform:rotate(-14deg);pointer-events:none;transition:opacity .8s}
+.fxo.sleep.awake .zmoon{opacity:0}
+.fxo.sleep .zzh{min-height:150px}
+.fxo.sleep .zzs{margin:0;color:#d6defc;font-weight:700;font-size:15px;line-height:1.4;max-width:30ch;animation:fxPop .5s .5s both}
+.fxo.sleep.awake .zzs{color:#ffedc2}
+.fxo.sleep .fxbtn{max-width:340px}
+@keyframes zTw{from{opacity:.55}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.fxo.sleep .zsky{animation:none}}

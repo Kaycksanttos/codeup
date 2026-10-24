@@ -58,8 +58,8 @@ const gnm = () => (S.me && S.me.gname) || (S.reg && S.reg.gname) || GUIDES[gid()
 const gid = () => { const g = (S.me && S.me.guide) || LS.get('guide'); return g === 'tay' ? 'tay' : 'cut'; };
 // expressões do personagem (poses da folha em img/pose/<guia>-<pose>.webp): [pose, nome no botão do Perfil]
 const EXPR = {
-  tay: [['jump', 'Pulo'], ['peace', 'Paz'], ['love', 'Apaixonada'], ['laugh', 'Rindo'], ['wink', 'Piscadinha'], ['clap', 'Palmas'], ['peace2', 'Agachadinha'], ['sit', 'Descansando'], ['think', 'Pensativa'], ['angry', 'Brava']],
-  cut: [['jump', 'Pulo'], ['peace', 'Paz'], ['cool', 'Estiloso'], ['thumbs', 'Joinha'], ['shy', 'Tímido'], ['wow', 'Uau!'], ['dab', 'Dab'], ['peace2', 'Agachado'], ['think', 'Pensativo'], ['angry', 'Bravo']]
+  tay: [['oi', 'Estudando'], ['piscada', 'Piscadinha'], ['pulo', 'Pulo'], ['apaixonado', 'Apaixonada'], ['pensando', 'Pensativa'], ['ideia', 'Ideia!'], ['codando', 'Codando'], ['vitoria', 'Vitória!'], ['coracao', 'Coração'], ['apontando', 'Rindo'], ['estiloso', 'Estilosa'], ['bravo', 'Brava'], ['ops', 'Ops!'], ['dormindo', 'Dormindo'], ['tchau', 'Oi/Tchau!'], ['aponta2', 'Olha ali'], ['explica', 'Explicando'], ['joinha', 'Joinha']],
+  cut: [['oi', 'Oi!'], ['piscada', 'Piscadinha'], ['pulo', 'Dançando'], ['apaixonado', 'Apaixonado'], ['pensando', 'Pensativo'], ['ideia', 'Ideia!'], ['codando', 'Codando'], ['vitoria', 'Vitória!'], ['coracao', 'Coração'], ['apontando', 'Apontando'], ['estiloso', 'Estiloso'], ['bravo', 'Bravo'], ['ops', 'Ops!'], ['dormindo', 'Dormindo'], ['tchau', 'Oi/Tchau!'], ['aponta2', 'Por aqui'], ['explica', 'Explicando'], ['joinha', 'Joinha']]
 };
 const IMG = () => { const g = gid(), c = S.me && S.me.color; return { face: CR.colorFile(g, c, true), full: CR.colorFile(g, c, false) }; };   // cor escolhida (ou a de fábrica)
 // fundo do círculo do rosto: o que a pessoa escolheu; sem escolha, acompanha a cor da roupa (a cor de fábrica usa o degradê original)
@@ -309,8 +309,12 @@ async function doAuth() {
 // Modo teste (npm run teste): faixa no topo e botão que apaga os dados de teste e deste aparelho para recomeçar como visitante novo.
 function testBar() {
   if (document.querySelector('.tbar')) return;
-  const d = document.createElement('div'); d.className = 'tbar'; d.innerHTML = '<span>MODO TESTE · dados fictícios</span><button type=button>Começar do zero</button>';
-  d.querySelector('button').onclick = async () => {
+  const d = document.createElement('div'); d.className = 'tbar'; d.innerHTML = '<span>MODO TESTE · dados fictícios</span><button type=button id=tzzz>Simular ausência</button><button type=button id=tzero>Começar do zero</button>';
+  d.querySelector('#tzzz').onclick = async () => {
+    if (!S.tk) return toast('Entre numa conta primeiro.', true);
+    try { await api('teste/ausente', { method: 'POST' }); S.awaySeen = 0; go(S.tab || 'home'); } catch (e) { fail(e); }
+  };
+  d.querySelector('#tzero').onclick = async () => {
     if (!confirm('Apagar todas as contas de teste e recomeçar como um visitante novo?')) return;
     try { await fetch('/api/teste/reset', { method: 'POST' }); } catch { }
     try { localStorage.clear(); sessionStorage.clear(); } catch { }
@@ -425,6 +429,7 @@ async function go(t) {
     if (need.length) return startWizard(need, true);                        // conta sem gênero, personagem e/ou nome do personagem (conta antiga ou criada pelo Google): pergunta uma vez
     if (S.tab == 'rk') { try { S.rk = await api('ranking?p=' + S.rkp); } catch { S.rk = null; } }
     render();
+    if (S.me.away && !S.awaySeen && !document.getElementById('fxo')) { S.awaySeen = 1; showAway(); }
   }
   catch (e) { fail(e); if (!S.me) A.innerHTML = `<div class="c auth"><div class=panel><p>Não foi possível carregar.</p><button class="btn pri block" onclick="go('home')">Tentar de novo</button></div></div>`; }
 }
@@ -474,7 +479,7 @@ function mapSvg(X, upto, M) {
   return `<svg class=pth viewBox="0 0 100 ${H}" preserveAspectRatio="none" style="height:${H}px" aria-hidden="true"><path class=rd d="${all}"/><path class=bs d="${all}"/>${upto > 0 ? `<path class=pg d="${got}"/>` : ''}</svg>`;
 }
 function render() {
-  delete document.body.dataset.calm;
+  delete document.body.dataset.calm; S.step = '';
   const m = S.me, L = S.ls;
   if (!m.track) return chooseTrack();
   const T = m.track; theme(T); let h = '';
@@ -689,8 +694,39 @@ const unlockCard = () => {
   const sw = ({ kind, it }) => kind == 'color' ? `<i class=sw style="background:hsl(${it.hue} 80% 58%)"></i>` : kind == 'sticker' ? `<i class=sw style="--sc:${it.color}">${stkIcon(it.key, 22)}</i>` : kind == 'bg' ? `<i class=sw style="background:${bgCss(it.key)}"></i>` : `<i class=sw style="background:${outBg(it.key, hue)}"></i>`;
   const tier = t => { const T = CR.TIERS[t.k]; return `<div class=ut style="--fr:${T.color}"><div class=ui><span class=tring>${ic('crown', 20)}</span><div class=bd><b>Novo título: ${T.title}</b><small>Moldura ${T.frame} liberada</small></div></div>${t.items.length ? `<div class=uig>${t.items.map(x => `<span class=uic>${sw(x)}<small>${x.nm}<b>${esc(x.it.name)}</b></small></span>`).join('')}</div>` : ''}</div>`; };
   const row = x => `<div class=ui><span class=ux>${ic(x.i, 18)}</span><div class=bd><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div></div>`;
-  return `<div class=unl role=status aria-live=polite><div class=uh>${ic('unlock', 20)}<b>Desbloqueado!</b><span>${u.g.length + u.tiers.length > 1 ? 'veja o que você abriu' : 'você abriu algo novo'}</span></div>${u.tiers.map(tier).join('')}${u.g.map(row).join('')}${u.tiers.some(t => t.items.length) ? `<a class=ulk onclick="go('pf')">${ic('pencil', 14)} Personalizar meu personagem</a>` : ''}</div>`;
+  return `<div class=unl role=status aria-live=polite><span class=unlc aria-hidden=true>${poseChip('apontando', 64)}</span><div class=uh>${ic('unlock', 20)}<b>Desbloqueado!</b><span>${u.g.length + u.tiers.length > 1 ? 'veja o que você abriu' : 'você abriu algo novo'}</span></div>${u.tiers.map(tier).join('')}${u.g.map(row).join('')}${u.tiers.some(t => t.items.length) ? `<a class=ulk onclick="go('pf')">${ic('pencil', 14)} Personalizar meu personagem</a>` : ''}</div>`;
 };
+
+// ============================================================ ALUNO QUE VOLTOU DEPOIS DE DIAS: o personagem estava dormindo
+// O servidor marca `me.away` quando a pessoa fica AWAY_DAYS (padrão 3) sem entrar. A tela mostra o personagem dormindo (expressão "dormindo" + "zzz"); ao tocar em
+// "Acordar" ele acorda assustado e dá oi (reel 'wake'). Com movimento reduzido ou sem o personagem animado, aparece a imagem parada.
+const zH = () => Math.round(Math.max(170, Math.min(300, innerHeight * .34)));
+const sleepHero = (reel, h) => window.CodeUpAnim && CodeUpAnim.ok() && !window.matchMedia('(prefers-reduced-motion:reduce)').matches ? ovHero(h, reel) : (poseChip(reel == 'sleep' ? 'dormindo' : 'tchau', Math.round(h * .8)) || ovHero(h, ''));
+const awayFor = n => n >= 60 ? `mais de ${Math.floor(n / 30)} meses` : n >= 30 ? 'mais de um mês' : n >= 14 ? `${Math.floor(n / 7)} semanas` : n == 1 ? '1 dia' : `${n} dias`;
+function showAway() {
+  const n = (S.me.away && S.me.away.days) || 3, nm = esc(gnm()), art = gid() == 'tay' ? 'a' : 'o', first = esc(String(S.me.name || '').split(' ')[0]);
+  let acked = false; const ack = () => { if (acked) return; acked = true; api('away/ack', { method: 'POST' }).catch(() => { }); };
+  const d = openOv('sleep', `<div class=zsky></div><i class=zmoon></i><div class="fxch zzh">${sleepHero('sleep', zH())}</div><h2 class=fxt id=zt>Shhh… ${nm} dormiu!</h2>
+    <p class=zzs id=zs>Faz ${awayFor(n)} que você não aparece e ${nm} cochilou esperando. Que tal acordar ${art} ${nm}?</p>
+    <button class="btn pri block fxbtn" id=zwake style="--bd:.7s">Acordar ${nm}</button>`, { tap: false, label: 'Seu personagem está dormindo', done: ack });
+  const wake = () => {
+    if (!d.isConnected || d.classList.contains('awake')) return; d.classList.add('awake'); ack(); sfx('pop');
+    d.querySelector('.zzh').innerHTML = sleepHero('wake', zH());
+    d.querySelector('#zt').textContent = `Oi, ${first || 'de novo'}!`;
+    d.querySelector('#zs').innerHTML = `${nm} acordou e já quer estudar com você. Bora retomar?`;
+    const b = d.querySelector('#zwake'); b.textContent = 'Bora estudar!'; b.onclick = () => closeOv();
+    d._t = setTimeout(closeOv, 5200);
+  };
+  d.querySelector('#zwake').onclick = wake;
+  setTimeout(() => { const b = d.querySelector('#zwake'); if (b && b.isConnected) b.focus({ preventScroll: true }); }, 900);
+}
+// o app pode ficar aberto na memória do celular (PWA) por dias: quando a pessoa volta para ele depois de um tempo, recarrega os dados e confere se ela estava ausente
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (S.tk && S.me && hiddenAt && Date.now() - hiddenAt > 30 * 60e3 && !S.step && !S.wz && !document.getElementById('fxo')) go(S.tab);
+  hiddenAt = 0;
+});
 
 // ============================================================ ANÚNCIOS (Google AdSense)
 // Só aparecem se os anúncios estiverem ligados (painel do dono → Ajustes → Anúncios, ou ADSENSE_CLIENT/ADSENSE_SLOT no servidor) e houver o ID do bloco. Ficam em telas de "pausa" (início, trilhas, perfil, fim de lição) e NUNCA durante a lição ou a prova.
@@ -729,7 +765,7 @@ async function exportData() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'meus-dados-codeup.json'; a.click();
   } catch (e) { fail(e); }
 }
-async function logout() { try { await api('logout', { body: {} }); } catch { } S.tk = null; localStorage.removeItem('tk'); S.auth = 'login'; showAuth(); }
+async function logout() { try { await api('logout', { body: {} }); } catch { } S.tk = null; S.awaySeen = 0; localStorage.removeItem('tk'); S.auth = 'login'; showAuth(); }
 function changePw() {
   const has = S.me.hasPassword;
   dialog(has ? 'Alterar senha' : 'Criar senha', [...(has ? [{ id: 'cur', ph: 'Senha atual', ac: 'current-password' }] : []), { id: 'new', ph: 'Nova senha (mín. 8 caracteres)', ac: 'new-password' }], 'Salvar', async v => {
@@ -810,7 +846,7 @@ function lesson() {   // etapa 1: teoria
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
   ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor><img src="${IMG().full}" alt="${esc(gnm())}"><div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${codeBox(l.example, l.type, 'Exemplo')}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}
+  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${codeBox(l.example, l.type, 'Exemplo')}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
   window.scrollTo(0, 0);
@@ -820,7 +856,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   const l = S.cur, T = isTest(l), ok = T && testDone(l); theme(l.track); S.step = 'pratica'; S.lt = 0; S.t0 = Date.now(); S.h = 0; clearTimeout(LT);
   const left = l.left ?? l.chances;
   A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>`}</div>
-  ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span></div>
+  ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
   <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : 'Desafio'}</small>${esc(l.task)}</div></div>
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${edBox(l, l.starter)}
@@ -833,7 +869,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
 }
 // texto das chances restantes de uma prova
 const chanceMsg = (n, l) => n <= 1 ? `<b>Última chance.</b> Se não acertar, você volta ${l.back} lições para relembrar.` : `Você tem <b>${n} chances</b>. Cada resposta errada gasta uma; sem chances, você volta ${l.back} lições.`;
-function hint() { const l = S.cur, o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=hintb>${ic('bulb', 16)} <span></span></div>`; o.querySelector('span').textContent = l.hints[Math.min(S.h++, l.hints.length - 1)]; }
+function hint() { const l = S.cur, o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=hintb>${poseChip('ideia', 52)}${ic('bulb', 16)} <span></span></div>`; o.querySelector('span').textContent = l.hints[Math.min(S.h++, l.hints.length - 1)]; }
 function sol() { const o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=tn style="margin:0 0 6px">Solução</div><pre class=inl>${hl(niceSql(S.cur.solution, S.cur.type), S.cur.type)}</pre>`; }
 
 // ---------- correção: o código só é executado e conferido quando o aluno toca em "Concluído" ----------
@@ -845,7 +881,7 @@ function similar(w, list) { w = w.toLowerCase(); let best = null, bd = 3; for (c
 function setFb(st, html, extra) {
   const f = $('#fb'); if (!f) return; f.className = 'fb ' + st;
   if (st == 'idle') f.innerHTML = '';
-  else f.innerHTML = `<div class=fbh>${ic(st == 'err' ? 'x' : 'info', 22)} <b>${st == 'err' ? 'Tem um erro no código' : st == 'srv' ? 'O corretor não respondeu' : 'Ainda não está certo'}</b>${st == 'bad' || st == 'err' ? `<span class=fbc>${poseChip('think', 70)}</span>` : ''}</div>${html}`;
+  else f.innerHTML = `<div class=fbh>${ic(st == 'err' ? 'x' : 'info', 22)} <b>${st == 'err' ? 'Tem um erro no código' : st == 'srv' ? 'O corretor não respondeu' : 'Ainda não está certo'}</b>${st == 'bad' || st == 'err' ? `<span class=fbc>${poseChip(st == 'err' ? 'ops' : 'pensando', 70)}</span>` : ''}</div>${html}`;
   if (st == 'bad' || st == 'err') { S.combo = 0; sfx('bad'); }
   const ob = st != 'idle' && $('#out') && $('#out').closest('.ob'); if (ob) ob.scrollIntoView({ behavior: 'smooth', block: 'start' });   // leva o aluno ao resultado + explicação (o botão Concluído não sai do lugar)
 }

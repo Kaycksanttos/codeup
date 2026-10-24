@@ -268,40 +268,32 @@
   // A cor escolhida vale também aqui: a imagem colorida do corpo foi feita girando o matiz (HSV), e o app faz o mesmo nas poses ao carregar.
   var TAU2 = 6.2832, PZ = root.CodeUpPoses && root.CodeUpPoses.poses, pzC = {}, pzQ = [], pzPre = {};
   var KIND = { full: [700, 915], sit: [620, 720], bust: [620, 700] }, BASE = 952;     // caixa (largura, altura) em px da imagem 640×960 e linha do chão
-  var DEF = { jump: 'jump2', peace: 'hop', peace2: 'hop', love: 'bob', laugh: 'beat', wink: 'bob', angry: 'shake', think: 'tilt', clap: 'beat', sit: 'bob', back: 'walk', cool: 'bob', thumbs: 'nod', shy: 'bob', wow: 'startle', dab: 'snap' };
-  var FXP = { jump: 'jump', clap: 'clap', peace: 'star', dab: 'star', wink: 'star', cool: 'star', thumbs: 'star' };
+  // as 18 expressões das duas folhas (iguais nos dois guias): oi, piscada, pulo, apaixonado, pensando, ideia, codando, vitoria, coracao, apontando, estiloso, bravo, ops, dormindo, tchau, aponta2, explica, joinha
+  var DEF = { oi: 'bob', piscada: 'hop', pulo: 'jump2', apaixonado: 'bob', pensando: 'tilt', ideia: 'startle', codando: 'bob', vitoria: 'jump2', coracao: 'beat', apontando: 'bob', estiloso: 'snap', bravo: 'shake', ops: 'startle', dormindo: 'snooze', tchau: 'wave', aponta2: 'nod', explica: 'bob', joinha: 'nod' };
+  var FXP = { pulo: 'jump', vitoria: 'jump', piscada: 'star', ideia: 'star', estiloso: 'star', joinha: 'star', coracao: 'star', tchau: 'star' };
   var FXN = { jump: [[.98, 8, 0], [1.76, 14, 1]], star: [[.2, 10, 0]], clap: [[.3, 5, 0], [1.2, 5, 0]] };
   // sequências de pose por situação: [pose, segundos, movimento, faíscas, balão]
-  var REELS = {
-    tay: {
-      win: [[['jump', 2.1, 'jump2', 'jump'], ['peace', 1.6, 'hop', 'star']], [['laugh', .9, 'beat'], ['clap', 2, 'beat', 'clap'], ['wink', 1.3, 'bob', 'star']], [['love', 1.3, 'bob'], ['peace2', 1.2, 'hop'], ['peace', 1.5, 'hop', 'star']]],
-      cp: [[['clap', 2.2, 'beat', 'clap'], ['jump', 2.1, 'jump2', 'jump'], ['wink', 1.3, 'bob', 'star']]],
-      big: [[['love', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap'], ['peace', 1.9, 'hop', 'star']]],
-      think: [[['think', 3.2, 'tilt']]], oops: [[['think', 3.4, 'tilt']]], intro: [[['wink', 2.6, 'bob', 'star']]],
-      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], mapa: [[['wink', 1.7, 'bob', 'star']], [['peace', 1.7, 'hop', 'star']]],
-      // comemorações por acontecimento (telas cheias do app): acerto, acerto de primeira, prova aprovada, sequência de dias, marco da sequência
-      ok: [[['clap', 1.6, 'beat', 'clap']], [['wink', 1.5, 'bob', 'star']], [['laugh', 1.4, 'beat'], ['peace', 1.4, 'hop', 'star']]],
-      perfect: [[['love', .9, 'startle'], ['jump', 2.1, 'jump2', 'jump']]],
-      pass: [[['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap'], ['love', 1.4, 'bob', 'star'], ['peace', 1.9, 'hop', 'star']]],
-      streak: [[['wink', 1.4, 'bob', 'star'], ['peace', 1.6, 'hop', 'star']], [['love', 1.3, 'bob'], ['laugh', 1.3, 'beat'], ['peace2', 1.3, 'hop']]],
-      streak7: [[['love', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap']]]
-    },
-    cut: {
-      win: [[['jump', 2.1, 'jump2', 'jump'], ['peace', 1.6, 'hop', 'star']], [['thumbs', 1.5, 'nod'], ['dab', 1.7, 'snap', 'star'], ['peace2', 1.2, 'hop']], [['shy', 1.2, 'bob'], ['cool', 1.5, 'bob', 'star'], ['peace', 1.5, 'hop']]],
-      cp: [[['dab', 1.7, 'snap', 'star'], ['jump', 2.1, 'jump2', 'jump'], ['thumbs', 1.3, 'nod', 'star']]],
-      big: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star'], ['peace', 1.9, 'hop', 'star']]],
-      think: [[['think', 3.2, 'tilt']]], oops: [[['think', 3.4, 'tilt']]], intro: [[['cool', 2.6, 'bob', 'star']]],
-      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], mapa: [[['cool', 1.7, 'bob', 'star']], [['thumbs', 1.6, 'nod', 'star']]],
-      ok: [[['thumbs', 1.5, 'nod', 'star']], [['cool', 1.5, 'bob', 'star']], [['peace', 1.5, 'hop', 'star'], ['dab', 1.5, 'snap', 'star']]],
-      perfect: [[['wow', .9, 'startle'], ['jump', 2.1, 'jump2', 'jump']]],
-      pass: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star'], ['thumbs', 1.6, 'nod', 'star'], ['peace', 1.9, 'hop', 'star']]],
-      streak: [[['cool', 1.4, 'bob', 'star'], ['peace', 1.6, 'hop', 'star']], [['thumbs', 1.4, 'nod'], ['dab', 1.7, 'snap', 'star']]],
-      streak7: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star']]]
-    }
+  // win/cp/big: fim de lição, checkpoint e conquistas · ok/perfect: acerto e acerto de primeira · pass: prova aprovada · streak/streak7: dias seguidos
+  // think/oops/intro/hello/mapa: telas de apoio · sleep/wake: aluno que voltou depois de muito tempo · idea: dica · explain: teoria
+  var SEQ = {
+    win: [[['pulo', 2.1, 'jump2', 'jump'], ['joinha', 1.6, 'nod', 'star']], [['vitoria', 2.1, 'jump2', 'jump'], ['piscada', 1.5, 'hop', 'star']], [['apaixonado', 1.2, 'bob'], ['coracao', 1.8, 'beat', 'star'], ['joinha', 1.4, 'nod', 'star']]],
+    cp: [[['vitoria', 2.1, 'jump2', 'jump'], ['estiloso', 1.6, 'snap', 'star'], ['joinha', 1.4, 'nod', 'star']]],
+    big: [[['ops', 1, 'startle'], ['pulo', 2.1, 'jump2', 'jump'], ['vitoria', 1.9, 'jump2', 'jump'], ['estiloso', 1.7, 'snap', 'star']]],
+    think: [[['pensando', 3.2, 'tilt']]], oops: [[['ops', 3.4, 'startle']]], intro: [[['joinha', 2.6, 'nod', 'star']], [['oi', 2.4, 'bob', 'star']]],
+    hello: [[['tchau', 2.6, 'wave', 'star', 'Oi!']]], mapa: [[['piscada', 1.7, 'hop', 'star']], [['joinha', 1.6, 'nod', 'star']], [['explica', 1.7, 'bob']], [['aponta2', 1.6, 'nod']]],
+    ok: [[['joinha', 1.5, 'nod', 'star']], [['piscada', 1.5, 'hop', 'star']], [['estiloso', 1.5, 'snap', 'star']], [['apontando', 1.5, 'bob', 'star']]],
+    perfect: [[['ops', .9, 'startle'], ['vitoria', 2.1, 'jump2', 'jump']]],
+    pass: [[['vitoria', 2.1, 'jump2', 'jump'], ['pulo', 1.9, 'jump2', 'jump'], ['coracao', 1.5, 'beat', 'star'], ['estiloso', 1.6, 'snap', 'star'], ['joinha', 1.6, 'nod', 'star']]],
+    streak: [[['piscada', 1.4, 'hop', 'star'], ['apaixonado', 1.5, 'bob']], [['coracao', 1.4, 'beat', 'star'], ['pulo', 1.9, 'jump2', 'jump']]],
+    streak7: [[['ops', 1, 'startle'], ['vitoria', 2.1, 'jump2', 'jump'], ['estiloso', 1.7, 'snap', 'star']]],
+    sleep: [[['dormindo', 600, 'snooze']]],                                              // aluno sumiu por dias: dorme com o travesseiro (os "zzz" aparecem)
+    wake: [[['ops', 1, 'startle'], ['tchau', 2.6, 'wave', 'star', 'Oi!']]],             // ele acorda assustado e já dá tchau/oi
+    idea: [[['ideia', 3, 'startle', 'star']]], explain: [[['explica', 3.4, 'bob']]]
   };
-  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, mapa: { delay: 2.5, period: 11 }, ok: { delay: .1, period: 'loop' }, perfect: { delay: .1, period: 'loop' }, pass: { delay: .15, period: 'loop' }, streak: { delay: .3, period: 'loop' }, streak7: { delay: .3, period: 'loop' } };
-  var TAPS = { tay: ['peace', 'love', 'laugh', 'wink', 'clap', 'peace2', 'jump'], cut: ['peace', 'cool', 'thumbs', 'shy', 'dab', 'peace2', 'jump'] };
-  var CALM = { tay: 'laugh', cut: 'thumbs' };      // depois da bravinha (muitos toques seguidos), ela ri de volta
+  var REELS = { tay: SEQ, cut: SEQ };
+  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, mapa: { delay: 2.5, period: 11 }, ok: { delay: .1, period: 'loop' }, perfect: { delay: .1, period: 'loop' }, pass: { delay: .15, period: 'loop' }, streak: { delay: .3, period: 'loop' }, streak7: { delay: .3, period: 'loop' }, sleep: { delay: .15, period: 'loop' }, wake: { delay: .1 }, idea: { delay: .2 }, explain: { delay: .6, period: 12 } };
+  var TAPS = { tay: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'aponta2'], cut: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'aponta2'] };
+  var CALM = { tay: 'apontando', cut: 'joinha' };      // depois da bravinha (muitos toques seguidos), ele(a) volta a sorrir
   var lastReel = {};
 
   // gira o matiz de uma imagem (mesma conta HSV que gerou as cores do corpo: só o matiz muda, brilho e saturação ficam)
@@ -363,6 +355,10 @@
     } else if (n == 'startle') {                                  // susto de alegria: pula de uma vez, treme e relaxa
       var s0 = Math.min(u / .42, 1); o.y = -58 * Math.sin(Math.PI * s0); o.sy = 1 + .07 * Math.sin(Math.PI * s0); o.r = .035 * Math.exp(-4 * u) * Math.sin(TAU * 14 * u);
       if (u > .42) { o.sy += .012 * Math.sin(TAU * (u - .42) / 1.3); o.r += .015 * Math.sin(TAU * (u - .42) / 1.7); }
+    } else if (n == 'snooze') {                                   // dormindo: respira fundo, devagar, e a cabeça balança bem de leve
+      var br = Math.sin(TAU * u / 3.6); o.sy = 1 + .02 * br; o.r = .014 * Math.sin(TAU * u / 5.2) - .01; o.y = 3 * br; o.x = 1.5 * Math.sin(TAU * u / 5.2);
+    } else if (n == 'wave') {                                     // tchau/oi: balança de um lado pro outro no ritmo do aceno
+      o.r = .05 * Math.sin(TAU * u * 1.4); o.x = 7 * Math.sin(TAU * u * 1.4 + .6); o.y = -8 * Math.abs(Math.sin(TAU * u * .7)); o.sy = 1 + .012 * Math.sin(TAU * u * 2.8);
     } else if (n == 'walk') {                                     // andando (de costas): sobe e desce a cada passo, balançando de um pé pro outro
       ph = (u / .56) % 1; o.y = -22 * Math.abs(Math.sin(Math.PI * ph)); o.r = .07 * Math.sin(Math.PI * 2 * ph); o.x = 8 * Math.sin(TAU * u / 1.12); o.sy = 1 + .02 * Math.cos(Math.PI * 2 * ph);
     } else {                                                      // bob: respirando
@@ -699,7 +695,7 @@
       if (!force && i.rl && !i.rl.period && tn - i.rl.req < .45) return;
       var id = k ? k.slice(2) : null, raw;
       i.taps = (i.taps || []).filter(function (x) { return tn - x < 3.5; }); if (!k) i.taps.push(tn);
-      if (!k && i.taps.length >= 5) { i.taps = []; id = 'angry'; raw = [['angry', 1.7, 'shake'], [CALM[i.g], 1.5, 'bob', 'star']]; }
+      if (!k && i.taps.length >= 5) { i.taps = []; id = 'bravo'; raw = [['bravo', 1.7, 'shake'], [CALM[i.g], 1.5, DEF[CALM[i.g]] || 'bob', 'star']]; }
       else {
         if (!id) { do { id = TAPS[i.g][Math.floor(Math.random() * TAPS[i.g].length)]; } while (id == i.lastP); }
         raw = [[id, 2.4, DEF[id] || 'bob', FXP[id] || null]];
