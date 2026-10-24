@@ -1258,8 +1258,8 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
 
 test('app: cartões de explicação, provas com chances, tela de voltar lições e mapa com checkpoints e prova final', () => {
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
-  // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como se faz e retorno esperado depois) e a prática fica limpa (só o desafio, o editor e os botões)
-  for (const k of ['O que é', 'Para que serve', 'Como se faz', 'Retorno esperado']) assert.ok(ui.includes(`'${k}'`), k);
+  // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
+  for (const k of ['O que é', 'Para que serve', 'Como você vai usar aqui', 'O que vai aparecer na tela']) assert.ok(ui.includes(`'${k}'`), k);
   assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{codeBox\(l\.example, l\.type, 'Exemplo'\)\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
   assert.ok(!/class=infod/.test(ui), 'a prática não tem o bloco "como fazer e o que esperar"');
   // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada

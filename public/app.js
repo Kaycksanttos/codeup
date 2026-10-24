@@ -784,8 +784,8 @@ const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em 
 const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
 
 const steps = n => `<div class=steps><span class="${n == 1 ? 'on' : 'ok'}">${n == 1 ? '1' : ic('check', 14)} Teoria</span><i></i><span class="${n == 2 ? 'on' : ''}">2 Prática</span></div>`;
-// As 4 explicações de cada atividade: o que é, para que serve, como se faz e qual o retorno esperado
-const INFO_K = { oque: ['O que é', 'info'], serve: ['Para que serve', 'target'], como: ['Como se faz', 'pencil'], retorno: ['Retorno esperado', 'out'] };
+// As 4 explicações de cada atividade (em linguagem de criança de 10 anos): o que é, para que serve, como você vai usar aqui e o que vai aparecer na tela
+const INFO_K = { oque: ['O que é', 'info'], serve: ['Para que serve', 'target'], como: ['Como você vai usar aqui', 'pencil'], retorno: ['O que vai aparecer na tela', 'out'] };
 const infoCards = (info, keys, title) => { const ks = (keys || Object.keys(INFO_K)).filter(k => info && info[k]); return ks.length ? `${title ? `<div class=infot>${title}</div>` : ''}<div class=infos>${ks.map(k => `<div class="inf ${k}"><div class=ih><span class=ii>${ic(INFO_K[k][1], 17)}</span><b>${INFO_K[k][0]}</b></div><p>${esc(info[k])}</p></div>`).join('')}</div>` : ''; };
 function lesson() {   // etapa 1: teoria
   delete document.body.dataset.calm;

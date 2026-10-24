@@ -44,7 +44,7 @@ test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova f
   }
 });
 
-test('explicações: toda lição e toda prova tem "o que é", "para que serve", "como se faz" e "retorno esperado"', () => {
+test('explicações: toda lição e toda prova tem "o que é", "para que serve", "como você vai usar aqui" e "o que vai aparecer na tela"', () => {
   assert.deepEqual(KEYS, ['oque', 'serve', 'como', 'retorno']);
   for (const l of [...lessons, ...tests]) {
     assert.ok(l.info, `${l.id} sem explicações (content/info-*.js)`);

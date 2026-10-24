@@ -13,7 +13,7 @@ codeup/
 ├─ server.js          backend (contas, correção, anúncios, e-mail, LGPD)
 ├─ sqlcheck.js        correção de SQL isolada (tempo e memória limitados)
 ├─ lessons.js         monta o curso a partir de content/ (lições + as 4 explicações de cada uma + as provas; chances e "voltar lições" ficam nas constantes CHANCES e BACK)
-├─ content/           py1-3.js e sql1-3.js: as 180 lições · info-py1-3.js e info-sql1-3.js: as 4 explicações de cada lição (o que é, para que serve, como se faz, retorno esperado)
+├─ content/           py1-3.js e sql1-3.js: as 180 lições · info-py1-3.js e info-sql1-3.js: as 4 explicações de cada lição, em linguagem de criança de 10 anos (o que é, para que serve, como você vai usar aqui, o que vai aparecer na tela)
 │                     checkpoints.js: as 18 provas (por nível: checkpoint depois da lição 10, checkpoint depois da 20 e prova final depois da 30; cada uma é UMA tarefa completa com o que se aprendeu)
 ├─ admin.js           painel do dono: API /api/admin/* (cadastros, liberar cursos, suspender, ajustes, auditoria)
 ├─ legal/             Termos de Uso e Política de Privacidade (modelos)
