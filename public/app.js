@@ -8,6 +8,10 @@ const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 // ============================================================ ÍCONES, MASCOTE E DESTAQUE DE CÓDIGO
 const IC = {
+  jump: '<path d="m17 11-5-5-5 5"/><path d="m17 18-5-5-5 5"/>',
+  clap: '<g transform="rotate(-26 8 14)"><rect x="4.5" y="6" width="7" height="14" rx="3.3"/></g><g transform="rotate(26 16 14)"><rect x="12.5" y="6" width="7" height="14" rx="3.3"/></g><path d="M12 2v2M7 3.5l1 1.5M17 3.5l-1 1.5"/>',
+  wave: '<path d="M18 11V6a2 2 0 0 0-4 0"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
   home: '<path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9"/><path d="M10 20v-6h4v6"/>',
   map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a3 3 0 0 0 4 3M16 6h4v2a3 3 0 0 1-4 3"/><path d="M12 13v4M8 20h8M10 17h4"/>',
@@ -82,15 +86,19 @@ const avatar = (s, cls = '') => `<span class=av style="width:${s}px;height:${s}p
 // personagem de corpo inteiro: animado em WebGL (anim.js) com a estampa da roupa escolhida; sem WebGL cai na <img> normal
 const OUTF = () => CR.outfitId(S.me && S.me.outfit);
 // cls: 'good' (passou), 'bad' (errou), 'epic'/'epic2' (conquista: nível novo, prova, título novo → pulo grande, brilho e faíscas na cor fxc), 'pop' (acabou de trocar um item)
-const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 'pop' : /\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '';
+const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 'pop' : (/\b(jump|clap|dance|wave)\b/.exec(cls) || [])[1] || (/\bgood\b/.test(cls) ? 'good' : /\bbad\b/.test(cls) ? 'bad' : '');
 const body = (h = 200, cls = '', extra = '', fxc = '') => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
 const stage = (h, text, cls = '', fxc = '') => `<div class="stage ${cls}"${(b => { const v = [b ? '--gl:' + b.c1 : '', /^#[0-9a-f]{6}$/i.test(fxc) ? '--fx:' + fxc : ''].filter(Boolean).join(';'); return v ? ` style="${v}"` : ''; })(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls, '', fxc)}<span class=gn>${esc(gnm())}</span></div>`;
 // personagem do resultado de uma conquista: título novo (cor do título) > trilha concluída > nível novo > só passou (ou prova aprovada, que também é conquista)
+// a comemoração de uma lição simples varia: pulo sorrindo, palmas, dança ou o pulinho de sempre (nunca repete a anterior)
+const WINS = ['jump', 'clap', 'dance', 'good'];
+const winPick = () => { let k; do k = WINS[Math.floor(Math.random() * WINS.length)]; while (k == S.lastWin); return S.lastWin = k; };
 const winStage = (h, text, base = 'good', big = false) => {
   const t = S.tierUp ? CR.TIERS[S.tierUp] : null;
   if (t) return stage(h, `Agora você é ${t.title}!`, 'good epic2', t.color);
   if (big) return stage(h, text, 'good epic2', '#fbbf24');
   if (S.lvlUp) return stage(h, 'Subiu de nível!', 'good epic', '#fbbf24');
+  if (base == 'good') { const k = winPick(); if (k != 'good') base = 'good ' + k; }
   return stage(h, text, base, /epic/.test(base) ? '#fbbf24' : '');
 };
 const tg = (t, s = 40) => t == 'python' ? `<span class="tg py" style="--s:${s}px">py</span>` : `<span class="tg sq" style="--s:${s}px">${ic('db', Math.round(s * .5))}</span>`;
@@ -160,7 +168,7 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div>${window.CodeUpAnim ? body(285, '', 'hb') : `<img class=hb src="${IMG().full}" alt="${esc(gnm())}">`}<div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div>${window.CodeUpAnim ? body(285, 'wave', 'hb') : `<img class=hb src="${IMG().full}" alt="${esc(gnm())}">`}<div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
     <div class=feat><span>${ic('code', 16)} 180 lições práticas</span><span>${ic('cap', 16)} 3 níveis com prova</span><span>${ic('award', 16)} Certificado</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
@@ -565,6 +573,7 @@ function czView() {
   return `<div class=sec>Personalizar personagem</div>
     <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190, S.pop ? 'pop' : '', '', '#ffd43b')}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
     <p class=tn style="margin:8px 2px 0">${free == all ? 'Você liberou todos os itens. É uma lenda!' : `${free} de ${all} itens liberados. Ganhe XP para subir de título e liberar o resto.`}</p>
+    <div class=czh>Movimentos <small style="font-weight:700">(tocar no personagem também sorteia um)</small></div><div class=czg>${[['jump', 'Pulo sorrindo', 'jump'], ['clap', 'Palmas', 'clap'], ['wave', 'Tchau', 'wave'], ['dance', 'Dança', 'music']].map(([k, n, i]) => `<button class=czi onclick="playMove('${k}')" aria-label="${n}"><i class=sw style="--sc:#ffd43b">${ic(i, 20)}</i><small>${n}</small></button>`).join('')}</div>
     <div class=czh>Cor da roupa</div><div class=czg>${colors}</div>
     <div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>
     <div class=czh>Adesivo</div><div class=czg>${stk}</div>
@@ -576,6 +585,8 @@ async function czSet(kind, key) {
   const y = window.scrollY;
   try { S.me = await api('guide', { body: { [kind]: key } }); S.pop = 1; render(); S.pop = 0; window.scrollTo(0, y); } catch (e) { fail(e); }
 }
+// botão "Movimentos" do Perfil: o personagem do preview faz o movimento escolhido
+function playMove(k) { const el = document.querySelector('.czp .abody'); if (window.CodeUpAnim && el && CodeUpAnim.play(el, k)) return; toast('Este aparelho não mostra o personagem animado (ou o movimento reduzido está ligado).', true); }
 async function setFrame(key) { try { S.me = await api('guide', { body: { frame: key } }); toast('Moldura trocada!'); render(); } catch (e) { fail(e); } }
 // aviso de "nova conquista" na tela de resultado quando o XP faz a pessoa chegar a um novo título
 const tierCard = () => { if (!S.tierUp) return ''; const t = CR.TIERS[S.tierUp]; return `<div class=tup style="--fr:${t.color}"><span class=tring>${ic('crown', 22)}</span><div class=bd><b>Nova conquista!</b><small>Você virou <b>${t.title}</b> e ganhou a moldura <b>${t.frame}</b>.</small></div><a onclick="go('pf')">Ver</a></div>`; };
@@ -897,7 +908,7 @@ function result() {
 
 function resultCp() {
   const l = S.cur, nx = S.ls.find(x => x.track == l.track && x.lv == l.lv && x.n == l.after + 1);
-  confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
+  confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!', 'good dance')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP extra</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>no desafio</small></div></div>
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos deste checkpoint.</p>'}
   ${nx ? `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button>${adSlot()}</div>`;

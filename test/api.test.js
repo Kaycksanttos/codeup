@@ -1129,7 +1129,7 @@ test('animação: o app carrega anim.js, usa o personagem animado, tem fallback 
 test('animação: conquistas (título novo, nível novo, prova, trilha) e troca de item têm animação própria', () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), css = rd('style.css');
   // as telas de resultado usam o personagem de conquista: título novo > trilha concluída > nível novo > só passou
-  assert.match(ui, /const winStage = /); assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /winStage\(230, 'Checkpoint conquistado!'\)/); assert.match(ui, /winStage\(240, fin \?/);
+  assert.match(ui, /const winStage = /); assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /winStage\(230, 'Checkpoint conquistado!', 'good dance'\)/); assert.match(ui, /winStage\(240, fin \?/);
   assert.match(ui, /Agora você é \$\{t\.title\}!/); assert.match(ui, /Subiu de nível!/); assert.match(ui, /'good epic2', t\.color/, 'título novo usa a cor do título'); assert.match(ui, /S\.pop = 1; render\(\); S\.pop = 0;/, 'trocar um item faz o personagem dar um pulinho com brilho');
   assert.ok(!/stage\((230|240), '(Mandou bem!|Checkpoint conquistado!|Aprovado! Que orgulho!)', 'good'\)/.test(ui), 'nenhuma tela de resultado ficou com o personagem comum');
   assert.match(ui, /bodyMode = /); assert.match(ui, /fx: \/\\bepic2\\b\/\.test\(cls\) \? 2/);
@@ -1139,4 +1139,17 @@ test('animação: conquistas (título novo, nível novo, prova, trilha) e troca 
   // com "reduzir movimento" não há faíscas nem pulo
   assert.match(anim, /if \(reduce\) return;/);
   assert.match(fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8'), /codeup-v(3[3-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+});
+
+test('animação: movimentos novos (pulo sorrindo, palmas, tchau, dança) valem no motor, na comemoração, no toque e no Perfil', () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), sw = rd('sw.js');
+  for (const k of ['jump', 'clap', 'wave', 'dance']) { assert.match(anim, new RegExp(`k == '${k}'`), 'movimento ' + k + ' no motor'); assert.match(anim, new RegExp(`${k}: `), 'duração/efeito de ' + k); }
+  assert.match(anim, /KINDS = \['hop', 'wave', 'jump', 'dance', 'clap'\]/, 'toque sorteia entre os movimentos');
+  for (const u of ['uHap', 'uMouth', 'uCheek']) assert.match(anim, new RegExp(u), 'rosto feliz (' + u + ')');
+  assert.match(anim, /function trigger\(/); assert.match(anim, /play: function \(el, k\)/); assert.match(anim, /function move\(/); assert.match(anim, /function clapIcon|function noteIcon|function bubble/);
+  assert.match(anim, /if \(reduce\) return false;/, 'com "reduzir movimento" o botão não finge que animou');
+  assert.match(ui, /bodyMode = /); assert.match(ui, /\(jump\|clap\|dance\|wave\)/, 'o app mapeia as classes para o modo'); assert.match(ui, /const WINS = \[/); assert.match(ui, /const winPick/); assert.match(ui, /k == S\.lastWin/, 'não repete a comemoração anterior');
+  assert.match(ui, /body\(285, 'wave', 'hb'\)/, 'o personagem da tela inicial dá oi');
+  assert.match(ui, /function playMove\(/); for (const n of ['Pulo sorrindo', 'Palmas', 'Tchau', 'Dança']) assert.ok(ui.includes(n), 'botão ' + n);
+  assert.match(sw, /codeup-v(3[4-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
 });

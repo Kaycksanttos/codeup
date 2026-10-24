@@ -14,16 +14,18 @@
   var W = 640, H = 960, PX = 51.2, PT = 96;       // espaço da imagem e margem extra (pulo e balanço)
   var KMAX = 1.0;                                    // máx. de pixels reais por pixel da imagem
   var CH = {
-    tay: { pivot: [340, 345], arm: [482, 535], armAmp: 0.05, hair: 6, eyeL: [277, 224, 42, 40], eyeR: [406, 256, 33, 38], lash: [.3, .03, .16], gate: [0.30, 0.38] },
-    cut: { pivot: [340, 345], arm: [492, 535], armAmp: 0.09, hair: 0, eyeL: [276, 230, 38, 37], eyeR: [405, 262, 35, 38], lash: [.3, .33, .42], gate: [0.52, 0.62] }
+    tay: { pivot: [340, 345], arm: [482, 535], armAmp: 0.05, hair: 6, eyeL: [277, 224, 42, 40], eyeR: [406, 256, 33, 38], lash: [.3, .03, .16], gate: [0.30, 0.38],
+      hl: [.3, .03, .16], mouth: [340, 287, 21, 15], tilt: .2, mi: [.40, .03, .18], tg: [.96, .40, .55], ck: [[263, 292, 26, 17], [418, 300, 24, 16]] },
+    cut: { pivot: [340, 345], arm: [492, 535], armAmp: 0.09, hair: 0, eyeL: [276, 230, 38, 37], eyeR: [405, 262, 35, 38], lash: [.3, .33, .42], gate: [0.52, 0.62],
+      hl: [.62, .68, .84], mouth: [335, 288, 21, 15], tilt: .3, mi: [.30, .02, .04], tg: [.78, .24, .30], ck: null }
   };
 
   var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
   var FS = [
     '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
     'uniform sampler2D uTex,uPar,uRig,uLid;',
-    'uniform vec2 uRes,uOrg,uPivot,uArmP;uniform float uK,uHop,uSy,uSway,uHead,uArm,uHair,uBlink,uTime,uStyle,uShine,uFlash;',
-    'uniform vec4 uEL,uER;uniform vec2 uGate;uniform vec3 uMain,uAlt,uLref,uLash,uFx;',
+    'uniform vec2 uRes,uOrg,uPivot,uArmP;uniform float uK,uHop,uSy,uSway,uHead,uArm,uHair,uBlink,uTime,uStyle,uShine,uFlash,uHap,uMouth,uCheek,uTilt;',
+    'uniform vec4 uEL,uER,uMo,uCk1,uCk2;uniform vec2 uGate;uniform vec3 uMain,uAlt,uLref,uLash,uFx,uMi,uTg;',
     'const vec2 SZ=vec2(640.,960.);',
     'vec2 rot(vec2 v,float a){float c=cos(a),s=sin(a);return vec2(c*v.x-s*v.y,s*v.x+c*v.y);}',
     'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
@@ -38,10 +40,10 @@
     ' vec3 lc=lid.rgb/lid.a;',
     ' float dx=(q.x-e.x)/e.z;float cv=1.-min(dx*dx,1.);',
     ' float off=.18*e.w;',
-    ' float up=e.y-e.w+uBlink*(e.w+off)+cv*uBlink*e.w*.24;',
-    ' float lo=e.y+e.w-uBlink*(e.w-off)+cv*uBlink*e.w*.1;',
+    ' float up=e.y-e.w+uBlink*(e.w+off)+cv*uBlink*e.w*mix(.24,-.3,uHap);',
+    ' float lo=e.y+e.w-uBlink*(e.w-off)+cv*uBlink*e.w*mix(.1,-.3,uHap);',
     ' float cov=max(1.-smoothstep(up-1.,up+1.,q.y),smoothstep(lo-1.,lo+1.,q.y));',
-    ' float ln=(1.-smoothstep(1.2,3.4,abs(q.y-up)))*smoothstep(.1,.35,uBlink)*smoothstep(.2,.7,lid.a);',
+    ' float ln=(1.-smoothstep(mix(1.2,2.1,uHap),mix(3.4,5.,uHap),abs(q.y-up)))*smoothstep(.1,.35,uBlink)*smoothstep(.2,.7,lid.a);',
     ' col=mix(col,lc,lid.a*cov);',
     ' return mix(col,uLash,ln*.95);}',
     // estampas
@@ -86,6 +88,23 @@
     ' vec3 rgb=c.a>.004?c.rgb/c.a:c.rgb;',
     ' if(c.a>.004){',
     '  vec4 lid=texture2D(uLid,uv);rgb=blink(rgb,q,uEL,lid);rgb=blink(rgb,q,uER,lid);',
+    '  if(uCheek>.01&&uCk1.z>.5){',                                                               // bochechas coradas (quando está feliz)
+    '   vec2 d1=(q-uCk1.xy)/uCk1.zw,d2=(q-uCk2.xy)/uCk2.zw;',
+    '   float bk=max(exp(-dot(d1,d1)*2.4),exp(-dot(d2,d2)*2.4));',
+    '   rgb=mix(rgb,vec3(1.,.36,.5)*max(.6,dot(rgb,vec3(.34))*1.2),bk*uCheek*.45);',
+    '  }',
+    '  if(uMouth>.01){',                                                                          // sorriso aberto: borda, dentes em cima e língua embaixo
+    '   vec2 m=rot(q-uMo.xy,-uTilt);m=vec2(m.x/uMo.z,m.y/max(uMo.w*uMouth,1.));',
+    '   float lip=-.38*m.x*m.x;',
+    '   float r=length(vec2(m.x,max(m.y,0.)));',
+    '   float ins=(1.-smoothstep(.92,1.,r))*smoothstep(lip-.08,lip+.03,m.y);',
+    '   vec3 mc=mix(uMi,uMi*.65,smoothstep(.72,.95,r));',
+    '   float tg=1.-smoothstep(.0,.6,length(vec2(m.x*.85,(m.y-.85)*1.2)));',
+    '   mc=mix(mc,uTg,tg*.95);',
+    '   float te=(1.-smoothstep(.2,.36,m.y-lip))*(1.-smoothstep(.62,.86,abs(m.x)));',
+    '   mc=mix(mc,vec3(.98,.97,.95),te);',
+    '   rgb=mix(rgb,mc,ins*clamp(uMouth*1.5,0.,1.));',
+    '  }',
     '  if(uStyle>.5){',
     '   vec3 pm=texture2D(uPar,uv).rgb;float msum=pm.r+pm.g+pm.b;',
     '   if(msum>.01){',
@@ -127,7 +146,7 @@
       gl.useProgram(pr);
       var b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
       var loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      var U = {}; ['uTex', 'uPar', 'uRig', 'uLid', 'uRes', 'uOrg', 'uPivot', 'uArmP', 'uK', 'uHop', 'uSy', 'uSway', 'uHead', 'uArm', 'uHair', 'uBlink', 'uTime', 'uStyle', 'uEL', 'uER', 'uGate', 'uMain', 'uAlt', 'uLref', 'uLash', 'uFx', 'uShine', 'uFlash'].forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
+      var U = {}; ['uTex', 'uPar', 'uRig', 'uLid', 'uRes', 'uOrg', 'uPivot', 'uArmP', 'uK', 'uHop', 'uSy', 'uSway', 'uHead', 'uArm', 'uHair', 'uBlink', 'uTime', 'uStyle', 'uHap', 'uMouth', 'uCheek', 'uTilt', 'uMo', 'uMi', 'uTg', 'uCk1', 'uCk2', 'uEL', 'uER', 'uGate', 'uMain', 'uAlt', 'uLref', 'uLash', 'uFx', 'uShine', 'uFlash'].forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
       gl.uniform1i(U.uTex, 0); gl.uniform1i(U.uPar, 1); gl.uniform1i(U.uRig, 2); gl.uniform1i(U.uLid, 3);
       gl.disable(gl.BLEND); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       try { gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); } catch (e) {}
@@ -204,19 +223,96 @@
     if (jit > .62) b = Math.max(b, tri(ph - start - .3, .18));
     return b;
   }
+  // ---- movimentos extras. move(tipo, T) devolve o quanto cada parte se mexe (T = segundos desde o início). Tudo é função pura do tempo.
+  //      hap = olhos de sorriso (^ ^), mo = boca aberta, ck = bochechas. Valem tanto para o modo da tela (data-mode) quanto para o toque/botão.
+  var DUR = { jump: 2.6, clap: 3.2, wave: 2.8, dance: 3.2, hop: .62 };
+  var KINDS = ['hop', 'wave', 'jump', 'dance', 'clap'];
+  function smooth(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+  function move(k, T, g) {
+    var TAU = 6.2832, d = { hop: 0, sy: 0, sway: 0, head: 0, arm: 0, hair: 0, hap: 0, mo: 0, ck: 0 }, ar = g == 'cut' ? .6 : .34, D = DUR[k];
+    var en = smooth(T / .25) * smooth((D - T) / .3);
+    if (k == 'jump') {                                           // PULADA SORRINDO: agacha, três pulos (o último bem alto), braço pra cima, olhos de sorriso no ar
+      var pre = T < .3 ? Math.sin(Math.PI * T / .3) : 0, air = 0;
+      d.sy -= .05 * pre; d.head += .04 * pre; d.arm -= .1 * pre;
+      [[.3, 46], [1.05, 46], [1.8, 66]].forEach(function (j) {
+        var u = (T - j[0]) / .62;
+        if (u >= 0 && u <= 1) { var b = Math.sin(Math.PI * u); d.hop += j[1] * b; d.sy += .055 * b - (u < .12 ? .075 * (1 - u / .12) : 0) - (u > .88 ? .065 * ((u - .88) / .12) : 0); d.head -= .08 * b; air = Math.max(air, b); }
+      });
+      d.arm += ar * en * (.55 + .45 * air) + .09 * Math.sin(TAU * 3 * T) * en;
+      d.hap = clamp(air * 2.4 - .5, 0, 1); d.mo = en; d.ck = en;
+    } else if (k == 'clap') {                                    // PALMAS: bate no ritmo (2,5 vezes por segundo), cabeça balançando, antebraço subindo e descendo
+      var ph = (T / .4) % 1, bt = Math.sin(Math.PI * ph);
+      d.hop += 8 * bt * en; d.sy += .02 * (bt - .5) * en; d.head += .05 * Math.sin(TAU * ph) * en;
+      d.arm += ar * en * (.3 + .7 * (.5 + .5 * Math.cos(TAU * ph)));
+      d.hap = en * .92; d.mo = en; d.ck = en;
+    } else if (k == 'wave') {                                    // TCHAU / OI: levanta o braço e balança de um lado para o outro, sorrindo
+      var ew = smooth((T - .15) / .35) * smooth((D - .1 - T) / .35), wv = Math.sin(TAU * 2.6 * T);
+      d.arm += ew * (g == 'cut' ? .3 + .36 * wv : .3 * wv);          // o antebraço é uma peça só: balança de um lado para o outro (o limite é o desenho)
+      d.head += ew * (.06 + .05 * Math.sin(TAU * 1.3 * T)); d.sway += ew * 9 * Math.sin(TAU * 1.3 * T); d.hop += ew * 4 * Math.abs(Math.sin(TAU * 1.3 * T));
+      d.mo = .7 * ew; d.ck = .8 * ew; d.hap = ew * clamp((Math.sin(TAU * .9 * T + 2) - .5) * 4, 0, 1);
+    } else if (k == 'dance') {                                   // DANÇA: balança o corpo de um lado para o outro e quica no ritmo (120 batidas por minuto), braço bombando
+      var w = TAU * T;
+      d.sway += 22 * Math.sin(w) * en; d.hop += 12 * Math.abs(Math.sin(Math.PI * T / .5)) * en; d.sy += .035 * (Math.abs(Math.sin(Math.PI * T / .5)) - .5) * en;
+      d.head += .1 * Math.sin(w + 1) * en; d.arm += ar * en * (.45 + .55 * Math.sin(TAU * T / .5)); d.hair += 8 * en;
+      d.hap = en * clamp(Math.sin(w) * 3, 0, 1); d.mo = en; d.ck = en;
+    }
+    return d;
+  }
+  function addMove(o, d, k) {
+    o.hop += d.hop * k; o.sy += d.sy * k; o.sway += d.sway * k; o.head += d.head * k; o.arm += d.arm * k; o.hair += d.hair * k;
+    o.hap = Math.max(o.hap, d.hap * k); o.mo = Math.max(o.mo, d.mo * k); o.ck = Math.max(o.ck, d.ck * k);
+  }
   // ---- faíscas (estrelinhas e confete) ao redor do personagem, calculadas só pelo tempo: [instante, quantidade, anel?]
-  var BURSTS = { good: [[.5, 10, 0]], pop: [[.2, 9, 0]], epic1: [[.75, 24, 1], [1.65, 14, 0]], epic2: [[.75, 34, 1], [1.65, 26, 1], [2.4, 20, 0]] };
+  var BURSTS = { good: [[.5, 10, 0]], pop: [[.2, 9, 0]], jump: [[.62, 8, 0], [1.37, 8, 0], [2.12, 16, 1]], clap: [[.3, 5, 0]], dance: [[.5, 5, 0], [1.5, 5, 0], [2.5, 7, 0]], epic1: [[.75, 24, 1], [1.65, 14, 0]], epic2: [[.75, 34, 1], [1.65, 26, 1], [2.4, 20, 0]] };
   function bursts(i) { return i.mode == 'epic' ? (i.fx > 1 ? BURSTS.epic2 : BURSTS.epic1) : BURSTS[i.mode] || null; }
   function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function hex(c) { var n = parseInt(c.slice(1), 16); return [(n >> 16) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
   function star(cx, x, y, R, rot) { cx.beginPath(); for (var k = 0; k < 8; k++) { var r = k % 2 ? R * .26 : R, a = rot + k * Math.PI / 4; cx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r, y + Math.sin(a) * r); } cx.closePath(); cx.fill(); }
+  // ícones do "aplauso" e da "dança": mãozinhas batendo palma e notas musicais que sobem ao redor do personagem
+  function clapIcon(cx, x, y, R, rot) {
+    cx.save(); cx.translate(x, y); cx.rotate(rot); cx.lineJoin = 'round'; cx.lineCap = 'round';
+    [-1, 1].forEach(function (h) {
+      cx.save(); cx.translate(h * R * .3, R * .12); cx.rotate(-h * .48);
+      cx.beginPath(); cx.moveTo(-R * .33, R * .6); cx.lineTo(-R * .33, -R * .3); cx.quadraticCurveTo(-R * .33, -R * .68, 0, -R * .68); cx.quadraticCurveTo(R * .33, -R * .68, R * .33, -R * .3); cx.lineTo(R * .33, R * .6); cx.quadraticCurveTo(R * .33, R * .82, 0, R * .82); cx.quadraticCurveTo(-R * .33, R * .82, -R * .33, R * .6); cx.closePath();
+      cx.fillStyle = h < 0 ? '#fbbf24' : '#fcd34d'; cx.fill(); cx.lineWidth = R * .09; cx.strokeStyle = '#b45309'; cx.stroke();
+      cx.beginPath(); cx.moveTo(-R * .11, -R * .58); cx.lineTo(-R * .11, -R * .1); cx.moveTo(R * .11, -R * .58); cx.lineTo(R * .11, -R * .1); cx.lineWidth = R * .05; cx.strokeStyle = 'rgba(180,83,9,.55)'; cx.stroke();
+      cx.restore();
+    });
+    cx.strokeStyle = '#fff'; cx.lineWidth = R * .11;
+    [-.75, 0, .75].forEach(function (a) { var ca = Math.cos(a - 1.5708), sa = Math.sin(a - 1.5708); cx.beginPath(); cx.moveTo(ca * R * 1.05, sa * R * 1.05 - R * .45); cx.lineTo(ca * R * 1.45, sa * R * 1.45 - R * .45); cx.stroke(); });
+    cx.restore();
+  }
+  function noteIcon(cx, x, y, R, rot, col) {
+    cx.save(); cx.translate(x, y); cx.rotate(rot); cx.fillStyle = col; cx.strokeStyle = col; cx.lineCap = 'round'; cx.lineWidth = R * .16;
+    cx.beginPath(); cx.ellipse(-R * .2, R * .55, R * .36, R * .26, -.45, 0, 6.2832); cx.fill();
+    cx.beginPath(); cx.moveTo(R * .12, R * .45); cx.lineTo(R * .12, -R * .75); cx.quadraticCurveTo(R * .15, -R * .3, R * .62, -R * .1); cx.stroke();
+    cx.restore();
+  }
+  function bubble(cx, X, Y, R, txt) {                            // balãozinho de fala ("Oi!") com a fonte do app
+    var w = R * 2.2, h = R * 1.4, x = -w / 2, y = -h / 2, rd = h / 2;
+    cx.save(); cx.translate(X, Y); cx.fillStyle = '#fff'; cx.strokeStyle = 'rgba(15,23,42,.28)'; cx.lineWidth = Math.max(1, R * .06); cx.lineJoin = 'round';
+    cx.beginPath(); cx.moveTo(x + rd, y); cx.lineTo(x + w - rd, y); cx.arcTo(x + w, y, x + w, y + rd, rd); cx.arcTo(x + w, y + h, x + w - rd, y + h, rd);
+    cx.lineTo(x + w * .36, y + h); cx.lineTo(x + w * .16, y + h + R * .42); cx.lineTo(x + w * .2, y + h);
+    cx.lineTo(x + rd, y + h); cx.arcTo(x, y + h, x, y + h - rd, rd); cx.arcTo(x, y, x + rd, y, rd); cx.closePath(); cx.fill(); cx.stroke();
+    cx.fillStyle = '#1e293b'; cx.font = '900 ' + Math.round(R * .92) + 'px Nunito, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(txt, 0, R * .04);
+    cx.restore();
+  }
+  function icons(i, t) {                                         // efeitos de ícones ativos: [tipo, tempo desde o início, sal]
+    var L = [];
+    if (i.mode == 'clap' || i.mode == 'dance') L.push([i.mode, t - i.t0, 1]);
+    if (i.mode == 'wave') L.push(['wave', (t - i.t0) % 12, 1]);
+    if (i.react && (i.react.k == 'clap' || i.react.k == 'dance' || i.react.k == 'wave')) L.push([i.react.k, t - i.react.t, 2]);
+    return L;
+  }
   function fxDraw(i, t) {
     var cx = i.fx2d; if (!cx) return;
     var cv = i.fcv; cx.clearRect(0, 0, cv.width, cv.height);
     if (reduce) return;
     var list = (bursts(i) || []).map(function (b) { return [b[0], b[1], b[2], t - i.t0]; });
     if (i.tapFx >= 0) { if (t - i.tapFx > 2) i.tapFx = -1; else list.push([0, 8, 0, t - i.tapFx, 7]); }
-    if (!list.length) return;
+    if (i.react && BURSTS[i.react.k]) BURSTS[i.react.k].forEach(function (b) { list.push([b[0], b[1], b[2], t - i.react.t, 11]); });
+    var ics = icons(i, t);
+    if (!list.length && !ics.length) return;
     var r = cv.width / (2.4 * i.bw), s = i.bh / H, ox = .7 * i.bw, oy = .45 * i.bh, pal = [i.fxc, '#ffffff', '#ffd43b', i.fxl];
     list.forEach(function (b) {
       var age = b[3] - b[0]; if (age < 0 || age > 2) return;
@@ -237,11 +333,28 @@
         cx.restore();
       }
     });
+    ics.forEach(function (e) {
+      if (e[0] == 'wave') {                                       // "Oi!" aparece enquanto ela acena
+        var T0 = e[1], u0 = (T0 - .2) / (DUR.wave - .5); if (u0 < 0 || u0 > 1) return;
+        var pp = u0 < .12 ? u0 / .12 * 1.12 : 1.12 - .12 * Math.min(1, (u0 - .12) / .1), al = u0 > .85 ? (1 - u0) / .15 : 1;
+        cx.save(); cx.globalAlpha = al; bubble(cx, (ox + 548 * s) * r, (oy + 70 * s) * r, Math.max(9, 62 * s * 1.35) * r * pp, 'Oi!'); cx.restore(); return;
+      }
+      var kind = e[0], T = e[1], per = kind == 'clap' ? .4 : .5, life = kind == 'clap' ? 1.15 : 1.4, n = Math.floor(Math.min(T, DUR[kind] - .2) / per);
+      for (var k = Math.max(0, n - 4); k <= n; k++) {
+        var age = T - k * per, u = age / life; if (age < 0 || u > 1) continue;
+        var rn = rng(500 * e[2] + k * 17 + 13 * i.fxs), side = k % 2 ? 1 : -1;
+        var x = 320 + side * (300 + rn() * 90) + 14 * Math.sin(age * 5 + k), y = 640 - rn() * 260 - 200 * u, sz = (kind == 'clap' ? 66 : 52) * (.85 + rn() * .4);
+        var sc = u < .2 ? u / .2 * 1.15 : 1.15 - .15 * Math.min(1, (u - .2) / .2), X = (ox + x * s) * r, Y = (oy + y * s) * r, R = Math.max(7, sz * s * 1.35) * r * sc;
+        cx.save(); cx.globalAlpha = u < .7 ? 1 : (1 - u) / .3;
+        if (kind == 'clap') clapIcon(cx, X, Y, R, side * .18 * Math.sin(age * 9)); else noteIcon(cx, X, Y, R, side * .15, k % 2 ? '#ffffff' : i.fxl);
+        cx.restore();
+      }
+    });
   }
 
   function pose(i, t) {
     var c = CH[i.g] || CH.tay, TAU = 6.2832, s = i.seed, mode = i.mode;
-    var o = { hop: 0, sy: 1, sway: 0, head: 0, arm: 0, hair: c.hair, blink: 0 };
+    var o = { hop: 0, sy: 1, sway: 0, head: 0, arm: 0, hair: c.hair, blink: 0, hap: 0, mo: 0, ck: 0 };
     var calm = mode == 'bad' ? .5 : 1;
     o.sy = 1 + .009 * Math.sin(TAU * t / 3.4 + s) * calm;
     o.sway = 5 * Math.sin(TAU * t / 5.2 + s * 1.3) * calm;
@@ -267,6 +380,11 @@
       var up2 = T / .6;
       if (up2 >= 0 && up2 <= 1) { var b2 = Math.sin(Math.PI * up2); o.hop += 20 * b2; o.sy += .04 * b2 - (up2 < .15 ? .05 * (1 - up2 / .15) : 0); o.head += .05 * Math.sin(TAU * up2); o.shine = -.25 + 1.5 * up2; }
     }
+    if (mode == 'jump' || mode == 'clap' || mode == 'dance' || mode == 'wave') {      // movimentos extras (pulo sorrindo, palmas, dança, tchau)
+      var m0 = mode, MT = m0 == 'wave' ? T % 12 : T;               // "wave" (oi da tela inicial) se repete a cada 12 s
+      if (MT < DUR[m0]) addMove(o, move(m0, MT, i.g), 1);
+      else if (m0 != 'wave') { mode = 'good'; T = T - DUR[m0] + 2.4; }   // depois de terminar, segue comemorando como no "good"
+    }
     if (mode == 'good') {                                       // comemora: 3 pulinhos, braço balançando e depois pula de vez em quando
       var per = T < 2.4 ? .8 : 4, ph = T < 2.4 ? T % .8 : (T - 2.4) % 4, u = ph / .8, a = T < 2.4 ? 22 : 16;
       if (u < 1) { o.hop = a * Math.sin(Math.PI * u); o.sy += .035 * Math.sin(Math.PI * u) - (u < .14 ? .05 * (1 - u / .14) : 0) - (u > .88 ? .045 * ((u - .88) / .12) : 0); }
@@ -290,6 +408,11 @@
         o.blink = Math.max(o.blink, tri(u2 - .55, .22));
       }
     }
+    if (i.react) {                                              // movimento pedido por toque/botão (pulo, palmas, tchau, dança), com entrada e saída suaves
+      var RT = t - i.react.t;
+      if (RT >= DUR[i.react.k]) i.react = null; else addMove(o, move(i.react.k, RT, i.g), 1);
+    }
+    o.blink = Math.max(o.blink, o.hap);
     return o;
   }
 
@@ -310,8 +433,11 @@
     gl.uniform1f(U.uArm, p.arm); gl.uniform1f(U.uHair, p.hair); gl.uniform1f(U.uBlink, p.blink); gl.uniform1f(U.uTime, t);
     gl.uniform1f(U.uStyle, i.style); gl.uniform2f(U.uGate, c.gate[0], c.gate[1]);
     gl.uniform3f(U.uMain, a.st.main[0], a.st.main[1], a.st.main[2]); gl.uniform3f(U.uAlt, a.st.alt[0], a.st.alt[1], a.st.alt[2]);
+    gl.uniform1f(U.uHap, p.hap || 0); gl.uniform1f(U.uMouth, p.mo || 0); gl.uniform1f(U.uCheek, p.ck || 0); gl.uniform1f(U.uTilt, c.tilt);
+    gl.uniform4f(U.uMo, c.mouth[0], c.mouth[1], c.mouth[2], c.mouth[3]); gl.uniform3f(U.uMi, c.mi[0], c.mi[1], c.mi[2]); gl.uniform3f(U.uTg, c.tg[0], c.tg[1], c.tg[2]);
+    var ck = c.ck; gl.uniform4f(U.uCk1, ck ? ck[0][0] : 0, ck ? ck[0][1] : 0, ck ? ck[0][2] : 0, ck ? ck[0][3] : 1); gl.uniform4f(U.uCk2, ck ? ck[1][0] : 0, ck ? ck[1][1] : 0, ck ? ck[1][2] : 1, ck ? ck[1][3] : 1);
     gl.uniform1f(U.uShine, p.shine === undefined ? -5 : p.shine); gl.uniform1f(U.uFlash, p.flash || 0); gl.uniform3f(U.uFx, i.fxr[0], i.fxr[1], i.fxr[2]);
-    gl.uniform3f(U.uLash, c.lash[0], c.lash[1], c.lash[2]); gl.uniform3f(U.uLref, a.st.lref[0], a.st.lref[1], a.st.lref[2]);
+    var hp = p.hap || 0; gl.uniform3f(U.uLash, c.lash[0] + (c.hl[0] - c.lash[0]) * hp, c.lash[1] + (c.hl[1] - c.lash[1]) * hp, c.lash[2] + (c.hl[2] - c.lash[2]) * hp); gl.uniform3f(U.uLref, a.st.lref[0], a.st.lref[1], a.st.lref[2]);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     i.cx.clearRect(0, 0, cw, chh);
@@ -345,7 +471,7 @@
     var fx3 = hex(i.fxc).map(function (v) { return v + (1 - v) * .35; }); i.fxr = fx3; i.fxl = 'rgb(' + fx3.map(function (v) { return Math.round(v * 255); }).join(',') + ')';
     i.cv = document.createElement('canvas'); i.cv.className = 'ac'; i.cv.setAttribute('aria-hidden', 'true'); i.cx = i.cv.getContext('2d');
     insts.push(i); size(i);
-    if ((i.mode == 'epic' || i.mode == 'good' || i.mode == 'pop') && !reduce) ensureFx(i);
+    if (/^(epic|good|pop|jump|clap|dance|wave)$/.test(i.mode) && !reduce) ensureFx(i);
     assets(i.src, g).then(function (a) {
       if (!el.isConnected) { release(i); return; }
       i.as = a; i.t0 = now(); el.insertBefore(i.cv, el.firstChild); if (i.fcv) el.insertBefore(i.fcv, i.cv.nextSibling); size(i);
@@ -354,7 +480,17 @@
       i.dirty = reduce; loop();
     }).catch(function () { release(i); });
     if ('IntersectionObserver' in root) { i.io = new IntersectionObserver(function (es) { i.vis = es[es.length - 1].isIntersecting; if (i.vis) { i.dirty = true; loop(); } }); i.io.observe(el); }
-    el.addEventListener('pointerdown', function () { i.tap = i.tapFx = now(); if (!reduce) { ensureFx(i); if (i.fcv && !i.fcv.parentNode && i.as) { el.insertBefore(i.fcv, i.cv.nextSibling); size(i); } } loop(); });
+    el.addEventListener('pointerdown', function () { trigger(i, null, false); });
+  }
+  // toque no personagem (ou botão do Perfil): faz um movimento — pulinho, tchau, pulo sorrindo, dança ou palmas (sem repetir o último)
+  function trigger(i, k, force) {
+    var tn = now();
+    if (!force && i.react && tn - i.react.t < DUR[i.react.k] - .3) return;
+    if (!k) { do { k = KINDS[Math.floor(Math.random() * KINDS.length)]; } while (k == i.lastK); }
+    i.lastK = k;
+    if (k == 'hop') { i.tap = i.tapFx = tn; i.react = null; } else { i.react = { k: k, t: tn }; i.tap = -1; }
+    if (!reduce) { ensureFx(i); if (i.fcv && !i.fcv.parentNode && i.as) { i.el.insertBefore(i.fcv, i.cv.nextSibling); size(i); } }
+    loop();
   }
   function ensureFx(i) {
     if (i.fcv) return; i.fcv = document.createElement('canvas'); i.fcv.className = 'afx'; i.fcv.setAttribute('aria-hidden', 'true'); i.fx2d = i.fcv.getContext('2d'); size(i);
@@ -404,6 +540,8 @@
 
   root.CodeUpAnim = {
     html: html, scan: scan, ok: function () { return !!E; },
+    // faz o personagem desse elemento fazer um movimento: 'hop' | 'wave' | 'jump' | 'dance' | 'clap' (sem nome, sorteia). Devolve false se ele ainda não está na tela.
+    play: function (el, k) { if (reduce) return false; var i = insts.filter(function (x) { return x.el == el; })[0]; if (!i || !i.as || (k && KINDS.indexOf(k) < 0)) return false; trigger(i, k || null, true); return true; },
     // para testes: desenha um quadro fixo (sem esperar o relógio)
     _frame: function (el, t, over) {
       var i = insts.filter(function (x) { return x.el == el; })[0]; if (!i || !i.as) return false;
