@@ -278,17 +278,28 @@
       cp: [[['clap', 2.2, 'beat', 'clap'], ['jump', 2.1, 'jump2', 'jump'], ['wink', 1.3, 'bob', 'star']]],
       big: [[['love', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap'], ['peace', 1.9, 'hop', 'star']]],
       think: [[['think', 3.2, 'tilt']]], oops: [[['think', 3.4, 'tilt']]], intro: [[['wink', 2.6, 'bob', 'star']]],
-      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], walk: [[['back', 1e9, 'walk']]]
+      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], mapa: [[['wink', 1.7, 'bob', 'star']], [['peace', 1.7, 'hop', 'star']]],
+      // comemorações por acontecimento (telas cheias do app): acerto, acerto de primeira, prova aprovada, sequência de dias, marco da sequência
+      ok: [[['clap', 1.6, 'beat', 'clap']], [['wink', 1.5, 'bob', 'star']], [['laugh', 1.4, 'beat'], ['peace', 1.4, 'hop', 'star']]],
+      perfect: [[['love', .9, 'startle'], ['jump', 2.1, 'jump2', 'jump']]],
+      pass: [[['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap'], ['love', 1.4, 'bob', 'star'], ['peace', 1.9, 'hop', 'star']]],
+      streak: [[['wink', 1.4, 'bob', 'star'], ['peace', 1.6, 'hop', 'star']], [['love', 1.3, 'bob'], ['laugh', 1.3, 'beat'], ['peace2', 1.3, 'hop']]],
+      streak7: [[['love', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['clap', 1.9, 'beat', 'clap']]]
     },
     cut: {
       win: [[['jump', 2.1, 'jump2', 'jump'], ['peace', 1.6, 'hop', 'star']], [['thumbs', 1.5, 'nod'], ['dab', 1.7, 'snap', 'star'], ['peace2', 1.2, 'hop']], [['shy', 1.2, 'bob'], ['cool', 1.5, 'bob', 'star'], ['peace', 1.5, 'hop']]],
       cp: [[['dab', 1.7, 'snap', 'star'], ['jump', 2.1, 'jump2', 'jump'], ['thumbs', 1.3, 'nod', 'star']]],
       big: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star'], ['peace', 1.9, 'hop', 'star']]],
       think: [[['think', 3.2, 'tilt']]], oops: [[['think', 3.4, 'tilt']]], intro: [[['cool', 2.6, 'bob', 'star']]],
-      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], walk: [[['back', 1e9, 'walk']]]
+      hello: [[['peace', 2.6, 'hop', 'star', 'Oi!']]], mapa: [[['cool', 1.7, 'bob', 'star']], [['thumbs', 1.6, 'nod', 'star']]],
+      ok: [[['thumbs', 1.5, 'nod', 'star']], [['cool', 1.5, 'bob', 'star']], [['peace', 1.5, 'hop', 'star'], ['dab', 1.5, 'snap', 'star']]],
+      perfect: [[['wow', .9, 'startle'], ['jump', 2.1, 'jump2', 'jump']]],
+      pass: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star'], ['thumbs', 1.6, 'nod', 'star'], ['peace', 1.9, 'hop', 'star']]],
+      streak: [[['cool', 1.4, 'bob', 'star'], ['peace', 1.6, 'hop', 'star']], [['thumbs', 1.4, 'nod'], ['dab', 1.7, 'snap', 'star']]],
+      streak7: [[['wow', 1, 'startle'], ['jump', 2.1, 'jump2', 'jump'], ['dab', 1.7, 'snap', 'star']]]
     }
   };
-  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, walk: { delay: 0 } };
+  var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, mapa: { delay: 2.5, period: 11 }, ok: { delay: .1, period: 'loop' }, perfect: { delay: .1, period: 'loop' }, pass: { delay: .15, period: 'loop' }, streak: { delay: .3, period: 'loop' }, streak7: { delay: .3, period: 'loop' } };
   var TAPS = { tay: ['peace', 'love', 'laugh', 'wink', 'clap', 'peace2', 'jump'], cut: ['peace', 'cool', 'thumbs', 'shy', 'dab', 'peace2', 'jump'] };
   var CALM = { tay: 'laugh', cut: 'thumbs' };      // depois da bravinha (muitos toques seguidos), ela ri de volta
   var lastReel = {};
@@ -375,8 +386,9 @@
   // toca uma sequência de poses nesse personagem. o = { delay (s, contado a partir de quando ele apareceu), period (repete a cada N s), keep (não vira a base) }
   function startReel(i, raw, o) {
     if (reduce || !PZ || !raw || !PZ[i.g]) return false;
-    o = o || {}; var steps = mkSteps(raw), R = { steps: steps, pics: {}, ready: false, t0: 0, total: 0, period: o.period || 0, req: now() };
+    o = o || {}; var steps = mkSteps(raw), R = { steps: steps, pics: {}, ready: false, t0: 0, total: 0, period: o.period == 'loop' ? 0 : (o.period || 0), req: now() };
     steps.forEach(function (s) { R.total += s.d; if (!PZ[i.g][s.p]) steps = null; });
+    if (o.period == 'loop') { R.period = R.total; R.loop = true; }                 // fica repetindo a sequência (telas de comemoração que esperam o toque)
     if (!steps) return false;
     i.rl = R; attachFx(i);
     Promise.all(steps.map(function (s) { return poseLoad(i.g, s.p, i.hue).then(function (pic) { R.pics[s.p] = pic; }); })).then(function () {
@@ -402,7 +414,7 @@
     for (; k < n; k++) { if (T < acc + R.steps[k].d) break; acc += R.steps[k].d; }
     if (k >= n) { k = n - 1; acc -= R.steps[k].d; }
     s = R.steps[k];
-    var a = Math.min(1, T / .1), sc = 1;
+    var a = Math.min(1, (R.loop ? t - R.t0 : T) / .1), sc = 1;
     if (ex > 0) { a = Math.min(a, 1 - ex / .2); sc = 1 - .08 * ex / .2; }
     return { p: s.p, m: s.m, d: s.d, u: Math.min(T - acc, s.d), a: a, sc: sc, f: s.f, b: s.b, k: k, R: R };
   }
@@ -693,7 +705,7 @@
         raw = [[id, 2.4, DEF[id] || 'bob', FXP[id] || null]];
       }
       i.lastP = id; i.react = null; i.tap = -1;
-      if (startReel(i, raw, { fail: function () { i.tap = i.tapFx = now(); loop(); } })) { loop(); return; }
+      if (startReel(i, raw, { fail: function () { i.tap = i.tapFx = now(); loop(); } })) { if (root.CodeUpSfx) CodeUpSfx.play('pop'); loop(); return; }
     }
     if (!force && i.react && tn - i.react.t < DUR[i.react.k] - .3) return;
     if (!k || k.indexOf('p:') == 0) { k = null; do { k = KINDS[Math.floor(Math.random() * KINDS.length)]; } while (k == i.lastK); }

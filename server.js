@@ -569,16 +569,16 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (engine) { u.attempts[k]--; return res.status(503).json({ error: ENGINE_MSG, engine: true }); }
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
-  let gained = 0;
+  let gained = 0, streakUp = 0;     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
   if (ok) {
     const today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
-    if (u.last !== today) { u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; }
+    if (u.last !== today) { u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; streakUp = u.streak; }
     (l.cp ? u.cpdone : u.done)[k] = { code, date: new Date().toISOString() };
     if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
   }
   save();
   const lvDone = ok && !l.cp && levelDone(u, l.track, l.lv);
-  res.json({ ok, gained, missing: ok ? undefined : missing, expected: !ok && l.type === 'python' ? l.expectedOut : undefined, levelComplete: lvDone || undefined, ...pub(u) });
+  res.json({ ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, expected: !ok && l.type === 'python' ? l.expectedOut : undefined, levelComplete: lvDone || undefined, ...pub(u) });
 });
 
 // ---------- Provas ----------

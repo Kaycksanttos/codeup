@@ -663,3 +663,70 @@ body.neo .stk{background:#fff}
 .tl .ti.rs .rail span.abody.pm{left:auto;right:calc(100% + 14px)}
 .stage.epic .glow,.stage.epic2 .glow{background:radial-gradient(circle,color-mix(in srgb,var(--fx,#ffd43b) 62%,transparent),transparent 68%);animation:fxglow 1.9s ease-out 2}
 @keyframes fxglow{0%{transform:translateX(-50%) scale(.55);opacity:.2}35%{transform:translateX(-50%) scale(1.3);opacity:1}100%{transform:translateX(-50%) scale(1);opacity:.9}}
+
+/* ===== comemorações por acontecimento: acerto, prova aprovada, sequência de dias (app.js: okFx / passFx / streakFx) ===== */
+.fxo{--fc:#34d399;--r1:rgba(52,211,153,.22);--fo1:#0e4a3a;position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 36%,var(--fo1) 0%,rgba(4,10,24,.95) 64%);animation:fxoIn .22s ease-out both;overflow:hidden;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.fxo.out{animation:fxoOut .23s ease-in both}
+.fxo.ok.gold{--fc:#fbbf24;--r1:rgba(251,191,36,.22);--fo1:#4a3a0a}
+.fxo.pass{--fc:#fbbf24;--r1:rgba(251,191,36,.26);--fo1:#5a3d06;cursor:default}
+.fxo.streak{--fc:#fb923c;--r1:rgba(251,146,60,.26);--fo1:#5a2306;cursor:default}
+.fxo.streak.mk{--fc:#fbbf24;--r1:rgba(251,191,36,.3);--fo1:#6b3a05}
+.fxo .rays{position:absolute;left:50%;top:38%;width:170vmax;height:170vmax;margin:-85vmax 0 0 -85vmax;background:repeating-conic-gradient(var(--r1) 0 7deg,transparent 7deg 18deg);-webkit-mask:radial-gradient(circle,#000 3%,transparent 44%);mask:radial-gradient(circle,#000 3%,transparent 44%);animation:fxSpin 24s linear infinite;pointer-events:none}
+.fxin{position:relative;width:min(92vw,420px);max-height:100svh;overflow:hidden;padding:18px 6px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.fxt{margin:0;font-size:clamp(30px,9.4vw,44px);line-height:1.05;font-weight:900;color:#fff;text-shadow:0 3px 0 #0006,0 0 26px color-mix(in srgb,var(--fc) 65%,transparent);animation:fxPop .6s cubic-bezier(.3,1.7,.5,1) .15s both}
+.fxm{margin:-2px 0 0;font-size:15px;color:#ffe9d2;opacity:.9;animation:fxPop .5s .6s both}
+.fxch{position:relative;display:flex;justify-content:center;align-items:flex-end;min-height:120px}
+.fxch .abody{position:relative;filter:drop-shadow(0 10px 14px #0009)}
+.fxch .abody>img{filter:none}
+.fxxp{font-weight:900;font-size:22px;color:#fff;background:linear-gradient(180deg,var(--fg,#34d399),var(--fg2,#10b981));padding:6px 20px;border-radius:99px;box-shadow:0 5px 0 var(--fd,#047857),0 8px 22px #0006;animation:fxPop .55s cubic-bezier(.3,1.7,.5,1) .55s both}
+.fxxp b{font-size:26px}
+.fxo.gold .fxxp{--fg:#fbbf24;--fg2:#f59e0b;--fd:#b45309;color:#3a2400}
+.fxchip{font-size:13px;font-weight:800;color:#fff;background:#ffffff1c;border:1.5px solid #ffffff33;border-radius:99px;padding:5px 14px;animation:fxPop .5s .85s both}
+.fxscore{font-size:17px;color:#fff3c4;font-weight:700;animation:fxPop .5s .6s both}.fxscore b{font-size:22px;color:#fff}
+.fxbtn{margin-top:6px;opacity:0;animation:fxBtn .4s var(--bd,1.4s) both}
+.fxbar{position:absolute;left:0;bottom:0;height:4px;width:100%;background:var(--fc);transform-origin:0 50%;animation:fxBar var(--t,2s) linear both;opacity:.8}
+/* faíscas em estrela que saem do personagem */
+.spk{position:absolute;left:50%;top:48%;width:var(--s,14px);height:var(--s,14px);margin:-7px 0 0 -7px;background:var(--fc);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;animation:fxSpark 1.15s cubic-bezier(.2,.8,.3,1) calc(.35s + var(--dl,0s)) both;pointer-events:none}
+/* troféu */
+.trw{position:relative;animation:fxTrophy 1s cubic-bezier(.3,1.5,.5,1) both}
+.trophy{width:132px;height:142px;filter:drop-shadow(0 10px 20px rgba(251,191,36,.55))}
+.trophy .shn{transform:skewX(-18deg);animation:fxShn 2.4s 1.2s ease-in-out infinite}
+/* chama da sequência */
+.flw{position:relative;width:158px;height:186px;animation:fxFlIn .8s cubic-bezier(.3,1.6,.5,1) both}
+.flm{width:100%;height:100%;filter:drop-shadow(0 0 22px rgba(251,146,60,.8))}
+.fxo.mk .flm{filter:drop-shadow(0 0 26px rgba(251,191,36,.95)) hue-rotate(-8deg) saturate(1.2)}
+.flm .f1{transform-origin:60px 143px;animation:fxFl 1.15s ease-in-out infinite alternate}
+.flm .f2{transform-origin:60px 145px;animation:fxFl2 .8s ease-in-out infinite alternate}
+.sn{position:absolute;left:0;right:0;top:84px;height:80px;font-size:72px;line-height:80px;font-weight:900;color:#fff;text-shadow:-3px -3px 0 #9a3412,3px -3px 0 #9a3412,-3px 3px 0 #9a3412,3px 3px 0 #9a3412,0 -3px 0 #9a3412,0 4px 0 #9a3412,-3px 0 0 #9a3412,3px 0 0 #9a3412,0 6px 10px #7c2d1288;overflow:hidden}
+.sn span{position:absolute;left:0;right:0}
+.sn .o{animation:fxRoOut .5s .95s cubic-bezier(.5,0,.8,.5) both}
+.sn .n{animation:fxRoIn .55s .95s cubic-bezier(.2,1.4,.5,1) both;opacity:0}
+.sn .n.one{animation:fxPop .6s .5s cubic-bezier(.3,1.7,.5,1) both}
+.wk{display:flex;gap:7px;background:#ffffff14;border:2px solid #ffffff24;border-radius:20px;padding:9px 12px;animation:fxPop .5s .75s both}
+.wd{display:flex;flex-direction:column;align-items:center;gap:5px}
+.wd small{font-size:12px;font-weight:900;color:#fdba74}
+.wd i{width:30px;height:30px;border-radius:50%;background:#ffffff1f;display:grid;place-items:center;color:#fff}
+.wd.on i{background:linear-gradient(180deg,#fb923c,#ea580c);box-shadow:0 3px 0 #9a3412}
+.wd.td i{outline:2px solid #fff6;outline-offset:2px}
+.wd.td.on i{animation:fxPop .55s 1.2s cubic-bezier(.3,1.8,.5,1) both}
+/* erro: a carinha pensando pula para fora do aviso */
+.fb .fbh{position:relative}
+.fb .fbc{position:absolute;right:-2px;top:-52px;pointer-events:none;filter:drop-shadow(0 5px 6px #0009);animation:fbPz .55s cubic-bezier(.3,1.7,.5,1) .12s both}
+.fb .pzc{display:block;background-repeat:no-repeat;background-size:100% auto;background-position:center 0}
+@keyframes fxoIn{from{opacity:0}}
+@keyframes fxoOut{to{opacity:0;transform:scale(1.03)}}
+@keyframes fxSpin{to{transform:rotate(360deg)}}
+@keyframes fxPop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:none}}
+@keyframes fxBtn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fxBar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes fxSpark{0%{opacity:1;transform:rotate(var(--a)) translateY(-18px) scale(.4)}70%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateY(calc(-1 * var(--d,110px))) scale(1.1)}}
+@keyframes fxTrophy{0%{opacity:0;transform:translateY(-240px) rotate(-18deg) scale(.5)}55%{opacity:1;transform:translateY(12px) rotate(5deg) scale(1.07)}75%{transform:translateY(-6px) rotate(-2deg)}100%{transform:none}}
+@keyframes fxShn{0%,55%{transform:translateX(0) skewX(-18deg)}100%{transform:translateX(180px) skewX(-18deg)}}
+@keyframes fxFlIn{0%{opacity:0;transform:translateY(40px) scale(.2)}60%{opacity:1;transform:scale(1.12)}100%{transform:none}}
+@keyframes fxFl{from{transform:scale(1,1) skewX(0)}to{transform:scale(1.03,1.07) skewX(-2.5deg)}}
+@keyframes fxFl2{from{transform:scale(1,1) skewX(0)}to{transform:scale(.94,1.1) skewX(3deg)}}
+@keyframes fxRoOut{to{transform:translateY(-70px);opacity:0}}
+@keyframes fxRoIn{from{transform:translateY(70px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fbPz{0%{opacity:0;transform:translateY(34px) scale(.5) rotate(-8deg)}100%{opacity:1;transform:none}}
+body.neo .fxo{--fo1:#0e4a3a}
+@media (max-height:640px){.fxin{gap:6px;padding-top:8px}.flw{width:120px;height:140px}.sn{top:62px;height:58px;font-size:52px;line-height:58px}.trophy{width:100px;height:108px}}

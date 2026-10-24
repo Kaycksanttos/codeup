@@ -1157,7 +1157,7 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   }
   // os botões do Perfil cobrem exatamente as poses que existem
   const ex = new Function('return ' + /const EXPR = (\{[\s\S]*?\n\});/.exec(ui)[1])();
-  for (const g of ['tay', 'cut']) assert.deepEqual(ex[g].map(x => x[0]).sort(), expected[g].slice().sort(), 'botões do Perfil de ' + g);
+  for (const g of ['tay', 'cut']) assert.deepEqual(ex[g].map(x => x[0]).sort(), expected[g].filter(k => k != 'back').sort(), 'botões do Perfil de ' + g + ' (sem a pose de costas)');
   assert.match(ui, /function playMove\(/); assert.match(ui, /playMove\('p:\$\{k\}'\)/); assert.match(ui, /Expressões/);
   // a cor escolhida vale nas poses: mesma conta do matiz que gerou as imagens coloridas do corpo
   assert.equal(CRw.hueShift('tay', 'verde'), 162); assert.equal(CRw.hueShift('tay', 'azul'), -116); assert.equal(CRw.hueShift('cut', 'verde'), -82); assert.equal(CRw.hueShift('cut', 'vermelho'), 134);
@@ -1166,14 +1166,43 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   // motor: sequências, movimentos, rabiscos, balão, toque, brincadeira dos muitos toques e respeito a "reduzir movimento"
   for (const f of ['function poseLoad(', 'function startReel(', 'function pzState(', 'function pzDraw(', 'function mot(', 'function preload(', 'function kick(']) assert.ok(anim.includes(f), f);
   for (const k of ['hop', 'jump2', 'beat', 'shake', 'tilt', 'nod', 'snap', 'startle', 'walk']) assert.match(anim, new RegExp(`n == '${k}'`), 'movimento ' + k);
-  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'hello', 'walk']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
+  for (const k of ['win', 'cp', 'big', 'think', 'oops', 'intro', 'hello', 'mapa', 'ok', 'perfect', 'pass', 'streak', 'streak7']) assert.match(anim, new RegExp(`\\b${k}: \\[\\[\\[`), 'sequência ' + k);
   assert.match(anim, /i\.taps\.length >= 5/, 'muitos toques seguidos deixam bravinho'); assert.match(anim, /CALM/); assert.match(anim, /k\.indexOf\('p:'\) == 0/); assert.match(anim, /_pose: function/);
   assert.match(anim, /if \(reduce \|\| !PZ/, 'com "reduzir movimento" as poses não entram'); assert.match(anim, /if \(reduce\) return false;/);
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
   assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.match(ui, /body\(285, 'wave', 'hb', '', 'hello'\)/, 'oi da tela inicial'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
-  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos de novo!', 'bad', '', 'oops'/); assert.match(ui, /const walker = /); assert.equal((ui.match(/walker\(\)/g) || []).length, 2, 'o mapa usa o personagem andando nos dois tipos de parada');
+  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos de novo!', 'bad', '', 'oops'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 2, 'o mapa usa o personagem nos dois tipos de parada');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
-  assert.match(sw, /codeup-v(3[5-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+  assert.match(sw, /codeup-v(3[6-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+});
+
+test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência de dias e efeitos sonoros', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), sfx = rd('sfx.js'), css = rd('style.css'), sw = rd('sw.js'), html = rd('index.html');
+  // servidor: a 1ª lição do dia acende a sequência (streakUp) e devolve quantas tentativas foram feitas (acerto de primeira)
+  const em = `fx${Date.now()}@exemplo.com`, reg = await call('/api/register', { body: { name: 'Fx Teste', email: em, password: 'segredo123', accept: true, sex: 'f', guide: 'tay', gname: 'Luna' } }), tk = reg.j.token;
+  await call('/api/track', { token: tk, body: { track: 'python' } });
+  let r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'errado' } })).j;
+  assert.equal(r.ok, false); assert.equal(r.streakUp, undefined, 'errar não acende a sequência'); assert.equal(r.tries, 1);
+  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j;
+  assert.equal(r.ok, true); assert.equal(r.tries, 2, 'conta as tentativas (acerto de primeira = 1)'); assert.equal(r.streakUp, 1, 'primeiro dia de treino: sequência iniciada'); assert.equal(r.streak, 1);
+  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-02', code: 'print("Bom dia")\nprint("Vamos programar")', out: 'Bom dia\nVamos programar' } })).j;
+  if (r.ok) { assert.equal(r.streakUp, undefined, 'no mesmo dia a sequência não sobe de novo'); assert.equal(r.tries, 1); }
+  // efeitos sonoros: arquivo próprio, sem áudio para baixar, com liga/desliga salvo no aparelho
+  assert.equal((await fetch(`${U}/sfx.js`)).status, 200); assert.ok(html.indexOf('/sfx.js') > 0 && html.indexOf('/sfx.js') < html.indexOf('/anim.js') && html.indexOf('/anim.js') < html.indexOf('/app.js'), 'sfx.js carrega antes do app');
+  for (const n of ['ok', 'perfect', 'combo', 'bad', 'done', 'cp', 'pass', 'fail', 'streak', 'streak7', 'level', 'pop']) assert.match(sfx, new RegExp(`\\b${n}: function`), 'som ' + n);
+  assert.match(sfx, /AudioContext/); assert.match(sfx, /cu_sfx/); assert.match(sfx, /document\.hidden/, 'não toca com a aba escondida'); assert.ok(!/\.mp3|\.wav|\.ogg|fetch\(|XMLHttpRequest/.test(sfx), 'sons sintetizados, nada para baixar'); assert.ok(sw.includes('/sfx.js'), 'sw guarda o sfx.js');
+  // app: cada acontecimento tem a sua tela e o seu som
+  for (const f of ['function okFx(', 'function passFx(', 'function streakFx(', 'function streakLater(', 'function openOv(', 'function closeOv(', 'function setSfx(', 'const poseChip', 'const ovHero']) assert.ok(ui.includes(f), f);
+  assert.match(ui, /await okFx\(s\)/, 'o acerto aparece antes do resultado'); assert.match(ui, /result\(\); streakLater\(s\)/, 'a sequência aparece depois do resultado');
+  assert.match(ui, /if \(r\.passed && !r\.fx\) \{ r\.fx = 1; return passFx\(r, x, \(\) => examResult\(r, x\)\); \}/, 'prova aprovada: troféu e depois o resultado');
+  assert.match(ui, /sfx\('fail'\)/); assert.match(ui, /sfx\('bad'\)/); assert.match(ui, /sfx\(S\.lvlUp \|\| S\.tierUp \? 'level' : 'done'\)/); assert.match(ui, /sfx\(mk \? 'streak7' : 'streak'\)/); assert.match(ui, /sfx\('pass'\)/);
+  assert.match(ui, /const MARCOS = \[3, 7, 14, 30, 50, 100, 200, 365\]/); assert.match(ui, /Combo ×\$\{combo\}!/); assert.match(ui, /De primeira!/); assert.match(ui, /Sequência iniciada!/); assert.match(ui, /Marco: \$\{n\} dias seguidos!/);
+  assert.match(ui, /onclick="setSfx\(\$\{k\}\)"/, 'Perfil tem o botão Sons'); assert.match(ui, /cls: 'fxh'/, 'a classe do personagem não colide com .ov');
+  assert.ok(!/eval\(/.test(ui.slice(ui.indexOf('COMEMORAÇÕES POR ACONTECIMENTO'), ui.indexOf('function toast('))), 'sem eval nas telas');
+  // anim.js: sequências em laço para as telas que esperam o toque; toque no personagem faz um "pop"
+  assert.match(anim, /period == 'loop'/); assert.match(anim, /CodeUpSfx\.play\('pop'\)/);
+  // visual
+  for (const c of ['.fxo{', '.fxo .rays', '.trophy', '.flw', '.sn .n', '.wk{', '.spk{', '.fb .fbc', '@keyframes fxSpark', '@keyframes fxTrophy', '@keyframes fxFl']) assert.ok(css.includes(c), 'css ' + c);
 });

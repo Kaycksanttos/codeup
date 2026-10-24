@@ -57,8 +57,8 @@ const gnm = () => (S.me && S.me.gname) || (S.reg && S.reg.gname) || GUIDES[gid()
 const gid = () => { const g = (S.me && S.me.guide) || LS.get('guide'); return g === 'tay' ? 'tay' : 'cut'; };
 // expressões do personagem (poses da folha em img/pose/<guia>-<pose>.webp): [pose, nome no botão do Perfil]
 const EXPR = {
-  tay: [['jump', 'Pulo'], ['peace', 'Paz'], ['love', 'Apaixonada'], ['laugh', 'Rindo'], ['wink', 'Piscadinha'], ['clap', 'Palmas'], ['peace2', 'Agachadinha'], ['sit', 'Descansando'], ['think', 'Pensativa'], ['angry', 'Brava'], ['back', 'De costas']],
-  cut: [['jump', 'Pulo'], ['peace', 'Paz'], ['cool', 'Estiloso'], ['thumbs', 'Joinha'], ['shy', 'Tímido'], ['wow', 'Uau!'], ['dab', 'Dab'], ['peace2', 'Agachado'], ['think', 'Pensativo'], ['angry', 'Bravo'], ['back', 'De costas']]
+  tay: [['jump', 'Pulo'], ['peace', 'Paz'], ['love', 'Apaixonada'], ['laugh', 'Rindo'], ['wink', 'Piscadinha'], ['clap', 'Palmas'], ['peace2', 'Agachadinha'], ['sit', 'Descansando'], ['think', 'Pensativa'], ['angry', 'Brava']],
+  cut: [['jump', 'Pulo'], ['peace', 'Paz'], ['cool', 'Estiloso'], ['thumbs', 'Joinha'], ['shy', 'Tímido'], ['wow', 'Uau!'], ['dab', 'Dab'], ['peace2', 'Agachado'], ['think', 'Pensativo'], ['angry', 'Bravo']]
 };
 const IMG = () => { const g = gid(), c = S.me && S.me.color; return { face: CR.colorFile(g, c, true), full: CR.colorFile(g, c, false) }; };   // cor escolhida (ou a de fábrica)
 // fundo do círculo do rosto: o que a pessoa escolheu; sem escolha, acompanha a cor da roupa (a cor de fábrica usa o degradê original)
@@ -92,8 +92,8 @@ const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 
 const HUE = () => CR.hueShift(gid(), S.me && S.me.color);   // a cor escolhida também vale nas poses
 const body = (h = 200, cls = '', extra = '', fxc = '', reel = '') => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, reel, hue: HUE(), alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
 const stage = (h, text, cls = '', fxc = '', reel = '') => `<div class="stage ${cls}"${(b => { const v = [b ? '--gl:' + b.c1 : '', /^#[0-9a-f]{6}$/i.test(fxc) ? '--fx:' + fxc : ''].filter(Boolean).join(';'); return v ? ` style="${v}"` : ''; })(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls, '', fxc, reel)}<span class=gn>${esc(gnm())}</span></div>`;
-// personagem andando no mapa (só a pose de costas, sem o corpo animado por baixo): troca a <img> parada
-const walker = () => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: 0, h: 120, cls: 'pm', reel: 'walk', hue: HUE(), rig: 0, alt: '' }) : `<img class=pm src="${IMG().full}" alt="">`;
+// personagem do mapa: de frente, com o corpo animado (respira, pisca) e, de tempos em tempos, uma expressãozinha (reel 'mapa')
+const walker = () => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h: 120, cls: 'pm', reel: 'mapa', hue: HUE(), alt: '' }) : `<img class=pm src="${IMG().full}" alt="">`;
 // personagem do resultado de uma conquista: título novo (cor do título) > trilha concluída > nível novo > só passou (ou prova aprovada, que também é conquista)
 // cada comemoração sorteia uma das sequências de expressões (anim.js, REELS): lição = 'win', checkpoint = 'cp', conquista (título, nível, prova, trilha) = 'big'
 const winStage = (h, text, base = 'win', big = false) => {
@@ -136,9 +136,77 @@ const codeBox = (code, type, label) => {
   return `<div class=cb><div class=cbh><span>${esc(label)}</span></div><pre>${hl(txt, type)}</pre>${parts.length > 1 ? `<div class=cbp><small>Como ler</small>${parts.map(p => `<div><b class=k>${esc(p.k)}</b><span>${esc(p.d)}</span></div>`).join('')}</div>` : ''}</div>`;
 };
 
-function confetti() { const w = document.createElement('div'); w.className = 'confetti'; const cs = ['#ffd43b', '#4b8bbe', '#22d3ee', '#34d399', '#f87171', '#fff'];
-  for (let i = 0; i < 46; i++) { const p = document.createElement('i'); p.style.cssText = `left:${Math.random() * 100}%;background:${cs[i % 6]};animation-delay:${Math.random() * .6}s;animation-duration:${1.8 + Math.random() * 1.6}s;transform:rotate(${Math.random() * 360}deg)`; w.appendChild(p); }
+function confetti(n = 46) { const w = document.createElement('div'); w.className = 'confetti'; const cs = ['#ffd43b', '#4b8bbe', '#22d3ee', '#34d399', '#f87171', '#fff'];
+  for (let i = 0; i < n; i++) { const p = document.createElement('i'); p.style.cssText = `left:${Math.random() * 100}%;background:${cs[i % 6]};animation-delay:${Math.random() * .6}s;animation-duration:${1.8 + Math.random() * 1.6}s;transform:rotate(${Math.random() * 360}deg)`; w.appendChild(p); }
   document.body.appendChild(w); setTimeout(() => w.remove(), 4200); }
+// ============================================================ COMEMORAÇÕES POR ACONTECIMENTO (telas cheias, com som)
+// acerto → "Acertou!/De primeira!/Combo" · prova aprovada → troféu · sequência de dias → chama (e marcos) · erro → personagem pensando na dica
+const sfx = (n, a) => { try { window.CodeUpSfx && CodeUpSfx.play(n, a); } catch { } };
+// o personagem só com a pose (sem o corpo animado por baixo); sem poses/WebGL ou com "reduzir movimento" aparece o corpo parado
+const ovHero = (h, reel, fxc) => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: 'fxh', reel, hue: HUE(), rig: 0, fxc, alt: esc(gnm()) }) : `<img class="body fxh" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+const ovH = k => Math.round(Math.max(120, Math.min(k, innerHeight * .24)));
+// carinha da expressão como figurinha (a imagem da pose tem o recorte no alto e os desenhinhos embaixo: mostra só o alto)
+const poseChip = (id, h = 64) => { const g = gid(), P = window.CodeUpPoses && CodeUpPoses.poses[g] && CodeUpPoses.poses[g][id]; if (!P) return ''; const hu = HUE(); return `<i class=pzc style="width:${Math.round(h * P.w / P.h)}px;height:${h}px;background-image:url(/img/pose/${g}-${id}.webp);${hu ? `filter:hue-rotate(${hu}deg)` : ''}"></i>`; };
+const sparks = (n, big) => Array.from({ length: n }, (_, k) => `<i class=spk style="--a:${Math.round(360 / n * k + (k % 2) * 9)}deg;--d:${(big ? 130 : 105) + (k % 3) * 22}px;--s:${11 + (k % 4) * 4}px;--dl:${(k % 5) * .05}s"></i>`).join('');
+function closeOv(now) {
+  const d = document.getElementById('fxo'); if (!d || d._x) return; d._x = 1; clearTimeout(d._t);
+  const fin = () => { d.remove(); const f = d._done; if (f) f(); };
+  if (now) fin(); else { d.classList.add('out'); setTimeout(fin, 230); }
+}
+// abre a tela cheia; done() roda quando ela fecha (toque, botão "Continuar" ou tempo)
+function openOv(kind, inner, o = {}) {
+  closeOv(true);
+  const d = document.createElement('div'); d.className = 'fxo ' + kind; d.id = 'fxo'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', o.label || 'Comemoração');
+  d.innerHTML = `<div class=rays></div><div class=fxin>${inner}</div>${o.auto ? `<i class=fxbar style="--t:${o.auto}ms"></i>` : ''}`;
+  d._done = o.done; document.body.appendChild(d);
+  d.addEventListener('click', e => { if (o.tap !== false || e.target.closest('[data-go]')) closeOv(); });
+  if (o.auto) d._t = setTimeout(closeOv, o.auto);
+  const key = e => { if (!document.getElementById('fxo')) return document.removeEventListener('keydown', key); if (e.key == 'Escape') closeOv(); };
+  document.addEventListener('keydown', key);
+  const go = d.querySelector('[data-go]'); if (go) setTimeout(() => { if (go.isConnected) go.focus({ preventScroll: true }); }, 1500);
+  return d;
+}
+// acerto de uma lição/checkpoint: "Acertou!" (ou "De primeira!" / "Combo ×N") + XP, personagem comemorando, faíscas e som. Devolve uma Promise que resolve quando fecha.
+function okFx(s) {
+  const first = (s.tries || 1) == 1; S.combo = first ? (S.combo || 0) + 1 : 0;
+  const combo = S.combo >= 2 ? S.combo : 0, title = combo ? `Combo ×${combo}!` : first ? 'De primeira!' : 'Acertou!', reel = first ? 'perfect' : 'ok', fxc = first ? '#fbbf24' : '#34d399';
+  const sub = s.gained ? `<div class=fxxp><b>+${s.gained}</b> XP</div>` : '<div class=fxxp style="--fg:#475569;--fd:#334155"><b>Já feita</b> · sem XP novo</div>';
+  const chips = [first && !combo ? 'Sem errar nenhuma vez' : '', combo ? `${combo} lições seguidas de primeira` : ''].filter(Boolean).map(t => `<span class=fxchip>${t}</span>`).join('');
+  return new Promise(res => {
+    openOv('ok' + (first ? ' gold' : ''), `<div class=fxch>${sparks(first ? 16 : 11, first)}${ovHero(ovH(230), reel, fxc)}</div><h2 class=fxt>${title}</h2>${sub}${chips}`, { auto: window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 900 : 2100, label: 'Acertou', done: res });
+    sfx(combo ? 'combo' : first ? 'perfect' : 'ok', combo);
+  });
+}
+// prova aprovada: troféu dourado, confete, personagem pulando e fanfarra; o botão "Continuar" aparece depois de um instante
+const TROPHY = `<svg class=trophy viewBox="0 0 120 130" aria-hidden=true><defs><linearGradient id=tgd x1=0 y1=0 x2=1 y2=1><stop offset=0 stop-color=#fff3b0 /><stop offset=.45 stop-color=#fbbf24 /><stop offset=1 stop-color=#d97706 /></linearGradient><clipPath id=tcl><path d="M30 14h60v32c0 20-13 34-30 34S30 66 30 46z"/></clipPath></defs>
+  <path d="M31 24H14v10c0 13 9 23 22 26M89 24h17v10c0 13-9 23-22 26" fill=none stroke=#f59e0b stroke-width=7 stroke-linecap=round /><path d="M54 78h12v18H54z" fill=url(#tgd) /><path d="M38 96h44l6 14H32z" fill=url(#tgd) stroke=#b45309 stroke-width=3 stroke-linejoin=round /><rect x=29 y=110 width=62 height=11 rx=4 fill=#92400e />
+  <path d="M30 14h60v32c0 20-13 34-30 34S30 66 30 46z" fill=url(#tgd) stroke=#b45309 stroke-width=3 stroke-linejoin=round /><g clip-path="url(#tcl)"><rect class=shn x=-50 y=6 width=26 height=84 fill=#fff opacity=.6 /></g>
+  <path d="m60 26 5.2 11 12 1.5-8.8 8.3 2.3 11.9L60 52.8l-10.7 5.9 2.3-11.9-8.8-8.3 12-1.5z" fill=#fff7d6 stroke=#d97706 stroke-width=1.6 stroke-linejoin=round /></svg>`;
+function passFx(r, x, done) {
+  const fin = !!r.trackComplete, title = fin ? 'Trilha concluída!' : 'Aprovado!';
+  openOv('pass', `<div class=trw>${TROPHY}</div><h2 class=fxt>${title}</h2><div class=fxscore><b>${r.score}/${r.total}</b> acertos · ${r.pct}%</div><div class=fxch>${sparks(14, true)}${ovHero(ovH(190), 'pass', '#fbbf24')}</div>${fin ? '<span class=fxchip>Seu certificado está liberado</span>' : r.bonus ? `<span class=fxchip>+${r.bonus} XP de bônus</span>` : ''}<button class="btn pri block fxbtn" data-go style="--bd:1.9s">Continuar</button>`, { tap: false, label: title, done });
+  confetti(70); setTimeout(() => confetti(60), 650); sfx('pass');
+}
+// sequência de dias (frequência): chama + número rolando + semana com os dias feitos; marcos (3, 7, 14, 30…) ganham destaque e fanfarra
+const MARCOS = [3, 7, 14, 30, 50, 100, 200, 365];
+function streakFx(n, done) {
+  const mk = MARCOS.includes(n), W = 'DSTQQSS', now = new Date(), days = Array.from({ length: 7 }, (_, k) => { const d = new Date(now); d.setDate(d.getDate() - (6 - k)); return { l: W[d.getDay()], on: 6 - k < n, td: k == 6 }; });
+  const title = n == 1 ? 'Sequência iniciada!' : mk ? `Marco: ${n} dias seguidos!` : `${n} dias seguidos!`;
+  const msg = n == 1 ? 'Estude todo dia para a chama não apagar.' : mk ? 'Constância é o que faz você aprender de verdade.' : ['Volte amanhã para manter a chama acesa.', 'Mais um dia de treino no bolso.', 'Você está pegando o ritmo!'][n % 3];
+  const flame = `<svg class=flm viewBox="0 0 120 150" aria-hidden=true><defs><linearGradient id=fg1 x1=0 y1=1 x2=0 y2=0><stop offset=0 stop-color=#ea580c /><stop offset=.55 stop-color=#fb923c /><stop offset=1 stop-color=#fde047 /></linearGradient><linearGradient id=fg2 x1=0 y1=1 x2=0 y2=0><stop offset=0 stop-color=#fbbf24 /><stop offset=1 stop-color=#fff7ed /></linearGradient></defs>
+    <path class=f1 d="M60 5C65 34 97 52 97 95c0 28-17 48-37 48S23 123 23 95c0-18 8-29 17-39 2 12 8 18 14 20-3-26 0-51 6-71z" fill=url(#fg1) /><path class=f2 d="M60 68c3 16 22 28 22 52 0 16-10 25-22 25s-22-9-22-25c0-10 4-16 10-22 2 8 5 10 8 10-1-16 0-30 4-40z" fill=url(#fg2) /></svg>`;
+  const num = n > 1 ? `<span class=o>${n - 1}</span><span class=n>${n}</span>` : `<span class="n one">${n}</span>`;
+  openOv('streak' + (mk ? ' mk' : ''), `<div class=flw>${flame}<div class=sn>${num}</div></div><h2 class=fxt>${title}</h2><p class=fxm>${msg}</p><div class=wk>${days.map(d => `<div class="wd${d.on ? ' on' : ''}${d.td ? ' td' : ''}"><small>${d.l}</small><i>${d.on ? ic('check', 15) : ''}</i></div>`).join('')}</div>
+    <div class=fxch>${sparks(mk ? 14 : 8, mk)}${ovHero(ovH(mk ? 200 : 170), mk ? 'streak7' : 'streak', '#fb923c')}</div><button class="btn pri block fxbtn" data-go style="--bd:1.5s">Continuar</button>`, { tap: false, label: title, done });
+  if (mk) confetti(60); sfx(mk ? 'streak7' : 'streak');
+}
+// depois da tela de resultado: se hoje foi o primeiro dia de treino, mostra a sequência (só se a pessoa ainda estiver nela)
+function streakLater(s) {
+  if (!s || !s.streakUp) return; const id = S.cur && S.cur.id;
+  setTimeout(() => { if (document.querySelector('.res') && S.cur && S.cur.id == id && !document.getElementById('fxo')) streakFx(s.streakUp); }, 2600);
+}
+function setSfx(v) { const on = window.CodeUpSfx ? CodeUpSfx.set(v) : false; if (on) sfx('ok'); render(); }
+
 function toast(m, err) { document.querySelectorAll('.toast').forEach(x => x.remove()); const d = document.createElement('div'); d.className = 'toast' + (err ? ' err' : ''); d.innerHTML = ic(err ? 'info' : 'check', 18) + '<span></span>'; d.lastChild.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 4500); }
 const fail = e => { if (!e.silent) toast(e.error || e.message || 'Algo deu errado.', true); };
 const theme = t => { document.body.classList.remove('t-python', 't-sql'); if (t) document.body.classList.add('t-' + t); };
@@ -463,6 +531,8 @@ function render() {
     ${czView()}
     <div class=sec>Ranking</div><div class='skins s4 gsw'>${[[true, 'Aparecer'], [false, 'Ficar de fora']].map(([k, n]) => `<button class="btn ${!m.rankOff == k ? 'pri' : 'ghost'}" onclick="rkVis(${k})">${n}</button>`).join('')}</div>
     <p class=tn style="margin:4px 2px 0">No ranking aparecem só o seu primeiro nome, a inicial do sobrenome, o personagem e o XP.</p>
+    <div class=sec>Sons</div><div class='skins s4 gsw'>${[[true, 'Ligados'], [false, 'Desligados']].map(([k, n]) => `<button class="btn ${(window.CodeUpSfx ? CodeUpSfx.enabled() : true) == k ? 'pri' : 'ghost'}" onclick="setSfx(${k})">${n}</button>`).join('')}</div>
+    <p class=tn style="margin:4px 2px 0">Efeitos sonoros quando você acerta, passa na prova ou mantém a sequência de dias. Fica salvo neste aparelho.</p>
     <div class=sec>Aparência</div><div class='skins s4'>${[['wild', 'Azul'], ['rose', 'Rosa'], ['', 'Azul escuro'], ['neo', 'Claro']].map(x => `<button class="btn ${(['rose', 'neo', ''].includes(LS.get('skin')) ? LS.get('skin') : 'wild') == x[0] ? 'pri' : 'ghost'}" onclick="setSkin('${x[0]}')">${x[1]}</button>`).join('')}</div>
     <div class=sec>Minha conta</div>
     <button class="btn ghost block" onclick="studyTrack('${T == 'python' ? 'sql' : 'python'}')">${ic('swap', 16)} Estudar ${T == 'python' ? 'SQL' : 'Python'}</button>
@@ -717,7 +787,8 @@ function similar(w, list) { w = w.toLowerCase(); let best = null, bd = 3; for (c
 function setFb(st, html, extra) {
   const f = $('#fb'); if (!f) return; f.className = 'fb ' + st;
   if (st == 'idle') f.innerHTML = '';
-  else f.innerHTML = `<div class=fbh>${ic(st == 'err' ? 'x' : 'info', 22)} <b>${st == 'err' ? 'Tem um erro no código' : st == 'srv' ? 'O corretor não respondeu' : 'Ainda não está certo'}</b></div>${html}`;
+  else f.innerHTML = `<div class=fbh>${ic(st == 'err' ? 'x' : 'info', 22)} <b>${st == 'err' ? 'Tem um erro no código' : st == 'srv' ? 'O corretor não respondeu' : 'Ainda não está certo'}</b>${st == 'bad' || st == 'err' ? `<span class=fbc>${poseChip('think', 70)}</span>` : ''}</div>${html}`;
+  if (st == 'bad' || st == 'err') { S.combo = 0; sfx('bad'); }
   const ob = st != 'idle' && $('#out') && $('#out').closest('.ob'); if (ob) ob.scrollIntoView({ behavior: 'smooth', block: 'start' });   // leva o aluno ao resultado + explicação (o botão Concluído não sai do lugar)
 }
 const fixit = (line, code, tips) => `${line ? `<div class=where><small>Onde corrigir · linha ${line}</small><code>${esc(code)}</code></div>` : ''}${tips.map(t => `<p class=tip>${t}</p>`).join('')}`;
@@ -788,7 +859,8 @@ async function concluir() {
     if (!s.ok) return setFb('bad', l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing) : diagPy(l, r.out, s.expected, s.missing));
     const xb = S.me.xp, before = Math.floor(S.me.xp / 100); Object.assign(S.me, { xp: s.xp, gems: s.gems, streak: s.streak, done: s.done, cps: s.cps }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
     S.gained = s.gained; S.lvlUp = Math.floor(s.xp / 100) > before ? Math.floor(s.xp / 100) + 1 : 0; try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
-    result();
+    try { await okFx(s); } catch { closeOv(true); }          // tela do acerto (1–2 s, toque para pular) e só então o resultado da lição (se a tela falhar, o resultado vem do mesmo jeito)
+    result(); streakLater(s);
   } catch (e) { setFb('idle'); fail(e); }
   finally { S.busy = false; const bb = $('#bdone'); if (bb) { bb.disabled = false; bb.innerHTML = DONE_BTN; } }
 }
@@ -900,7 +972,7 @@ function result() {
   const btn = last ? `<button class="btn pri block" onclick="examIntro(${l.lv})">${ic('cap', 16)} Fazer a prova do nível</button>`
     : needCp ? `<button class="btn pri block" onclick="openCp('${needCp.id}')">${ic('flag', 16)} Fazer o checkpoint</button>`
     : `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>`;
-  confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Mandou bem!')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
+  sfx(S.lvlUp || S.tierUp ? 'level' : 'done'); confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Mandou bem!')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a prova para liberar o próximo nível.</p>` : ''}
   ${needCp ? `<p class=gl>Checkpoint liberado! Faça uma consulta com o que você aprendeu nas últimas 5 lições para abrir a lição ${nx.n}.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>na prática</small></div></div>
@@ -911,7 +983,7 @@ function result() {
 
 function resultCp() {
   const l = S.cur, nx = S.ls.find(x => x.track == l.track && x.lv == l.lv && x.n == l.after + 1);
-  confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!', 'cp')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
+  sfx(S.lvlUp || S.tierUp ? 'level' : 'cp'); confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!', 'cp')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP extra</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>no desafio</small></div></div>
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos deste checkpoint.</p>'}
   ${nx ? `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button>${adSlot()}</div>`;
@@ -985,6 +1057,7 @@ async function examFinish() {
 }
 function examResult(r, x) {
   delete document.body.dataset.calm;
+  if (r.passed && !r.fx) { r.fx = 1; return passFx(r, x, () => examResult(r, x)); }     // 1º a tela do troféu; ao continuar, o resultado completo
   const t = x.t, lv = x.lv;
   if (r.passed) {
     const next = lv < 3, fin = r.trackComplete;
@@ -994,7 +1067,7 @@ function examResult(r, x) {
     ${fin ? `<button class="btn pri block" onclick="certFlow('${t}')">${ic('award', 16)} Emitir meu certificado</button>` : ''}
     <button class="btn ${fin ? 'ghost' : 'pri'} block" onclick="S.lv=${next ? lv + 1 : lv};S.scroll=true;go('home')">${next ? 'Ir para o nível ' + LV[lv] : 'Voltar ao mapa'}</button></div>`;
   } else {
-    A.innerHTML = `<div class="c res">${stage(220, 'Calma, vamos de novo!', 'bad', '', 'oops')}<h1>Não foi dessa vez</h1><p class=sub>${r.score} de ${r.total} (${r.pct}%)</p>
+    sfx('fail'); A.innerHTML = `<div class="c res">${stage(220, 'Calma, vamos de novo!', 'bad', '', 'oops')}<h1>Não foi dessa vez</h1><p class=sub>${r.score} de ${r.total} (${r.pct}%)</p>
     <p class=gl>A nota mínima é ${r.passPct}%. Para tentar de novo você precisa <b>refazer as 30 lições</b> de ${LV[lv - 1]}, que é o que fixa o conteúdo de verdade. Os pontos que você já ganhou continuam seus.</p>
     <button class="btn pri block" onclick="S.lv=${lv};S.scroll=true;go('home')">Recomeçar o nível</button></div>`;
   }
