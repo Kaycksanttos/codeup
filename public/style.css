@@ -805,7 +805,7 @@ body .bar.thin{height:7px;margin-top:8px}
 .kp .kpi{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;margin-bottom:7px;color:var(--acc2,var(--acc));background:color-mix(in srgb,var(--acc) 15%,transparent)}
 .kp b{font-size:22px;line-height:1.05;font-weight:800;letter-spacing:-.3px}.kp small{color:var(--mute);font-size:11.5px;line-height:1.25}
 .sec .cnt{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:700}
-.tg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tgr{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tgi{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:12px 2px 9px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;text-align:center}
 button.tgi{cursor:pointer}button.tgi:focus-visible{outline:3px solid var(--acc2,var(--acc));outline-offset:2px}
 .tgi b{font-size:11.5px;font-weight:800;line-height:1.15}.tgi small{font-size:10.5px;color:var(--mute);line-height:1.15}
@@ -870,4 +870,35 @@ body.neo .czt button{background:#fff;border-color:#e2e8fa}body.neo .pdc .px{colo
 body.wild .kp,body.wild .tgi{background:linear-gradient(180deg,var(--gl1),var(--gl2));border:1px solid var(--gline);border-radius:16px;box-shadow:0 8px 22px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.07)}
 body.wild .tgi.use{border-color:var(--acc2)}body.wild .czt button{background:var(--gchip);border-color:var(--gline)}
 body.wild .pfh{background:linear-gradient(155deg,color-mix(in srgb,var(--fr,var(--acc)) 30%,transparent),transparent 62%),linear-gradient(180deg,var(--gl1),var(--gl2))}
-@media (max-width:340px){.kpg{grid-template-columns:repeat(2,1fr)}.tg{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:340px){.kpg{grid-template-columns:repeat(2,1fr)}.tgr{grid-template-columns:repeat(2,1fr)}}
+
+/* Início: cartão "Continuar" com o progresso dentro, faixa do nível enxuta (o mapa aparece logo na primeira tela) · prática: barra de ajudas alinhada */
+.card.cont{flex-wrap:wrap;row-gap:12px}
+.card.cont .cprog{flex:1 0 100%;border-top:1px solid color-mix(in srgb,var(--acc) 22%,var(--line));padding-top:11px;cursor:default}
+.card.cont .cprog .segs{margin-top:8px}.card.cont .cprog .sl{margin-top:4px}
+body .unit.slim,body.wild .unit.slim,body.neo .unit.slim{padding:8px 14px;gap:10px;border-radius:14px;margin:2px 0 6px;border-bottom-width:3px;box-shadow:0 6px 18px #0005}
+.unit.slim>div:nth-child(2){flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.unit.slim small{display:inline;font-size:10.5px;letter-spacing:.8px}.unit.slim b{font-size:17px}
+.unit.slim .uc{padding:3px 10px;font-size:13px;border-radius:10px}
+body.wild .unit.slim .uflag{width:30px;height:30px;box-shadow:0 0 0 3px rgba(var(--cp-rgb),.22)}
+.acts{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin:12px 0 0}
+.acts .btn{flex-direction:column;gap:5px;margin:0;padding:10px 2px 9px;border-radius:14px;font-size:12px;font-weight:800;letter-spacing:.2px;text-transform:none;line-height:1.1;min-width:0;border-bottom-width:3px}
+.acts .btn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:360px){.acts{gap:6px}.acts .btn{font-size:11px}}
+
+/* Desafios: regras das provas em linhas com ícone */
+.rules2{padding:6px 14px}.rules2 .rl{display:flex;gap:12px;align-items:flex-start;padding:10px 0}.rules2 .rl+.rl{border-top:1px solid var(--line)}
+.rules2 .ri{flex:none;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
+.rules2 b{display:block;font-size:14.5px}.rules2 small{display:block;color:var(--mute);font-size:13px;line-height:1.4;margin-top:2px}
+body.neo .rules2 small{color:#4d5678}
+body .unit.slim small,body.wild .unit.slim small{display:inline;font-size:10.5px}
+body .unit.slim b,body.wild .unit.slim b{font-size:17px;text-shadow:none}
+
+/* abertura (logo com barrinha enquanto o app carrega) e tela de falha de carregamento */
+.boot{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center}
+.boot .logo{font-size:52px}.boot:not(.err) .logo{animation:bootp 1.8s ease-in-out infinite}
+.boot .bb{width:132px;height:6px;border-radius:9px;background:#ffffff1f;overflow:hidden}.boot .bb i{display:block;width:42%;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--acc,#4b8bbe),#ffd43b);animation:bootb 1.3s ease-in-out infinite}
+.boot .bootm{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:300px;color:var(--mute)}.boot .bootm svg{color:var(--acc)}.boot .bootm b{color:var(--text);font-size:17px}.boot .bootm small{font-size:13.5px;line-height:1.4}
+@keyframes bootp{50%{opacity:.72;transform:scale(.97)}}@keyframes bootb{0%{transform:translateX(-130%)}100%{transform:translateX(330%)}}
+@media (prefers-reduced-motion:reduce){.boot:not(.err) .logo,.boot .bb i{animation:none}}
+body.neo .boot .bootm{color:#4d5678}body.neo .boot .bb{background:#d9def0}

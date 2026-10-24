@@ -1323,7 +1323,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada
   for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
-  assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>Solução<\/button>/, 'prova não tem Solução nem Teoria');
+  assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>\$\{ic\('key', 20\)\}<span>Solução<\/span><\/button>/, 'prova não tem Solução nem Teoria');
   assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
   // prova reprovada: o personagem chorando (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
   assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\$\{failImg\(\)\}"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
@@ -1361,7 +1361,26 @@ test('Perfil em abas e Ranking com pódio: telas, estilos e regras de privacidad
   assert.match(ui, /\[top\[1\], top\[0\], top\[2\]\]\.filter\(Boolean\)/, 'pódio com 2º, 1º e 3º (funciona com menos de 3)');
   assert.match(ui, /r\.name/); assert.ok(!/r\.email|\.email\b[^;]{0,40}rkx/.test(ui.slice(ui.indexOf('function rankView('), ui.indexOf('function rkPer('))), 'o ranking nunca usa e-mail de outros alunos');
   assert.ok(!/r\.gname|r\.surname|r\.fullName/.test(ui.slice(ui.indexOf('function rankView('), ui.indexOf('function rkPer('))), 'nem o nome dado ao personagem');
-  for (const c of ['.pfh', '.pft', '.kpg', '.kp ', '.tg{', '.tgi', '.setc', '.sg ', '.lrow', '.dz', '.czt', '.podium', '.pdc', '.rkx', '.rkl', '.rkpv', '.rkme']) assert.ok(css.includes(c), 'CSS de ' + c);
+  for (const c of ['.pfh', '.pft', '.kpg', '.kp ', '.tgr{', '.tgi', '.setc', '.sg ', '.lrow', '.dz', '.czt', '.podium', '.pdc', '.rkx', '.rkl', '.rkpv', '.rkme']) assert.ok(css.includes(c), 'CSS de ' + c);
   assert.ok(!/\.rkr\b|\.tri\b/.test(css), 'sem estilos velhos do ranking/títulos');
   for (const t of ['neo', 'wild']) assert.match(css, new RegExp('body\\.' + t + ' \\.kp'), 'tema ' + t + ' cobre os cartões novos');
+});
+
+test('acabamento: abertura com a marca, falha de carregamento, sessão expirada, tela Início enxuta, barra de ajudas e logo da Python', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), css = rd('style.css'), html = rd('index.html');
+  // enquanto o app carrega aparece a marca com uma barrinha (e não uma tela vazia)
+  assert.match(html, /<div id="app"><div class="c"><div class="boot" role="status"/); assert.match(css, /\.boot\{min-height/); assert.match(css, /prefers-reduced-motion:reduce\)\{\.boot/);
+  // falha ao carregar: mensagem de verdade + "Tentar de novo"; sessão expirada vai para o login (antes mostrava "Não foi possível carregar")
+  assert.match(ui, /class="boot err" role=alert/); assert.match(ui, /Tentar de novo/); assert.match(ui, /if \(e\.silent\) return;/); assert.match(ui, /e\.status === 401\) \{ S\.tk = null; localStorage\.removeItem\('tk'\); S\.auth = 'login'; return showAuth\(\)/);
+  assert.equal((await fetch(`${U}/api/me`, { headers: { 'x-token': 'token-invalido' } })).status, 401, 'token inválido: 401 (o app abre o login)');
+  // Início: o progresso fica dentro do cartão "Continuar" e a faixa do nível é enxuta (o mapa aparece na primeira tela)
+  assert.match(ui, /class=cprog/); assert.ok(!ui.includes('Progresso na trilha'), 'sem o bloco de progresso solto'); assert.match(ui, /<div class="unit slim">/);
+  assert.match(css, /\.card\.cont \.cprog\{/); assert.match(css, /\.unit\.slim/);
+  // Desafios: título igual ao da aba e regras em linhas com ícone
+  assert.match(ui, /<h2 class=ttl>Desafios<\/h2>/); assert.match(ui, /class="panel rules2"/); assert.ok(!ui.includes('<h2 class=ttl>Provas e certificados</h2>'));
+  // prática: barra de ajudas com ícone e texto em todos os botões (antes o "limpar" era só um ícone sem nome)
+  assert.match(ui, /class=acts role=toolbar/); for (const n of ['Dica', 'Dados', 'Solução', 'Teoria', 'Limpar']) assert.ok(ui.includes(`<span>${n}</span>`), 'botão ' + n);
+  assert.match(css, /\.acts\{display:grid;grid-auto-flow:column/);
+  // o logo da Python (.tg) não pode ser sobrescrito pela grade de títulos do Perfil (.tgr): era isso que cortava o "py"
+  assert.ok(!/(^|\n)\.tg\{display:grid/.test(css), '.tg do logo não vira grade'); assert.match(css, /\.tgr\{display:grid/); assert.match(ui, /<div class=tgr>/);
 });

@@ -439,7 +439,11 @@ async function go(t) {
     render();
     if (S.me.away && !S.awaySeen && !document.getElementById('fxo')) { S.awaySeen = 1; showAway(); }
   }
-  catch (e) { fail(e); if (!S.me) A.innerHTML = `<div class="c auth"><div class=panel><p>Não foi possível carregar.</p><button class="btn pri block" onclick="go('home')">Tentar de novo</button></div></div>`; }
+  catch (e) {
+    if (e.silent) return;                                                   // sessão expirada: api() já abriu a tela de entrada
+    if (e.status === 401) { S.tk = null; localStorage.removeItem('tk'); S.auth = 'login'; return showAuth(); }
+    if (S.me) return fail(e);                                              // já estava dentro: só avisa
+    A.innerHTML = `<div class="c auth"><div class="boot err" role=alert><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><div class=bootm>${ic('info', 24)}<b>Não foi possível carregar</b><small>${esc(e.error || 'Verifique sua internet e tente de novo.')}</small></div><button class="btn pri" onclick="go('home')">Tentar de novo</button></div></div>`; }
 }
 const done = l => S.me.done[l.id];
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
@@ -509,13 +513,13 @@ function render() {
     const pathSvg = mapSvg(X, pi, MAP);
     const rowHtml = (r, k) => r.l ? (l => { const i = r.i; return `<div class="ti ${done(l) ? 'ok' : i == cur ? 'cur' : l.lock ? 'lk' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openL('${l.id}')"><div class=rail>${i == cur ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${done(l) ? ic('check', 28) : l.lock ? ic('lock', 24) : ic('star', 28)}</span>${i == cur ? walker() : ''}</div><div class=tb><b>${esc(l.title)}</b><small>Lição ${l.n}${done(l) ? '' : ' · +' + l.xp + ' XP'}</small></div></div>`; })(r.l)
       : (c => { const need = !cpOk(c) && !c.lock && !done(ls.find(l => l.n == c.after + 1) || {}); return `<div class="ti cp ${cpOk(c) ? 'ok' : c.lock ? 'lk' : 'av'}${need ? ' cur' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openTest('${c.id}')"><div class=rail>${need ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${cpOk(c) ? ic('check', 28) : c.lock ? ic('lock', 24) : ic('flag', 28)}</span>${need ? walker() : ''}</div><div class=tb><b>${esc(c.title)}</b><small>${cpOk(c) ? 'Checkpoint concluído' : c.lock ? 'Checkpoint · depois da lição ' + c.after : 'Checkpoint · ' + chTxt(c) + ' · +' + c.xp + ' XP'}</small></div></div>`; })(r.c);
-    const cont = nx ? (nx.cp ? `<div class="card cont" onclick="openTest('${nx.cp.id}')">${tg(T, 44)}<div class=bd><small class=up>${nx.cp.fin ? 'Prova final · libera o próximo nível' : 'Checkpoint · obrigatório'}</small><b>${esc(nx.cp.title)}</b><small>${TN[T]} · ${LV[nx.cp.lv - 1]} · ${nx.cp.fin ? 'todas as 30 lições' : 'libera a lição ' + (nx.cp.after + 1)}</small></div><span class=go>${ic('arrow', 20)}</span></div>`
-      : `<div class="card cont" onclick="openL('${nx.id}')">${tg(T, 44)}<div class=bd><small class=up>Continuar</small><b>${esc(nx.title)}</b><small>${TN[T]} · ${LV[nx.lv - 1]} · lição ${nx.n} de 30</small></div><span class=go>${ic('arrow', 20)}</span></div>`) : '';
+    const prog = `<div class=cprog><div class=ph><span>Progresso em ${TN[T]}</span><b>${pct}%</b></div><div class=segs>${[1, 2, 3].map(x => `<div class=seg><i style="width:${lvPct(T, x)}%"></i></div>`).join('')}</div><div class=sl><span>Básico</span><span>Intermediário</span><span>Avançado</span></div></div>`;
+    const cont = nx ? (nx.cp ? `<div class="card cont" onclick="openTest('${nx.cp.id}')">${tg(T, 44)}<div class=bd><small class=up>${nx.cp.fin ? 'Prova final · libera o próximo nível' : 'Checkpoint · obrigatório'}</small><b>${esc(nx.cp.title)}</b><small>${TN[T]} · ${LV[nx.cp.lv - 1]} · ${nx.cp.fin ? 'todas as 30 lições' : 'libera a lição ' + (nx.cp.after + 1)}</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`
+      : `<div class="card cont" onclick="openL('${nx.id}')">${tg(T, 44)}<div class=bd><small class=up>Continuar</small><b>${esc(nx.title)}</b><small>${TN[T]} · ${LV[nx.lv - 1]} · lição ${nx.n} de 30</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`) : '';
     h = `${head}${an}${vb}
-    <div class=panel><div class=ph><span>Progresso na trilha ${TN[T]}</span><b>${pct}%</b></div><div class=segs>${[1, 2, 3].map(x => `<div class=seg><i style="width:${lvPct(T, x)}%"></i></div>`).join('')}</div><div class=sl><span>Básico</span><span>Intermediário</span><span>Avançado</span></div></div>
-    ${cont}
-    <div class=unit><span class=uflag>${ic('flag', 22)}</span><div><small>NÍVEL ${lv} DE 3</small><b>${LV[lv - 1]}</b></div><div class=uc>${nd}/30</div></div>
+    ${cont || `<div class=panel>${prog}</div>`}
     <div class=tabs>${[1, 2, 3].map(x => `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
+    <div class="unit slim"><span class=uflag>${ic('flag', 18)}</span><div><small>NÍVEL ${lv} DE 3</small><b>${LV[lv - 1]}</b></div><div class=uc>${nd}/30</div></div>
     ${!open ? `<div class="note">${ic('lock', 18)}<div><b>Nível bloqueado</b><br>Passe na prova final de ${LV[lv - 2]} (30 lições + a prova) para entrar aqui.</div></div>` : ''}
     ${adSlot()}<div class=tl style="--n:${NR}">${pathSvg}${rows.map(rowHtml).join('')}
     <div class="ti exam ${passedLv(T, lv) ? 'ok' : finReady ? 'cur' : 'lk'}" style="--i:${rows.length};--x:50%" onclick="${fin ? `openTest('${fin.id}')` : ''}"><div class=rail>${finReady ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${passedLv(T, lv) ? ic('check', 28) : ic('cap', 28)}</span>${finReady && cur < 0 ? walker() : ''}</div><div class=tb><b>Prova final · ${LV[lv - 1]}</b><small>${passedLv(T, lv) ? 'Aprovado' : finReady ? 'Liberada · ' + (fin ? chTxt(fin) : '3 chances') + ' · libera o próximo nível' : 'Libera ao concluir as 30 lições'}</small></div></div>
@@ -523,8 +527,8 @@ function render() {
   }
   if (S.tab == 'ch') {
     const cpS = c => (m.cps || []).includes(c.id);
-    h = `<h2 class=ttl>Provas e certificados</h2><p class=sub>A cada 10 lições você faz uma prova: monta uma consulta completa com o que aprendeu. Sem dica e sem ver a solução.</p>
-    <div class="panel rules"><ul><li><b>Checkpoint (lições 10 e 20):</b> 2 chances. Errou as duas, volta 5 lições para relembrar.</li><li><b>Prova final (lição 30):</b> 3 chances, com tudo desde o começo. Passou, abre o próximo nível. Errou as três, volta 10 lições.</li></ul></div>`
+    h = `<h2 class=ttl>Desafios</h2><p class=sub>Prova a cada 10 lições, sem dica e sem solução. Passou nas três finais, você emite o certificado.</p>
+    <div class="panel rules2"><div class=rl><span class=ri>${ic('flag', 20)}</span><div><b>Checkpoint · lições 10 e 20</b><small>2 chances. Errou as duas, volta 5 lições.</small></div></div><div class=rl><span class=ri>${ic('cap', 20)}</span><div><b>Prova final · lição 30</b><small>3 chances, com tudo desde o começo. Errou as três, volta 10 lições.</small></div></div></div>`
       + ['python', 'sql'].map(t => `<div class=sec>${tg(t, 22)} ${TN[t]}</div>` + [1, 2, 3].map(lv => `<div class=lvh>${bars(lv)} ${LV[lv - 1]}</div>` + (S.cps || []).filter(c => c.track == t && c.lv == lv).sort((a, b) => a.after - b.after).map(c => {
         const ok = c.fin ? passedLv(t, lv) : cpS(c), fl = m.fails[c.fin ? t + '-' + lv : c.id] || 0, lk = !ok && c.lock;
         const st = ok ? (c.fin ? 'Aprovado' : 'Concluído') : lk ? (c.fin ? 'Libera ao concluir as 30 lições' : 'Libera ao concluir a lição ' + c.after) : `${chTxt(c)} de ${c.chances}`;
@@ -688,7 +692,7 @@ function tiersView() {
   const m = S.me, cur = CR.frameOf(m.xp, m.frame);
   return `<div class=sec>Títulos e molduras</div>
     <p class=tn style="margin:0 2px 8px">Toque numa moldura conquistada para usá-la no seu personagem.</p>
-    <div class=tg>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp, use = cur == k, bx = `<span class=sw2>${on ? '' : ic('lock', 14)}</span><b>${t.title}</b><small>${k == 0 ? 'Início' : nf(t.xp) + ' XP'}</small>${use && k ? `<span class=ck>${ic('check', 11)}</span>` : ''}`;
+    <div class=tgr>${CR.TIERS.map((t, k) => { const on = m.xp >= t.xp, use = cur == k, bx = `<span class=sw2>${on ? '' : ic('lock', 14)}</span><b>${t.title}</b><small>${k == 0 ? 'Início' : nf(t.xp) + ' XP'}</small>${use && k ? `<span class=ck>${ic('check', 11)}</span>` : ''}`;
       return k == 0 || !on ? `<div class="tgi ${on ? 'on' : 'lk'}${use ? ' use' : ''}" style="--fr:${t.color}" title="${t.frame ? 'Moldura ' + t.frame + ' · ' + nf(t.xp) + ' XP' : 'Título inicial'}">${bx}</div>` : `<button class="tgi on${use ? ' use' : ''}" style="--fr:${t.color}" onclick="setFrame('${t.key}')" aria-pressed=${use} aria-label="Moldura ${t.frame}${use ? ' (em uso)' : ''}">${bx}</button>`; }).join('')}</div>`;
 }
 // miniatura (só CSS) de cada estilo de roupa, na cor escolhida
@@ -916,7 +920,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : 'Desafio'}</small>${esc(l.task)}</div></div>
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${edBox(l, l.starter)}
-  <div class=acts>${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 16)} Dica</button>`}<button class="btn ghost" onclick=peek()>${ic('eye', 16)} Ver dados</button>${T ? '' : `<button class="btn ghost" onclick=sol()>Solução</button><button class="btn ghost" onclick=lesson()>${ic('file', 16)} Teoria</button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar">${ic('eraser', 16)}</button></div>
+  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}<button class="btn ghost" onclick=peek() aria-label="Ver dados">${ic('eye', 20)}<span>Dados</span></button>${T ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button><button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
   ${outBox(OUT0)}
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
