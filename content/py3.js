@@ -11,7 +11,7 @@ Mesa,Móveis,3,650,mar
 Caderno,Papelaria,20,18,mar
 """))
 `;
-const { L, X } = mkH('python', 3, null, '');
+const { L } = mkH('python', 3, null, '');
 const PD = { prelude: DF, peek: 'print(df.to_string())' };
 
 exports.lessons = [
@@ -75,19 +75,4 @@ exports.lessons = [
     'Imprima como dicionário a quantidade de vendas por mês (value_counts().to_dict()), e a seguir o total de qtd por mês com pivot_table (índice mes, values qtd, aggfunc sum) em dicionário.', 'print(df["mes"].value_counts().to_dict())\nprint(df.pivot_table(index="mes", values="qtd", aggfunc="sum")["qtd"].to_dict())', ['value_counts', 'pivot_table'], 'df.pivot_table(index="mes", values="qtd", aggfunc="sum")', PD),
   L('Projeto: produto campeão', 'Projeto final do nível: transforme dados brutos em uma resposta de negócio.', 'df["total"] = df["qtd"] * df["preco"]',
     'Crie a coluna total (qtd * preco). Descubra qual produto gerou mais receita somando por produto e imprima: "Campeão: Notebook com 7000".', 'df["total"] = df["qtd"] * df["preco"]\nr = df.groupby("produto")["total"].sum()\nprint(f"Campeão: {r.idxmax()} com {r.max()}")', ['groupby', 'idxmax'], 'r.idxmax() devolve o nome; r.max() o valor.', PD),
-];
-
-exports.exam = [
-  X('Prova: classe', 'Crie a classe Conta com __init__(saldo) e o método depositar(valor) que soma ao saldo. Depois de depositar 50 em Conta(100), imprima o saldo.', 'class Conta:\n    def __init__(self, saldo):\n        self.saldo = saldo\n    def depositar(self, valor):\n        self.saldo += valor\nc = Conta(100)\nc.depositar(50)\nprint(c.saldo)', ['class', 'self']),
-  X('Prova: herança', 'Crie Veiculo com método rodas() que devolve 4 e Moto(Veiculo) que sobrescreve rodas() devolvendo 2. Imprima Moto().rodas() e Veiculo().rodas().', 'class Veiculo:\n    def rodas(self):\n        return 4\nclass Moto(Veiculo):\n    def rodas(self):\n        return 2\nprint(Moto().rodas())\nprint(Veiculo().rodas())', ['class moto(veiculo)']),
-  X('Prova: gerador', 'Crie o gerador quadrados(n) com yield dos quadrados de 1 até n e imprima list(quadrados(5)).', 'def quadrados(n):\n    for i in range(1, n + 1):\n        yield i * i\nprint(list(quadrados(5)))', ['yield']),
-  X('Prova: decorator', 'Crie o decorator dobra que multiplica por 2 o resultado da função. Decore valor() que devolve 21 e imprima valor().', 'def dobra(f):\n    def novo():\n        return f() * 2\n    return novo\n@dobra\ndef valor():\n    return 21\nprint(valor())', ['@dobra']),
-  X('Prova: closure', 'Crie contador() que devolve uma função; cada chamada dessa função devolve 1, 2, 3... (use nonlocal). Chame 3 vezes e imprima o último valor.', 'def contador():\n    n = 0\n    def inc():\n        nonlocal n\n        n += 1\n        return n\n    return inc\nc = contador()\nc()\nc()\nprint(c())', ['nonlocal']),
-  X('Prova: property', 'Crie Circulo(r) com a property diametro (2 * r). Imprima Circulo(5).diametro.', 'class Circulo:\n    def __init__(self, r):\n        self.r = r\n    @property\n    def diametro(self):\n        return 2 * self.r\nprint(Circulo(5).diametro)', ['@property']),
-  X('Prova: reduce', 'Use reduce para encontrar o maior número de lista (sem usar max) e imprima.', 'from functools import reduce\nprint(reduce(lambda a, b: a if a > b else b, lista))', ['reduce'], { prelude: 'lista = [14, 3, 99, 27, 8]' }),
-  X('Prova: pandas filtro', 'Imprima quantas linhas do df têm preco acima de 100.', 'print(len(df[df["preco"] > 100]))', ['df['], { prelude: DF }),
-  X('Prova: pandas total', 'Imprima o total geral de receita (soma de qtd * preco de todas as linhas).', 'print((df["qtd"] * df["preco"]).sum())', ['sum'], { prelude: DF }),
-  X('Prova: pandas groupby', 'Imprima como dicionário a média de preco por categoria.', 'print(df.groupby("categoria")["preco"].mean().to_dict())', ['groupby', 'mean'], { prelude: DF }),
-  X('Prova: pandas ranking', 'Imprima o nome do produto com a maior qtd em uma única linha do df.', 'print(df.sort_values("qtd", ascending=False).iloc[0]["produto"])', ['sort_values'], { prelude: DF }),
-  X('Prova: pandas mês', 'Crie a coluna total (qtd * preco) e imprima o mês com maior receita somada.', 'df["total"] = df["qtd"] * df["preco"]\nprint(df.groupby("mes")["total"].sum().idxmax())', ['groupby', 'idxmax'], { prelude: DF }),
 ];

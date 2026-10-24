@@ -1,7 +1,7 @@
 // SQL — NÍVEL AVANÇADO
 const mkH = require('./h');
 const { LOJA, T_LOJA, RH, T_RH, CLI, T_CLI, VM, T_VM, WEB, T_WEB } = require('./seeds');
-const { L, X } = mkH('sql', 3, RH);
+const { L } = mkH('sql', 3, RH);
 const V = { seed: VM }, C = { seed: CLI }, W = { seed: WEB }, LJ = { seed: LOJA };
 
 exports.lessons = [
@@ -65,19 +65,4 @@ exports.lessons = [
     'Em vendas_mes de 2026-10, mostre vendedor, valor e pct_acumulado (ROUND com 1 casa) ordenando do maior valor para o menor.', "SELECT vendedor, valor, ROUND(SUM(valor) OVER (ORDER BY valor DESC) * 100.0 / SUM(valor) OVER (), 1) AS pct_acumulado FROM vendas_mes WHERE mes = '2026-10' ORDER BY valor DESC", ['order by valor desc', 'over'], 'SUM(valor) OVER (ORDER BY valor DESC) * 100.0 / SUM(valor) OVER ()', V),
   L('Projeto: painel de clientes', 'Projeto final: um relatório completo de clientes com CTE, JOIN e funções de janela.', 'WITH t AS (...) SELECT ..., RANK() OVER (...) FROM t',
     "Crie uma CTE com o total pago por cliente (apenas status 'pago'). Mostre nome, total, a posição (pos, RANK pelo total decrescente) e a participação no total geral (pct, ROUND 1 casa), ordenado por pos.", "WITH t AS (SELECT c.nome, SUM(p.valor) AS total FROM clientes c JOIN pedidos p ON p.cliente_id = c.id WHERE p.status = 'pago' GROUP BY c.nome) SELECT nome, total, RANK() OVER (ORDER BY total DESC) AS pos, ROUND(total * 100.0 / SUM(total) OVER (), 1) AS pct FROM t ORDER BY pos", ['with', 'rank', 'over'], 'CTE + RANK() OVER (ORDER BY total DESC) + SUM(total) OVER ()', C),
-];
-
-exports.exam = [
-  X('Prova: CTE', 'Crie uma CTE com o total vendido (SUM de valor) por vendedor e mostre o vendedor com maior total (nome e total, uma linha).', 'WITH t AS (SELECT vendedor, SUM(valor) AS total FROM vendas_mes GROUP BY vendedor) SELECT vendedor, total FROM t ORDER BY total DESC LIMIT 1', ['with'], V),
-  X('Prova: ranking na janela', "Mostre vendedor, valor e a posição (pos) do valor no mês 2026-09 usando RANK, ordenado por pos.", "SELECT vendedor, valor, RANK() OVER (ORDER BY valor DESC) AS pos FROM vendas_mes WHERE mes = '2026-09' ORDER BY pos", ['rank', 'over'], V),
-  X('Prova: acumulado', "Para o vendedor Diego, mostre mes, valor e o acumulado (soma corrente), em ordem de mês.", "SELECT mes, valor, SUM(valor) OVER (ORDER BY mes) AS acumulado FROM vendas_mes WHERE vendedor = 'Diego' ORDER BY mes", ['order by', 'over'], V),
-  X('Prova: LAG', "Para a vendedora Ana, mostre mes e a diferença para o mês anterior (dif = valor - LAG), em ordem de mês.", "SELECT mes, valor - LAG(valor) OVER (ORDER BY mes) AS dif FROM vendas_mes WHERE vendedor = 'Ana' ORDER BY mes", ['lag'], V),
-  X('Prova: self join', "Liste o nome dos funcionários e o nome do gerente (apelido gerente), só de quem tem gerente, ordenado pelo nome do funcionário.", 'SELECT f.nome, g.nome AS gerente FROM funcionarios f JOIN funcionarios g ON g.id = f.gerente_id ORDER BY f.nome', ['join funcionarios']),
-  X('Prova: top por grupo', 'Mostre, por departamento (depto_id), o funcionário com menor salário (depto_id, nome, salario), considerando só salários preenchidos. Use ROW_NUMBER.', 'WITH r AS (SELECT depto_id, nome, salario, ROW_NUMBER() OVER (PARTITION BY depto_id ORDER BY salario) AS pos FROM funcionarios WHERE salario IS NOT NULL) SELECT depto_id, nome, salario FROM r WHERE pos = 1', ['row_number', 'partition by']),
-  X('Prova: NOT EXISTS', 'Liste o nome dos departamentos que não têm nenhum funcionário (NOT EXISTS).', 'SELECT nome FROM departamentos d WHERE NOT EXISTS (SELECT 1 FROM funcionarios f WHERE f.depto_id = d.id)', ['not exists']),
-  X('Prova: pivot', "Mostre a região e duas colunas: maio (soma de 2026-05) e outubro (soma de 2026-10), uma linha por região, ordenado por região.", "SELECT regiao, SUM(CASE WHEN mes = '2026-05' THEN valor END) AS maio, SUM(CASE WHEN mes = '2026-10' THEN valor END) AS outubro FROM vendas_mes GROUP BY regiao ORDER BY regiao", ['case', 'group by'], V),
-  X('Prova: percentual', "Mostre, para 2026-10, a região e a % (pct, ROUND 1 casa) que ela representa do total do mês. Agrupe por região e ordene por pct decrescente.", "SELECT regiao, ROUND(SUM(valor) * 100.0 / (SELECT SUM(valor) FROM vendas_mes WHERE mes = '2026-10'), 1) AS pct FROM vendas_mes WHERE mes = '2026-10' GROUP BY regiao ORDER BY pct DESC", ['group by', 'round'], V),
-  X('Prova: média móvel', "Para o vendedor Carla, mostre mes e a média móvel de 2 meses (a linha atual e a anterior), ROUND com 1 casa, apelido mm, em ordem de mês.", "SELECT mes, ROUND(AVG(valor) OVER (ORDER BY mes ROWS BETWEEN 1 PRECEDING AND CURRENT ROW), 1) AS mm FROM vendas_mes WHERE vendedor = 'Carla' ORDER BY mes", ['rows between'], V),
-  X('Prova: usuários recorrentes', 'Mostre o nome dos usuários que acessaram em 3 ou mais dias diferentes e a quantidade (dias), ordenado por nome.', 'SELECT u.nome, COUNT(DISTINCT a.data) AS dias FROM usuarios u JOIN acessos a ON a.usuario_id = u.id GROUP BY u.nome HAVING COUNT(DISTINCT a.data) >= 3 ORDER BY u.nome', ['join', 'having'], W),
-  X('Prova: view', 'Crie a view premium_ativos com o id e nome dos usuários do plano premium e depois conte quantas linhas ela tem.', "CREATE VIEW premium_ativos AS SELECT id, nome FROM usuarios WHERE plano = 'premium'; SELECT COUNT(*) FROM premium_ativos", ['create view'], W),
 ];

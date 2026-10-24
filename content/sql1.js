@@ -1,7 +1,7 @@
 // SQL — NÍVEL BÁSICO
 const mkH = require('./h');
 const { LOJA, T_LOJA, RH, T_RH } = require('./seeds');
-const { L, X } = mkH('sql', 1, LOJA);
+const { L } = mkH('sql', 1, LOJA);
 const R = { seed: RH };
 
 exports.lessons = [
@@ -65,19 +65,4 @@ exports.lessons = [
     'Liste o nome dos funcionários que não têm salário cadastrado.', 'SELECT nome FROM funcionarios WHERE salario IS NULL', ['is null'], 'WHERE salario IS NULL', R),
   L('Funções: ROUND, UPPER, LENGTH', 'ROUND(x, n) arredonda, UPPER() deixa em maiúsculas e LENGTH() conta caracteres.', 'SELECT UPPER(nome), LENGTH(nome) FROM produtos',
     'Mostre a média de preço arredondada para 2 casas, com o apelido media, dos produtos de Móveis.', "SELECT ROUND(AVG(preco), 2) AS media FROM produtos WHERE categoria = 'Móveis'", ['round', 'avg', 'media'], "ROUND(AVG(preco), 2) AS media"),
-];
-
-exports.exam = [
-  X('Prova: filtro simples', "Liste o nome dos produtos da categoria 'Eletrônicos' com estoque maior que 50.", "SELECT nome FROM produtos WHERE categoria = 'Eletrônicos' AND estoque > 50", ['where', 'and']),
-  X('Prova: ranking', 'Mostre o nome e o preço dos 2 produtos mais baratos.', 'SELECT nome, preco FROM produtos ORDER BY preco ASC LIMIT 2', ['order by', 'limit']),
-  X('Prova: contagem', 'Conte quantos produtos têm estoque zero.', 'SELECT COUNT(*) FROM produtos WHERE estoque = 0', ['count', 'where']),
-  X('Prova: média por grupo', 'Mostre cada categoria e o preço médio dos produtos dela.', 'SELECT categoria, AVG(preco) FROM produtos GROUP BY categoria', ['group by', 'avg']),
-  X('Prova: HAVING', 'Mostre as categorias que têm 3 ou mais produtos, com a quantidade.', 'SELECT categoria, COUNT(*) FROM produtos GROUP BY categoria HAVING COUNT(*) >= 3', ['group by', 'having']),
-  X('Prova: LIKE', "Liste o nome dos produtos cujo nome termina com 'o'.", "SELECT nome FROM produtos WHERE nome LIKE '%o'", ['like']),
-  X('Prova: BETWEEN', 'Liste nome e preco dos produtos entre 200 e 1000 de preço, do mais caro para o mais barato.', 'SELECT nome, preco FROM produtos WHERE preco BETWEEN 200 AND 1000 ORDER BY preco DESC', ['between', 'order by']),
-  X('Prova: total vendido', 'Some a quantidade vendida (qtd) do produto de id 2.', 'SELECT SUM(qtd) FROM vendas WHERE produto_id = 2', ['sum', 'where']),
-  X('Prova: IN', "Liste nome e categoria dos produtos que são de 'Móveis' ou 'Papelaria', ordenados por nome.", "SELECT nome, categoria FROM produtos WHERE categoria IN ('Móveis', 'Papelaria') ORDER BY nome", ['in (', 'order by']),
-  X('Prova: valor em estoque', 'Mostre a soma de preco * estoque de todos os produtos, com o apelido valor_total.', 'SELECT SUM(preco * estoque) AS valor_total FROM produtos', ['sum', 'valor_total']),
-  X('Prova: NULL', 'Conte quantos funcionários têm salário preenchido (não nulo).', 'SELECT COUNT(*) FROM funcionarios WHERE salario IS NOT NULL', ['is not null'], R),
-  X('Prova: distintos', 'Liste os cargos diferentes que existem, em ordem alfabética.', 'SELECT DISTINCT cargo FROM funcionarios ORDER BY cargo', ['distinct', 'order by'], R),
 ];

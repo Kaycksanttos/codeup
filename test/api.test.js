@@ -2,7 +2,7 @@
 const test = require('node:test'), assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const path = require('node:path'), fs = require('node:fs'), os = require('node:os');
-const lessons = require('../lessons'), { exams } = lessons;
+const lessons = require('../lessons');
 
 const PORT = 3300 + Math.floor(Math.random() * 500), U = `http://localhost:${PORT}`;
 const DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'codeup-')), 'data.json');
@@ -154,7 +154,7 @@ test('Sem cobrança: tudo gratuito, só a ordem bloqueia; proteção contra SQL 
   const tk = await reg('caio@t.com');
   assert.equal((await call('/api/lessons/py-1-07', { token: tk })).status, 409, 'bloqueio é por sequência, não por plano');
   assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-07', code: 'x', out: 'x' } })).status, 409);
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 1 } })).status, 409, 'prova só depois das 30 lições');
+  assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 409, 'prova final só depois das 30 lições');
   for (const p of ['/api/checkout', '/api/portal', '/api/webhook']) assert.equal((await call(p, { token: tk, body: {} })).status, 404);
   assert.equal((await call('/api/me', { token: tk })).j.premium, undefined);
   const t0 = Date.now();
@@ -169,58 +169,132 @@ test('Sem cobrança: tudo gratuito, só a ordem bloqueia; proteção contra SQL 
 const lessonsOf = (track, lv) => lessons.filter(l => l.track === track && l.lv === lv);
 const premiumUser = (email, name) => reg(email, name);
 const doLesson = (tk, l) => call('/api/submit', { token: tk, body: { id: l.id, code: l.solution, out: l.expectedOut } });
-const cpBefore = l => lessons.checkpoints.find(c => c.track === l.track && c.lv === l.lv && c.after === l.n - 1);
-const doCp = (tk, c) => call('/api/submit', { token: tk, body: { id: c.id, code: c.solution, out: c.expectedOut } });
-// faz as 30 lições do nível; antes das lições 6, 11, 16, 21 e 26 é preciso fazer o checkpoint (a consulta obrigatória)
+const cpBefore = l => lessons.checkpoints.find(c => c.track === l.track && c.lv === l.lv && c.after === l.n - 1);   // só existe antes das lições 11 e 21
+const finOf = (track, lv) => lessons.finals.find(f => f.track === track && f.lv === lv);
+const doTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: t.solution, out: t.expectedOut } });
+const missTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: t.type === 'sql' ? 'SELECT 1' : 'print("errado")', out: 'x' } });
+const doCp = doTest, doFinal = (tk, track, lv) => doTest(tk, finOf(track, lv));
+const LEAK = ['solution', 'expectedSql', 'expectedOut', 'expectedRows', 'need', 'hints', 'explain', 'example'];   // nada disso pode chegar ao navegador numa prova
+const doneOf = async (tk, prefix) => Object.keys((await call('/api/me', { token: tk })).j.done).filter(k => k.startsWith(prefix)).sort();
+const idsOf = (prefix, a, b) => Array.from({ length: b - a + 1 }, (_, i) => prefix + String(a + i).padStart(2, '0'));
+// faz as 30 lições do nível; antes das lições 11 e 21 é preciso passar no checkpoint (a prova com o que se aprendeu)
 const doLevelLessons = async (tk, track, lv) => { let last; for (const l of lessonsOf(track, lv)) { const c = cpBefore(l); if (c) { const r = (await doCp(tk, c)).j; assert.equal(r.ok, true, `checkpoint ${c.id} deveria passar`); } last = (await doLesson(tk, l)).j; assert.equal(last.ok, true, `lição ${l.id} deveria passar`); } return last; };
 const levelXp = (track, lv) => lessonsOf(track, lv).reduce((a, l) => a + l.xp, 0) + lessons.checkpoints.filter(c => c.track === track && c.lv === lv).reduce((a, c) => a + c.xp, 0);
-const answerExam = async (tk, track, level, right) => {
-  const st = await call('/api/exam/start', { token: tk, body: { track, level } });
-  assert.equal(st.status, 200); const qs = st.j.questions; assert.equal(qs.length, 10);
-  for (const q of qs) for (const k of ['solution', 'expectedSql', 'expectedOut', 'expectedRows', 'need', 'hints']) assert.ok(!(k in q), `a prova vazou "${k}"`);
-  for (let i = 0; i < qs.length; i++) {
-    const full = exams.find(e => e.id === qs[i].id), good = i < right;
-    const a = await call('/api/exam/answer', { token: tk, body: { track, level, qid: full.id, code: good ? full.solution : '# errado\nprint("x")', out: good ? full.expectedOut : 'x' } });
-    assert.equal(a.j.saved, true); assert.ok(!('ok' in a.j), 'a prova não pode dizer se acertou antes do fim');
-  }
-  return call('/api/exam/finish', { token: tk, body: { track, level } });
-};
 
-test('prova: só libera com as 30 lições; 60% reprova e zera o nível; 70% aprova e libera o próximo', async () => {
-  const tk = await premiumUser('prova@t.com', 'Paula Prova');
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 1 } })).status, 409, 'sem as 30 lições não faz prova');
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 2 } })).status, 409);
-  assert.equal((await call('/api/lessons/py-2-01', { token: tk })).status, 409, 'nível 2 fechado até passar na prova do 1');
+test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10 lições; acertou libera o próximo nível', async () => {
+  const tk = await premiumUser('prova@t.com', 'Paula Prova'), F = finOf('python', 1);
+  assert.equal(F.id, 'fin-py-1');
+  assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 409, 'sem as 30 lições não faz a prova final');
+  assert.equal((await doFinal(tk, 'python', 1)).status, 409);
+  assert.equal((await call('/api/lessons/py-2-01', { token: tk })).status, 409, 'nível 2 fechado até passar na prova final do 1');
   const last = await doLevelLessons(tk, 'python', 1); assert.equal(last.levelComplete, true);
   const xpAfter = (await call('/api/me', { token: tk })).j.xp; assert.equal(xpAfter, levelXp('python', 1));
 
-  // 6 de 10 = 60% -> reprovado e recomeça o nível
-  let f = (await answerExam(tk, 'python', 1, 6)).j;
-  assert.equal(f.passed, false); assert.equal(f.score, 6); assert.equal(f.restart, true);
+  // a prova não entrega solução nem dica, e não tem conferência livre
+  const g = await call('/api/lessons/fin-py-1', { token: tk }); assert.equal(g.status, 200);
+  for (const k of LEAK) assert.ok(!(k in g.j), `a prova vazou "${k}"`);
+  assert.equal(g.j.fin, true); assert.equal(g.j.chances, 3); assert.equal(g.j.left, 3); assert.equal(g.j.back, 10); assert.equal(g.j.backFrom, 21); assert.ok(g.j.task && g.j.info && g.j.cobre);
+  assert.equal((await call('/api/check', { token: tk, body: { id: 'fin-py-1', code: F.solution, out: F.expectedOut } })).status, 403, 'conferir de graça não vale nas provas');
+
+  // 1ª e 2ª respostas erradas gastam chance, mas nada volta
+  let r = (await missTest(tk, F)).j; assert.equal(r.ok, false); assert.equal(r.test, 'fin'); assert.equal(r.left, 2); assert.equal(r.chances, 3); assert.equal(r.rewind, undefined); assert.equal(r.expected, F.expectedOut);
+  r = (await missTest(tk, F)).j; assert.equal(r.left, 1); assert.equal(r.rewind, undefined);
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'fin-py-1').left, 1);
+  assert.equal((await doneOf(tk, 'py-1-')).length, 30, 'ainda com as 30 lições');
+  // 3ª errada: volta 10 lições (21 a 30) e as 3 chances se renovam
+  r = (await missTest(tk, F)).j; assert.equal(r.ok, false); assert.deepEqual(r.rewind, { from: 21, to: 30, back: 10 }); assert.equal(r.left, 3);
+  assert.deepEqual(await doneOf(tk, 'py-1-'), idsOf('py-1-', 1, 20), 'as lições 21 a 30 voltam a ficar pendentes');
   let me = (await call('/api/me', { token: tk })).j;
-  assert.equal(Object.keys(me.done).filter(k => k.startsWith('py-1-')).length, 0, 'reprovou: as 30 lições precisam ser refeitas');
-  assert.deepEqual((me.cps || []).filter(id => id.startsWith('cp-py-1-')), [], 'reprovou: os checkpoints do nível também voltam');
-  assert.equal(me.fails['python-1'], 1); assert.equal(me.xp, xpAfter, 'não perde os pontos já ganhos');
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 1 } })).status, 409, 'precisa refazer as lições antes da nova prova');
+  assert.equal(me.fails['python-1'], 1); assert.equal(me.xp, xpAfter, 'não perde os pontos já ganhos'); assert.ok(me.cps.includes('cp-py-1-10') && me.cps.includes('cp-py-1-20'), 'os checkpoints continuam vencidos');
+  assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'a lição 21 abre direto (o checkpoint 20 já foi vencido)');
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'fin-py-1').lock, 'seq');
+  assert.equal((await doFinal(tk, 'python', 1)).status, 409, 'precisa refazer as lições 21 a 30 antes de tentar de novo');
   assert.equal((await call('/api/lessons/py-2-01', { token: tk })).status, 409);
 
-  // refaz as 30 lições (sem pontos repetidos) e tenta de novo: 7 de 10 = 70% -> aprovado
-  await doLevelLessons(tk, 'python', 1);
-  assert.equal((await call('/api/me', { token: tk })).j.xp, xpAfter, 'pontos das lições só valem uma vez');
-  const p = (await answerExam(tk, 'python', 1, 7)).j;
-  assert.equal(p.passed, true); assert.equal(p.pct, 70); assert.equal(p.bonus, 50);
-  me = (await call('/api/me', { token: tk })).j; assert.ok(me.passed['python-1']);
+  // refaz as lições 21 a 30 (sem pontos repetidos) e passa
+  for (const l of lessonsOf('python', 1).filter(l => l.n > 20)) { const x = (await doLesson(tk, l)).j; assert.equal(x.ok, true); assert.equal(x.gained, 0, 'pontos das lições só valem uma vez'); }
+  assert.equal((await call('/api/me', { token: tk })).j.xp, xpAfter);
+  const p = (await doFinal(tk, 'python', 1)).j;
+  assert.equal(p.ok, true); assert.equal(p.test, 'fin'); assert.equal(p.gained, 50, 'bônus 50 x nível'); assert.ok(p.passed['python-1']); assert.equal(p.xp, xpAfter + 50);
   assert.equal((await call('/api/lessons/py-2-01', { token: tk })).status, 200, 'nível 2 liberado');
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 1 } })).status, 409, 'já aprovado');
+  // prova já vencida: dá para treinar sem gastar chance, sem voltar lições e sem XP repetido
+  r = (await missTest(tk, F)).j; assert.equal(r.ok, false); assert.equal(r.rewind, undefined); assert.equal(r.left, 3);
+  assert.equal((await doneOf(tk, 'py-1-')).length, 30);
+  assert.equal((await doFinal(tk, 'python', 1)).j.gained, 0, 'bônus só na 1ª vez');
   assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Paula Prova' } })).status, 409, 'certificado só depois dos 3 níveis');
+});
+
+test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; errou as 2 volta 5 lições; XP só na 1ª vez', async () => {
+  const tk = await reg('cp@teste.com'), C10 = lessons.checkpoints.find(c => c.id === 'cp-py-1-10'), C20 = lessons.checkpoints.find(c => c.id === 'cp-py-1-20'), L1 = lessonsOf('python', 1);
+  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 18, '12 checkpoints + 6 provas finais');
+  assert.ok(list.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
+  const c1 = list.find(c => c.id === 'cp-py-1-10'); assert.equal(c1.after, 10); assert.equal(c1.chances, 2); assert.equal(c1.left, 2); assert.equal(c1.back, 5); assert.equal(c1.backFrom, 6); assert.equal(c1.lock, 'seq'); assert.equal(c1.fin, false);
+  assert.deepEqual(list.filter(c => c.track === 'python' && c.lv === 1).map(c => c.after), [10, 20, 30]);
+  assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).status, 409, 'checkpoint bloqueado antes da lição 10');
+  for (const l of L1.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, null, 'liberado depois da lição 10');
+  const cp = (await call('/api/lessons/cp-py-1-10', { token: tk })).j;
+  for (const k of LEAK) assert.ok(!(k in cp), `o checkpoint vazou "${k}"`);
+  assert.equal(cp.cp, true); assert.ok(cp.task && cp.info && cp.cobre.length === 10); assert.equal(cp.left, 2);
+  // obrigatório: enquanto o checkpoint não for feito, a lição 11 fica bloqueada (lista, abertura e envio)
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-11').lock, 'cp', 'a lição 11 só libera depois do checkpoint');
+  const g11 = await call('/api/lessons/py-1-11', { token: tk }); assert.equal(g11.status, 409); assert.equal(g11.j.lock, 'cp'); assert.match(g11.j.error, /checkpoint/i);
+  assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-11', code: 'x', out: 'x' } })).status, 409);
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-06').lock, null, 'as lições 6 a 10 seguem a ordem normal (sem checkpoint no meio)');
+  const xp0 = (await call('/api/me', { token: tk })).j.xp;
+
+  // 1ª errada: sobra 1 chance, nada volta. 2ª errada: volta 5 lições (6 a 10)
+  let r = (await missTest(tk, C10)).j; assert.equal(r.ok, false); assert.equal(r.test, 'cp'); assert.equal(r.left, 1); assert.equal(r.rewind, undefined); assert.equal(r.expected, C10.expectedOut);
+  assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).j.left, 1);
+  r = (await missTest(tk, C10)).j; assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }); assert.equal(r.left, 2, 'chances renovadas');
+  assert.deepEqual(await doneOf(tk, 'py-1-'), idsOf('py-1-', 1, 5), 'as lições 6 a 10 voltam a ficar pendentes');
+  let me = (await call('/api/me', { token: tk })).j; assert.equal(me.fails['cp-py-1-10'], 1); assert.equal(me.xp, xp0, 'não perde pontos'); assert.deepEqual(me.cps, []);
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, 'seq', 'precisa refazer as lições antes');
+  assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).status, 409);
+  for (const l of L1.slice(5, 10)) { const x = (await doLesson(tk, l)).j; assert.equal(x.ok, true); assert.equal(x.gained, 0); }
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, null);
+
+  // passa: XP uma vez, não entra no mapa de lições e abre a lição 11
+  r = (await doTest(tk, C10)).j; assert.equal(r.ok, true); assert.equal(r.gained, C10.xp);
+  assert.deepEqual(r.cps, ['cp-py-1-10']); assert.ok(!('cp-py-1-10' in r.done), 'checkpoint não entra no mapa de lições concluídas'); assert.equal(r.xp, xp0 + C10.xp);
+  r = (await doTest(tk, C10)).j; assert.equal(r.gained, 0, 'XP só na 1ª vez');
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-11').lock, null, 'checkpoint feito: a lição 11 abre');
+  assert.equal((await call('/api/lessons/py-1-11', { token: tk })).status, 200);
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-12').lock, 'seq', 'a lição 12 segue a ordem normal');
+  assert.equal((await call('/api/lessons/cp-py-1-20', { token: tk })).status, 409, 'o próximo checkpoint só libera depois da lição 20');
+
+  // checkpoint 2 (depois da lição 20): errou as duas, volta 5 lições (16 a 20)
+  for (const l of L1.slice(10, 20)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  await missTest(tk, C20); r = (await missTest(tk, C20)).j; assert.deepEqual(r.rewind, { from: 16, to: 20, back: 5 });
+  assert.deepEqual(await doneOf(tk, 'py-1-'), idsOf('py-1-', 1, 15));
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-21').lock, 'seq');
+  for (const l of L1.slice(15, 20)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(r.cps, ['cp-py-1-10', 'cp-py-1-20']);
+  assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'checkpoint 2 feito: a lição 21 abre');
+  assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
+  assert.equal((await call('/api/lessons', { token: tk })).j.length, 180);
+});
+
+test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a solução) e a mesma regra de chances vale', async () => {
+  const tk = await reg('sqlcp@teste.com', 'Sara SQL'), C = lessons.checkpoints.find(c => c.id === 'cp-sql-1-10');
+  await call('/api/track', { token: tk, body: { track: 'sql' } });
+  for (const l of lessonsOf('sql', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  const g = await call('/api/lessons/cp-sql-1-10', { token: tk }); assert.equal(g.status, 200); for (const k of LEAK) assert.ok(!(k in g.j), `vazou "${k}"`); assert.ok(g.j.seed, 'o navegador precisa do banco de treino');
+  let r = (await call('/api/submit', { token: tk, body: { id: C.id, code: 'SELECT nome FROM produtos WHERE preco < 1000' } })).j;
+  assert.equal(r.ok, false); assert.equal(r.left, 1); assert.ok(r.view && r.view.columns.length >= 1 && r.view.values.length >= 1, 'mostra o resultado esperado para explicar o erro');
+  assert.ok(!JSON.stringify(r).replace(/\s+/g, '').toLowerCase().includes(C.solution.replace(/\s+/g, '').toLowerCase().slice(-24)), 'a solução não pode aparecer');
+  r = (await missTest(tk, C)).j; assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }); assert.equal(r.view, undefined);
+  assert.deepEqual(await doneOf(tk, 'sql-1-'), idsOf('sql-1-', 1, 5));
+  for (const l of lessonsOf('sql', 1).slice(5, 10)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  r = (await doTest(tk, C)).j; assert.equal(r.ok, true); assert.equal(r.view, undefined);
 });
 
 test('trilha completa: 3 níveis aprovados geram certificado verificável (e SQL continua sem certificado)', async () => {
   const tk = await premiumUser('cert@t.com', 'Carol');
   for (const lv of [1, 2, 3]) {
     await doLevelLessons(tk, 'python', lv);
-    const r = (await answerExam(tk, 'python', lv, 10)).j;
-    assert.equal(r.passed, true, 'nível ' + lv); assert.equal(r.trackComplete, lv === 3);
+    const r = (await doFinal(tk, 'python', lv)).j;
+    assert.equal(r.ok, true, 'nível ' + lv); assert.ok(r.passed['python-' + lv]); assert.equal(r.trackComplete, lv === 3 ? true : undefined);
   }
   assert.equal((await call('/api/certificate', { token: tk, body: { track: 'sql' } })).status, 409);
   assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Al' } })).status, 400);
@@ -424,33 +498,7 @@ test('SQL: com a cópia vendor/sql do projeto, corrige mesmo sem o pacote sql.js
   } finally { if (p.exitCode === null) { p.kill(); await new Promise(r => p.once('exit', r)); } try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch { } }
 });
 
-// ---------------- Checkpoints (consulta obrigatória a cada 5 lições) ----------------
-test('checkpoints: obrigatórios (liberam a lição 6, 11...), dão XP uma vez e não contam como lição', async () => {
-  const tk = await reg('cp@teste.com');
-  const list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 30);
-  const c1 = list.find(c => c.id === 'cp-py-1-1'); assert.equal(c1.after, 5); assert.equal(c1.lock, 'seq');
-  assert.equal((await call('/api/lessons/cp-py-1-1', { token: tk })).status, 409, 'checkpoint bloqueado antes da lição 5');
-  for (const l of lessons.filter(x => x.id.startsWith('py-1-') && x.n <= 5)) assert.equal((await call('/api/submit', { token: tk, body: { id: l.id, code: l.solution, out: l.expectedOut } })).j.ok, true);
-  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-1').lock, null, 'liberado depois da lição 5');
-  const cp = (await call('/api/lessons/cp-py-1-1', { token: tk })).j;
-  assert.equal(cp.cp, true); assert.ok(cp.task && cp.solution && !('expectedOut' in cp) && !('need' in cp));
-  // obrigatório: enquanto o checkpoint não for feito, a lição 6 fica bloqueada (lista, abertura e envio)
-  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-06').lock, 'cp', 'a lição 6 só libera depois do checkpoint');
-  const g6 = await call('/api/lessons/py-1-06', { token: tk }); assert.equal(g6.status, 409); assert.equal(g6.j.lock, 'cp'); assert.match(g6.j.error, /checkpoint/i);
-  assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-06', code: 'x', out: 'x' } })).status, 409);
-  const xp0 = (await call('/api/me', { token: tk })).j.xp;
-  let r = (await call('/api/submit', { token: tk, body: { id: 'cp-py-1-1', code: 'print(1)', out: '1' } })).j; assert.equal(r.ok, false); assert.equal(r.expected, '60');
-  r = (await call('/api/submit', { token: tk, body: { id: 'cp-py-1-1', code: cp.solution, out: '60' } })).j; assert.equal(r.ok, true); assert.equal(r.gained, 30);
-  assert.deepEqual(r.cps, ['cp-py-1-1']); assert.ok(!('cp-py-1-1' in r.done), 'checkpoint não entra no mapa de lições concluídas'); assert.equal(r.xp, xp0 + 30);
-  r = (await call('/api/submit', { token: tk, body: { id: 'cp-py-1-1', code: cp.solution, out: '60' } })).j; assert.equal(r.gained, 0, 'XP só na 1ª vez');
-  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-06').lock, null, 'checkpoint feito: a lição 6 abre');
-  assert.equal((await call('/api/lessons/py-1-06', { token: tk })).status, 200);
-  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-11').lock, 'seq', 'a lição 11 segue a ordem normal');
-  assert.equal((await call('/api/lessons/cp-py-1-2', { token: tk })).status, 409, 'o próximo checkpoint só libera depois da lição 10');
-  assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
-  assert.equal((await call('/api/lessons', { token: tk })).j.length, 180);
-});
-
+// ---------------- Provas: checkpoints (lições 10 e 20) e prova final (lição 30): testes na seção do curso, acima ----------------
 test('personagem: Tay (feminino) ou Cut (masculino) fica salvo na conta, valor inválido é recusado e as imagens são servidas', async () => {
   const tk = await reg('guia@t.com');
   assert.equal((await call('/api/me', { token: tk })).j.guide, null, 'conta nova ainda não escolheu');
@@ -562,7 +610,7 @@ test('admin: visão geral, lista com busca/filtro/ordem/página e detalhe do alu
 test('admin: liberar curso tira os bloqueios daquela trilha (inclusive a prova), mas não dá certificado de graça', async () => {
   const tk = await reg('liberar@t.com', 'Lia Liberada'), id = await uidOf('liberar@t.com');
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 409, 'antes: bloqueada por sequência');
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 1 } })).status, 409);
+  assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 409);
   assert.deepEqual((await call('/api/me', { token: tk })).j.unlocked, {});
   assert.equal((await act(id, { action: 'unlock', tracks: ['xx'], on: true })).status, 400, 'trilha inválida');
   assert.equal((await act(id, { action: 'unlock', tracks: [], on: true })).status, 400);
@@ -575,7 +623,8 @@ test('admin: liberar curso tira os bloqueios daquela trilha (inclusive a prova),
   assert.ok(lk.some(x => x.track === 'sql' && x.lock), 'SQL continua com cadeado (só Python foi liberado)');
   assert.equal((await call('/api/lessons/sql-1-12', { token: tk })).status, 409);
   assert.equal((await doLesson(tk, lessons.find(l => l.id === 'py-1-07'))).j.ok, true, 'faz a lição fora de ordem');
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'python', level: 1 } })).status, 200, 'prova sem ter feito as 30 lições');
+  assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 200, 'prova final sem ter feito as 30 lições');
+  assert.equal((await call('/api/lessons/cp-py-1-20', { token: tk })).status, 200, 'checkpoint também abre');
   assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Lia Liberada' } })).status, 409, 'certificado continua exigindo as 3 provas');
   r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['python', 'sql']);
   assert.equal((await call('/api/lessons/sql-1-12', { token: tk })).status, 200, 'agora SQL também');
@@ -588,7 +637,7 @@ test('admin: liberar curso tira os bloqueios daquela trilha (inclusive a prova),
 test('admin: com o curso liberado dá para fazer as 3 provas, pegar o certificado e o dono pode revogar e restaurar', async () => {
   const tk = await reg('certadm@t.com', 'Cris Certificada'), id = await uidOf('certadm@t.com');
   await act(id, { action: 'unlock', tracks: ['python'], on: true });
-  for (const lv of [1, 2, 3]) assert.equal((await answerExam(tk, 'python', lv, 10)).j.passed, true, 'nível ' + lv);
+  for (const lv of [1, 2, 3]) assert.equal((await doFinal(tk, 'python', lv)).j.ok, true, 'nível ' + lv);
   const code = (await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Cris Certificada' } })).j.code; assert.ok(code);
   assert.equal((await fetch(U + '/certificado/' + code)).status, 200);
   const c = (await A('certs?q=cris cert')).j; assert.equal(c.total, 1); assert.equal(c.rows[0].code, code); assert.equal(c.rows[0].revoked, null);
@@ -664,7 +713,7 @@ test('admin: cadastros fechados (e-mail e Google), comunicado do dono e modo liv
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 409);
   s = await setSettings({ unlockAll: { on: true, days: 7 } }); assert.equal(s.unlockAll.on, true); assert.ok(Date.parse(s.unlockAll.until) - Date.now() > 6.9 * 864e5);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 200, 'modo livre abre para todos'); assert.equal((await call('/api/lessons/sql-3-30', { token: tk })).status, 200);
-  assert.equal((await call('/api/exam/start', { token: tk, body: { track: 'sql', level: 1 } })).status, 200);
+  assert.equal((await call('/api/lessons/fin-sql-1', { token: tk })).status, 200);
   const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['python', 'sql']);
   assert.equal((await call('/api/certificate', { token: tk, body: { track: 'sql', name: 'Livia Livre' } })).status, 409, 'certificado continua exigindo as provas');
   assert.equal((await A('overview')).j.settings.unlockAll.on, true);
@@ -801,7 +850,7 @@ test('liberação chega a quem está com o app aberto: API nunca é guardada em 
 
 test('exemplos de SQL: organizados em linhas (nada escondido atrás de rolagem), texto do comando intacto e legenda "Como ler"', async () => {
   const { fmtSql, sqlParts } = require('../public/fmt.js');
-  const todas = [...lessons, ...lessons.checkpoints].filter(l => l.type === 'sql'); let n = 0;
+  const todas = [...lessons, ...lessons.tests].filter(l => l.type === 'sql'); let n = 0;
   for (const l of todas) for (const f of ['example', 'solution']) {
     const s = l[f]; if (!s) continue; n++;
     const o = fmtSql(s);
@@ -835,7 +884,7 @@ test('prática: o botão Concluído fica fixo no rodapé e nada é executado nem
   const pr = app.slice(app.indexOf('function practice()'), app.indexOf('function hint()'));
   assert.ok(!/addEventListener\('input'/.test(pr), 'digitar não dispara execução');
   assert.ok(!/liveSoon|liveNow|async function live\(/.test(app), 'a execução automática ao digitar foi removida');
-  assert.match(app, /e\.key == 'Enter'\) \{ e\.preventDefault\(\); S\.ex \? runExam\(\) : concluir\(\); \}/, 'Ctrl+Enter é o mesmo que tocar em Concluído');
+  assert.match(app, /e\.key == 'Enter'\) \{ e\.preventDefault\(\); concluir\(\); \}/, 'Ctrl+Enter é o mesmo que tocar em Concluído');
   assert.match(pr, /<\/div>\s*<div class=dbar><button class="btn ok block" id=bdone onclick=concluir\(\)>/, 'o botão fica numa barra própria, fora do conteúdo que cresce e encolhe');
   assert.ok(pr.indexOf('id=fb') < pr.indexOf('class=dbar'), 'o aviso de erro/dica fica no conteúdo, acima do botão, e não dentro da barra');
   assert.match(pr, /OUT0/); assert.match(app, /O resultado do seu código aparece aqui depois que você tocar em <b>Concluído<\/b>/);
@@ -1172,7 +1221,7 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
   assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.match(ui, /body\(285, 'wave', 'hb', '', 'hello'\)/, 'oi da tela inicial'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
-  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos de novo!', 'bad', '', 'oops'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 2, 'o mapa usa o personagem nos dois tipos de parada');
+  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'oops'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 3, 'o mapa usa o personagem nas três paradas (lição, checkpoint e prova final)');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
   assert.match(sw, /codeup-v(3[6-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
@@ -1196,7 +1245,7 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
   // app: cada acontecimento tem a sua tela e o seu som
   for (const f of ['function okFx(', 'function passFx(', 'function streakFx(', 'function streakLater(', 'function openOv(', 'function closeOv(', 'function setSfx(', 'const poseChip', 'const ovHero']) assert.ok(ui.includes(f), f);
   assert.match(ui, /await okFx\(s\)/, 'o acerto aparece antes do resultado'); assert.match(ui, /result\(\); streakLater\(s\)/, 'a sequência aparece depois do resultado');
-  assert.match(ui, /if \(r\.passed && !r\.fx\) \{ r\.fx = 1; return passFx\(r, x, \(\) => examResult\(r, x\)\); \}/, 'prova aprovada: troféu e depois o resultado');
+  assert.match(ui, /await new Promise\(res => passFx\(s, l, res\)\)[^\n]*testPass\(s\)/, 'prova final aprovada: troféu e depois o resultado');
   assert.match(ui, /sfx\('fail'\)/); assert.match(ui, /sfx\('bad'\)/); assert.match(ui, /sfx\(S\.lvlUp \|\| S\.tierUp \? 'level' : 'done'\)/); assert.match(ui, /sfx\(mk \? 'streak7' : 'streak'\)/); assert.match(ui, /sfx\('pass'\)/);
   assert.match(ui, /const MARCOS = \[3, 7, 14, 30, 50, 100, 200, 365\]/); assert.match(ui, /Combo ×\$\{combo\}!/); assert.match(ui, /De primeira!/); assert.match(ui, /Sequência iniciada!/); assert.match(ui, /Marco: \$\{n\} dias seguidos!/);
   assert.match(ui, /onclick="setSfx\(\$\{k\}\)"/, 'Perfil tem o botão Sons'); assert.match(ui, /cls: 'fxh'/, 'a classe do personagem não colide com .ov');
@@ -1205,4 +1254,25 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
   assert.match(anim, /period == 'loop'/); assert.match(anim, /CodeUpSfx\.play\('pop'\)/);
   // visual
   for (const c of ['.fxo{', '.fxo .rays', '.trophy', '.flw', '.sn .n', '.wk{', '.spk{', '.fb .fbc', '@keyframes fxSpark', '@keyframes fxTrophy', '@keyframes fxFl']) assert.ok(css.includes(c), 'css ' + c);
+});
+
+test('app: cartões de explicação, provas com chances, tela de voltar lições e mapa com checkpoints e prova final', () => {
+  const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
+  // as 4 explicações aparecem na teoria (o que é e para que serve antes do exemplo; como se faz e retorno esperado depois) e a prática guarda "como fazer"
+  for (const k of ['O que é', 'Para que serve', 'Como se faz', 'Retorno esperado']) assert.ok(ui.includes(`'${k}'`), k);
+  assert.match(ui, /infoCards\(l\.info, \['oque', 'serve'\]\)\}\$\{codeBox\(l\.example, l\.type, 'Exemplo'\)\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
+  assert.match(ui, /<details class=infod>/);
+  // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada
+  for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);
+  assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
+  assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>Solução<\/button>/, 'prova não tem Solução nem Teoria');
+  assert.match(ui, /if \(T && s\.rewind\)/, 'acabaram as chances: tela de voltar lições'); assert.match(ui, /voltar|volta \$\{r\.back\} lições|você volta/i);
+  assert.match(ui, /openTest\('\$\{fin\.id\}'\)/, 'o mapa tem o nó da prova final'); assert.match(ui, /Prova final · \$\{LV\[lv - 1\]\}/);
+  assert.match(ui, /const cpBefore = l => \(S\.cps \|\| \[\]\)\.find\(c => !c\.fin && /, 'checkpoint antes da lição não inclui a prova final');
+  assert.match(ui, /c\.fin && c\.track == t && !passedLv\(t, c\.lv\) && !c\.lock/, 'com as 30 lições feitas o "Continuar" leva à prova final');
+  assert.ok(!/examIntro|examStart|examQ\(|examFinish|execOnly|api\('exam\//.test(ui), 'a prova antiga de 10 questões saiu do app');
+  assert.ok(!/S\.me\.exams/.test(ui));
+  assert.match(ui, /Passe nas 3 provas finais/);
+  for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span', '.infod summary']) assert.ok(css.includes(c), 'css ' + c);
+  assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
 });

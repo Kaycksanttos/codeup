@@ -1,7 +1,7 @@
 # CodeUp — aprenda SQL, Python e Análise de Dados na prática
 
 App web instalável no celular (PWA). Escreve código de verdade no navegador, corrige no servidor,
-tem contas, 2 trilhas (Python e SQL) com 3 níveis de 30 lições e uma prova cada, certificado verificável, XP/vidas/sequência. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
+tem contas, 2 trilhas (Python e SQL) com 3 níveis de 30 lições, 2 checkpoints e uma prova final em cada, certificado verificável, XP/vidas/sequência. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
 
 ## Testar tudo do começo (modo teste)
 
@@ -12,9 +12,9 @@ tem contas, 2 trilhas (Python e SQL) com 3 níveis de 30 lições e uma prova ca
 codeup/
 ├─ server.js          backend (contas, correção, anúncios, e-mail, LGPD)
 ├─ sqlcheck.js        correção de SQL isolada (tempo e memória limitados)
-├─ lessons.js         monta o curso a partir de content/ (regras: 6 grátis, nota 70%, 10 questões)
-├─ content/           py1-3.js e sql1-3.js: as 180 lições e os bancos de questões das 6 provas
-│                     checkpoints.js: 30 checkpoints (a cada 5 lições, em SQL e Python: uma consulta/código com o que se aprendeu; são obrigatórios para abrir as lições 6, 11, 16, 21 e 26 e valem XP)
+├─ lessons.js         monta o curso a partir de content/ (lições + as 4 explicações de cada uma + as provas; chances e "voltar lições" ficam nas constantes CHANCES e BACK)
+├─ content/           py1-3.js e sql1-3.js: as 180 lições · info-py1-3.js e info-sql1-3.js: as 4 explicações de cada lição (o que é, para que serve, como se faz, retorno esperado)
+│                     checkpoints.js: as 18 provas (por nível: checkpoint depois da lição 10, checkpoint depois da 20 e prova final depois da 30; cada uma é UMA tarefa completa com o que se aprendeu)
 ├─ admin.js           painel do dono: API /api/admin/* (cadastros, liberar cursos, suspender, ajustes, auditoria)
 ├─ legal/             Termos de Uso e Política de Privacidade (modelos)
 ├─ public/            o app: index.html, app.js, style.css, ícones, manifest, sw.js
@@ -80,8 +80,8 @@ Sem domínio próprio verificado, a maioria dos provedores só entrega para o se
 Como funciona: o Google entrega um token ao navegador, o servidor confere a assinatura e o e-mail verificado e cria a conta (no primeiro acesso a pessoa precisa aceitar os Termos). Se já existir uma conta com o mesmo e-mail, as duas são vinculadas.
 
 ## 5) Dia a dia
-- **Como o curso funciona:** o aluno escolhe Python ou SQL (pode estudar a outra depois; o progresso é separado). Cada trilha tem 3 níveis (Básico, Intermediário, Avançado) com 30 lições em sequência. Ao terminar as 30, libera-se a prova: 10 questões sorteadas de um banco de 12, nota mínima de 70% (7 acertos), sem dicas e sem ver a nota até entregar. **Reprovou = as 30 lições do nível voltam a ficar pendentes** (os pontos já ganhos são mantidos e não se ganha pontos duas vezes). Passou = libera o próximo nível. Passando nos 3 níveis, o aluno emite o certificado, com página pública de verificação em `/certificado/CÓDIGO` (botão para imprimir/salvar em PDF). Gratuito: as 6 primeiras lições do Básico de cada trilha. Tudo isso é imposto no servidor.
-- **Editar lições e provas:** os arquivos ficam em `content/` (`py1.js`…`sql3.js`; cada um tem `lessons` e `exam`). Depois de mudar uma atividade Python, rode `npm run build:content` (ele roda a solução no `python3` e atualiza o gabarito em `content/expected.json`) e depois `npm test`. Mudar a regra de nota ou de lições gratuitas: constantes no topo de `lessons.js`. Ao mudar lições de um nível que já tem alunos, o progresso deles continua pelo `id` da lição; não reutilize `id`s para conteúdo diferente.
+- **Como o curso funciona:** o aluno escolhe Python ou SQL (pode estudar a outra depois; o progresso é separado). Cada trilha tem 3 níveis (Básico, Intermediário, Avançado) com 30 lições em sequência. **Cada lição tem 4 explicações** (o que é, para que serve, como se faz e qual o retorno esperado), mostradas na teoria e, resumidas, na prática. **A cada 10 lições há uma prova**: o aluno monta, sozinho, uma consulta/programa completo com o que aprendeu (sem dica, sem solução, sem teoria). **Checkpoint (depois da lição 10 e da 20):** 2 chances; se errar as duas, **volta 5 lições** (6 a 10, ou 16 a 20) para relembrar; só passando abre a lição 11 / 21. **Prova final do nível (depois da lição 30):** uma tarefa com tudo desde o começo, 3 chances; passou = libera o próximo nível (+50 × nível de XP na 1ª vez); errou as 3 = **volta 10 lições** (21 a 30). Os pontos já ganhos são mantidos e não se ganha pontos duas vezes. Um erro que impede o código de rodar (digitação) não gasta chance. Provas já vencidas podem ser treinadas sem perder nada. Passando nas 3 provas finais de uma trilha, o aluno emite o certificado, com página pública de verificação em `/certificado/CÓDIGO` (botão para imprimir/salvar em PDF). Tudo isso é imposto no servidor (`/api/submit`); o gabarito, as dicas e a solução das provas nunca vão ao navegador (só, depois de um erro, o resultado esperado).
+- **Editar lições e provas:** os arquivos ficam em `content/` (`py1.js`…`sql3.js` têm as lições; `info-*.js` têm as 4 explicações de cada lição; `checkpoints.js` tem as provas). Depois de mudar uma atividade Python, rode `npm run build:content` (ele roda a solução no `python3` e atualiza o gabarito em `content/expected.json`) e depois `npm test`. Mudar o número de chances ou de lições que voltam: constantes `CHANCES` e `BACK` no topo de `lessons.js`. Ao mudar lições de um nível que já tem alunos, o progresso deles continua pelo `id` da lição; não reutilize `id`s para conteúdo diferente.
 - **Exemplos de SQL:** pode escrever o `example` e a `solution` em uma linha só; o app organiza sozinho na tela (uma parte do comando por linha — SELECT, FROM, JOIN, WHERE... —, recuo nas subconsultas e CTEs) e mostra a legenda "Como ler" com o que cada parte faz. Isso é o arquivo `public/fmt.js` (não altera o texto do comando). Se você já escrever o exemplo em várias linhas, ele aparece exatamente como você escreveu.
 - **Seus dados:** `COMPANY_NAME`, `CONTACT_EMAIL`.
 - **Números do negócio e gestão dos alunos:** o **Painel admin** em `/admin` (seção 5b logo abaixo).

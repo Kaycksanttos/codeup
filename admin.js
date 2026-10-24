@@ -13,7 +13,7 @@
 const crypto = require('crypto'), path = require('path');
 
 module.exports = function mountAdmin(app, X) {
-  const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, exams, PROD, BASE, dropSessions,
+  const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
     makeResetLink, sendVerify, settingsMain, unlockAllOn, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf } = X;
   const DAY = 864e5, TZ = -3 * 36e5;                                   // Brasil (sem horário de verão)
   const dk = ms => new Date(ms + TZ).toISOString().slice(0, 10);       // "2026-10-20" no horário de Brasília
@@ -203,7 +203,7 @@ module.exports = function mountAdmin(app, X) {
         if (!TRACKS.includes(t) || (!all && ![1, 2, 3].includes(lv))) return res.status(400).json({ error: 'Trilha ou nível inválido.' });
         for (const L of all ? [1, 2, 3] : [lv]) {
           lessons.filter(l => l.track === t && l.lv === L).forEach(l => { delete u.done[l.id]; delete u.attempts[l.id]; });
-          checkpoints.filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; });
+          [...checkpoints, ...finals].filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; delete u.cptry[c.id]; });
           delete u.passed[`${t}-${L}`]; delete u.exams[`${t}-${L}`];
         }
         audit(req, 'zerou-progresso', who, `${t} ${all ? 'todos os níveis' : 'nível ' + lv}`); break;
@@ -221,19 +221,18 @@ module.exports = function mountAdmin(app, X) {
 
   // ---------- aprendizado: onde os alunos travam e como vão as provas ----------
   app.get('/api/admin/learning', ...guard, (req, res) => {
-    const st = new Map(); [...lessons, ...checkpoints].forEach(l => st.set(l.id, { started: 0, done: 0, tries: 0, stuck: 0, track: l.track, lv: l.lv }));
-    const ex = {}; TRACKS.forEach(t => [1, 2, 3].forEach(lv => ex[`${t}-${lv}`] = { track: t, lv, passed: 0, fails: 0, tries: 0, pending: 0 }));
+    const st = new Map(); [...lessons, ...checkpoints, ...finals].forEach(l => st.set(l.id, { started: 0, done: 0, tries: 0, stuck: 0, track: l.track, lv: l.lv }));
+    const ex = {}; TRACKS.forEach(t => [1, 2, 3].forEach(lv => ex[`${t}-${lv}`] = { track: t, lv, passed: 0, fails: 0, tries: 0 }));
     for (const u of Object.values(DB.users)) {
       // "travado" = este aluno já tentou a lição e ainda não concluiu (não conta quem foi reprovado na prova do nível: aí as lições voltam por regra)
       for (const [id, n] of Object.entries(u.attempts || {})) { const s = st.get(id); if (s && n > 0) { s.started++; s.tries += n; if (!(u.done || {})[id] && !(u.cpdone || {})[id] && !(u.fails || {})[`${s.track}-${s.lv}`]) s.stuck++; } }
       for (const id of Object.keys(u.done || {})) { const s = st.get(id); if (s) s.done++; }
       for (const id of Object.keys(u.cpdone || {})) { const s = st.get(id); if (s) s.done++; }
-      for (const k of Object.keys(u.passed || {})) if (ex[k]) ex[k].passed++;
+      for (const k of Object.keys(u.passed || {})) { if (ex[k]) ex[k].passed++; const f = finals.find(x => `${x.track}-${x.lv}` === k); const sf = f && st.get(f.id); if (sf) sf.done++; }
       for (const [k, n] of Object.entries(u.fails || {})) if (ex[k]) ex[k].fails += n;
       for (const [k, n] of Object.entries(u.tries || {})) if (ex[k]) ex[k].tries += n;
-      for (const k of Object.keys(u.exams || {})) if (ex[k]) ex[k].pending++;
     }
-    const rows = [...st.entries()].map(([id, s]) => { const l = actOf(id); return { id, title: l.title, track: l.track, lv: l.lv, n: l.n || l.after, cp: !!l.cp, started: s.started, done: s.done, stuck: s.stuck, avgTries: s.started ? +(s.tries / s.started).toFixed(1) : 0 }; })
+    const rows = [...st.entries()].map(([id, s]) => { const l = actOf(id); return { id, title: l.title, track: l.track, lv: l.lv, n: l.n || l.after, cp: !!l.cp, fin: !!l.fin, started: s.started, done: s.done, stuck: s.stuck, avgTries: s.started ? +(s.tries / s.started).toFixed(1) : 0 }; })
       .filter(r => r.started > 0);
     res.json({
       stuck: [...rows].sort((a, b) => b.stuck - a.stuck || b.avgTries - a.avgTries).slice(0, 15),

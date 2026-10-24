@@ -1,6 +1,6 @@
-// PYTHON — NÍVEL BÁSICO (30 lições + banco de questões da prova)
+// PYTHON — NÍVEL BÁSICO (30 lições)
 const mkH = require('./h');
-const { L, X } = mkH('python', 1, null, '');
+const { L } = mkH('python', 1, null, '');
 
 const FRUTAS = 'frutas = ["maçã", "banana", "uva"]';
 const NOTAS = 'notas = [7, 9, 5, 10]';
@@ -67,19 +67,4 @@ exports.lessons = [
     'Crie aluno = {"nome": "Ana", "nota": 9} e imprima o nome e, embaixo, a nota.', 'aluno = {"nome": "Ana", "nota": 9}\nprint(aluno["nome"])\nprint(aluno["nota"])', ['{', 'aluno['], 'aluno["nome"] e aluno["nota"]'),
   L('Mini desafio: média', 'Hora de juntar tudo: função, soma e contagem de itens.', 'def soma(a, b):\n    return a + b',
     'Crie a função media(numeros) que devolve a soma dividida pela quantidade de itens. Imprima media([8, 6, 10]).', 'def media(numeros):\n    return sum(numeros) / len(numeros)\nprint(media([8, 6, 10]))', ['def', 'sum', 'len'], 'return sum(numeros) / len(numeros)'),
-];
-
-exports.exam = [
-  X('Prova: mensagem', 'Crie nome = "Lia" e idade = 30 e imprima: Lia tem 30 anos', 'nome = "Lia"\nidade = 30\nprint(f"{nome} tem {idade} anos")', ['nome', 'idade']),
-  X('Prova: total', 'Crie preco = 12 e qtd = 5. Imprima o total (preco * qtd).', 'preco = 12\nqtd = 5\nprint(preco * qtd)', ['preco', 'qtd', '*']),
-  X('Prova: condição', 'Crie saldo = 40. Se saldo >= 50 imprima Compra liberada; senão imprima Saldo insuficiente.', 'saldo = 40\nif saldo >= 50:\n    print("Compra liberada")\nelse:\n    print("Saldo insuficiente")', ['if', 'else']),
-  X('Prova: soma da lista', 'A lista valores já existe. Imprima a soma dos itens.', 'print(sum(valores))', ['sum'], { prelude: 'valores = [4, 8, 15, 16, 23, 42]' }),
-  X('Prova: soma de pares', 'Some os números pares de 1 a 20 (use um laço) e imprima o total.', 'total = 0\nfor i in range(1, 21):\n    if i % 2 == 0:\n        total += i\nprint(total)', ['for', 'if', '%']),
-  X('Prova: função', 'Crie a função quadrado(x) que devolve x * x e imprima quadrado(9).', 'def quadrado(x):\n    return x * x\nprint(quadrado(9))', ['def', 'return']),
-  X('Prova: dicionário', 'Crie produto = {"nome": "Mouse", "preco": 80}. Imprima: Mouse custa 80', 'produto = {"nome": "Mouse", "preco": 80}\nprint(produto["nome"], "custa", produto["preco"])', ['produto[']),
-  X('Prova: texto', 'Crie frase = "  codeup  ". Imprima a frase sem espaços nas pontas, em maiúsculas.', 'frase = "  codeup  "\nprint(frase.strip().upper())', ['strip', 'upper']),
-  X('Prova: contagem regressiva', 'Com while, imprima 3, 2, 1 (um por linha).', 'n = 3\nwhile n >= 1:\n    print(n)\n    n -= 1', ['while']),
-  X('Prova: faixas', 'Crie idade = 15. Imprima Criança se idade < 12, Adolescente se idade < 18, senão Adulto.', 'idade = 15\nif idade < 12:\n    print("Criança")\nelif idade < 18:\n    print("Adolescente")\nelse:\n    print("Adulto")', ['elif']),
-  X('Prova: maior valor', 'A lista temperaturas já existe. Imprima a maior e a menor, uma por linha.', 'print(max(temperaturas))\nprint(min(temperaturas))', ['max', 'min'], { prelude: 'temperaturas = [21, 18, 30, 25, 17]' }),
-  X('Prova: contar itens', 'A lista idades já existe. Com um laço, conte quantas pessoas têm 18 anos ou mais e imprima a contagem.', 'cont = 0\nfor i in idades:\n    if i >= 18:\n        cont += 1\nprint(cont)', ['for', 'if'], { prelude: 'idades = [12, 25, 17, 40, 18, 9]' }),
 ];

@@ -1,6 +1,6 @@
 // PYTHON — NÍVEL INTERMEDIÁRIO
 const mkH = require('./h');
-const { L, X } = mkH('python', 2, null, '');
+const { L } = mkH('python', 2, null, '');
 
 const VENDAS = 'vendas = {"Notebook": 3500, "Mouse": 80, "Cadeira": 900, "Caneta": 3}';
 const NOMES = 'nomes = ["Ana", "Bruno", "Carla"]';
@@ -67,19 +67,4 @@ exports.lessons = [
     'Crie fatorial(n) recursiva (fatorial(0) = 1) e imprima fatorial(5).', 'def fatorial(n):\n    if n == 0:\n        return 1\n    return n * fatorial(n - 1)\nprint(fatorial(5))', ['def', 'fatorial('], 'return n * fatorial(n - 1)'),
   L('Mini projeto: relatório', 'Junte dicionários, laços e formatação para montar um relatório de vendas.', 'for k, v in {"a": 1}.items():\n    print(k, v)',
     'Percorra vendas e imprima uma linha por produto no formato "Mouse: R$ 80.00" (2 casas). Na última linha imprima "Total: R$ 4483.00" somando tudo.', 'for produto, valor in vendas.items():\n    print(f"{produto}: R$ {valor:.2f}")\nprint(f"Total: R$ {sum(vendas.values()):.2f}")', ['items', 'sum', '.2f'], 'sum(vendas.values())', { prelude: VENDAS }),
-];
-
-exports.exam = [
-  X('Prova: comprehension', 'Com a lista precos, imprima uma lista só com os preços acima de 100, com 10% de aumento.', 'print([p * 1.1 for p in precos if p > 100])', ['for', 'if'], { prelude: 'precos = [80, 150, 3, 900, 250]' }),
-  X('Prova: dicionário', 'Imprima a soma de todos os valores de estoque.', 'print(sum(estoque.values()))', ['sum', 'values'], { prelude: 'estoque = {"Mouse": 150, "Teclado": 60, "Monitor": 25}' }),
-  X('Prova: frequência', 'Conte quantas vezes cada letra aparece em palavra e imprima o dicionário.', 'c = {}\nfor l in palavra:\n    c[l] = c.get(l, 0) + 1\nprint(c)', ['for', 'get'], { prelude: 'palavra = "banana"' }),
-  X('Prova: ordenação', 'Ordene alunos (lista de tuplas nome, nota) pela nota, da maior para a menor, e imprima só os nomes na ordem.', 'ordenado = sorted(alunos, key=lambda a: a[1], reverse=True)\nprint([a[0] for a in ordenado])', ['sorted', 'lambda'], { prelude: 'alunos = [("Ana", 8), ("Bia", 10), ("Caio", 6)]' }),
-  X('Prova: únicos', 'Imprima, ordenada, a lista de cidades sem repetição.', 'print(sorted(set(cidades)))', ['set', 'sorted'], { prelude: 'cidades = ["Recife", "Natal", "Recife", "Salvador", "Natal"]' }),
-  X('Prova: tratamento de erro', 'Crie dividir(a, b) que devolve a / b, ou a mensagem "Divisão por zero" se b for 0 (use try/except ZeroDivisionError). Imprima dividir(10, 2) e dividir(5, 0).', 'def dividir(a, b):\n    try:\n        return a / b\n    except ZeroDivisionError:\n        return "Divisão por zero"\nprint(dividir(10, 2))\nprint(dividir(5, 0))', ['try', 'except']),
-  X('Prova: texto', 'Transforme a frase em lista de palavras em maiúsculas e imprima.', 'print([p.upper() for p in frase.split()])', ['split', 'upper'], { prelude: 'frase = "aprender dados é divertido"' }),
-  X('Prova: zip', 'Crie um dicionário ligando cada nome à sua idade (use zip) e imprima.', 'print(dict(zip(nomes, idades)))', ['zip'], { prelude: 'nomes = ["Ana", "Bia", "Caio"]\nidades = [20, 31, 27]' }),
-  X('Prova: filtro', 'Com filter e lambda, imprima a lista dos nomes que começam com "A".', 'print(list(filter(lambda n: n.startswith("A"), nomes)))', ['filter', 'lambda'], { prelude: 'nomes = ["Ana", "Bruno", "Alice", "Caio", "Antônio"]' }),
-  X('Prova: recursão', 'Crie soma_ate(n) recursiva que soma de 1 até n e imprima soma_ate(10).', 'def soma_ate(n):\n    if n == 0:\n        return 0\n    return n + soma_ate(n - 1)\nprint(soma_ate(10))', ['def', 'soma_ate(']),
-  X('Prova: formatação', 'Imprima o valor com 2 casas decimais e, embaixo, a quantidade de itens, no formato "3 itens: 12.50".', 'print(f"{len(itens)} itens: {sum(itens):.2f}")', ['.2f'], { prelude: 'itens = [2.5, 4.0, 6.0]' }),
-  X('Prova: matriz', 'Imprima a soma da diagonal principal da matriz (itens m[0][0], m[1][1], m[2][2]).', 'print(sum(m[i][i] for i in range(3)))', ['sum'], { prelude: 'm = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]' }),
 ];

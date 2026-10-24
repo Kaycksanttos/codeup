@@ -12,9 +12,13 @@ const norm = (r, ordered) => {
   let initSqlJs; try { initSqlJs = require('./vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
   const SQL = await initSqlJs();
   parentPort.postMessage({ ready: true });
-  parentPort.once('message', ({ seed, code, expected }) => {
+  parentPort.once('message', ({ seed, code, expected, show }) => {
     try {
       const a = new SQL.Database(); a.run(seed); const ra = a.exec(code);
+      if (show) {                                         // só mostrar o resultado (do gabarito) para explicar o erro depois de uma resposta errada numa prova
+        const r = ra[ra.length - 1] || { columns: [], values: [] };
+        return parentPort.postMessage({ view: { columns: r.columns, values: r.values.slice(0, 200) } });
+      }
       const b = new SQL.Database(); b.run(seed); const rb = b.exec(expected);
       const ordered = /order by/i.test(expected);
       parentPort.postMessage({ result: JSON.stringify(norm(ra[ra.length - 1], ordered)) === JSON.stringify(norm(rb[rb.length - 1], ordered)) });

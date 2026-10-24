@@ -730,3 +730,41 @@ body.neo .stk{background:#fff}
 @keyframes fbPz{0%{opacity:0;transform:translateY(34px) scale(.5) rotate(-8deg)}100%{opacity:1;transform:none}}
 body.neo .fxo{--fo1:#0e4a3a}
 @media (max-height:640px){.fxin{gap:6px;padding-top:8px}.flw{width:120px;height:140px}.sn{top:62px;height:58px;font-size:52px;line-height:58px}.trophy{width:100px;height:108px}}
+
+/* ===== explicações da lição (o que é, para que serve, como se faz, retorno esperado) ===== */
+.infos{display:grid;gap:10px;margin:12px 0}
+.inf{--ic:var(--acc);text-align:left;background:color-mix(in srgb,var(--ic) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--ic) 32%,var(--line));border-left:5px solid var(--ic);border-radius:14px;padding:11px 14px 12px}
+.inf .ih{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.inf .ii{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;background:var(--ic);color:#fff;flex:none}
+.inf .ih b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--ic) 72%,var(--text))}
+.inf p{margin:0;font-size:14.5px;line-height:1.5;color:var(--text)}
+.inf.oque{--ic:#4b8bbe}.inf.serve{--ic:#a855f7}.inf.como{--ic:#f59e0b}.inf.retorno{--ic:#10b981}
+body.wild .inf{background:linear-gradient(180deg,var(--gl1),var(--gl2));border:1px solid var(--gline);border-left:5px solid var(--ic);border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.22)}
+body.wild .inf .ih b{color:var(--hi)}
+.rules .infos{margin:10px 0 0}
+
+/* ===== provas: chances (corações), faixa de aviso, temas e tela de "voltar lições" ===== */
+.chances{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0 14px}
+.chances small{flex-basis:100%;text-align:center;color:var(--mute);font-weight:700}
+.ht{display:inline-grid;place-items:center;color:#52617f;transition:color .2s,transform .2s}
+.ht.on{color:#f87171}.ht.on svg.i{fill:currentColor}
+.hearts .ht{color:#52617f}.hearts .ht.on{color:#f87171}
+.chnote{margin:-4px 2px 10px;font-size:13px;line-height:1.45;color:var(--mute)}.chnote b{color:var(--text)}
+.cover{margin:14px 0;text-align:left}
+.cover small{display:block;color:var(--mute);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:7px}
+.cover span{display:inline-block;margin:0 6px 6px 0;padding:4px 11px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px;font-weight:600}
+.lvh{display:flex;align-items:center;gap:8px;margin:16px 2px 6px;font-weight:800;font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.backl{text-align:left;margin-top:12px}
+.backl>b{display:block;margin-bottom:6px}
+.bk{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px dashed var(--line);font-size:14px}
+.bk span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);font-size:12px;font-weight:800;color:var(--mute);flex:none}
+.fb .tip .ht{vertical-align:-3px;margin-right:2px}
+.infot{margin:16px 2px -2px;text-align:left;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+.res h1.bad{color:#fb923c}
+.infod{margin:10px 0;text-align:left}
+.infod summary{cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-weight:700;font-size:13.5px;color:var(--text)}
+.infod summary::-webkit-details-marker{display:none}
+.infod summary:after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .2s}
+.infod[open] summary:after{transform:rotate(-135deg)}
+.infod .infos{margin:8px 0 0}
+body.wild .infod summary{background:linear-gradient(180deg,var(--gl1),var(--gl2));border:1px solid var(--gline)}

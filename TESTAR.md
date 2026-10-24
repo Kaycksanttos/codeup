@@ -44,7 +44,8 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Enquanto você digita, **nada** aparece (nem resultado, nem erro, nem dica de correção) e o botão **Concluído** fica preso ao rodapé da tela, sempre no mesmo lugar (teste também com o teclado do celular aberto).
 - [ ] Ao tocar em **Concluído** (ou Ctrl+Enter): o resultado do código aparece na caixa "Saída/Resultado"; se errou, aparece abaixo o aviso com onde corrigir; se acertou, vêm XP e a próxima lição abre.
 - [ ] Os botões **Dica**, **Ver dados** e **Solução** funcionam (no SQL a solução aparece organizada em linhas).
-- [ ] Depois da lição 5 aparece o **checkpoint** (obrigatório antes da lição 6).
+- [ ] Em toda lição, a teoria mostra 4 cartões: **O que é**, **Para que serve**, **Como se faz** e **Retorno esperado** (e na prática o botão "Como fazer e o que esperar" abre os dois últimos).
+- [ ] Depois da lição 10 (e da 20) aparece o **checkpoint**: tela de abertura com as regras, **2 corações** (chances), sem Dica/Solução/Teoria. Errar 1 vez: sobra 1 coração. Errar a 2ª: **voltam 5 lições** (6 a 10, ou 16 a 20) e aparece a lista delas. A lição 11 (ou 21) só abre depois de passar.
 
 **4. Perfil**
 - [ ] Em **Eu sou** dá para mudar Feminino/Masculino; em **Personagem**, trocar Tay/Cut; e escolher a aparência (Floresta, Rosa, Azul escuro, Claro). Textos como "Pronto/Pronta para a prova" acompanham o gênero.
@@ -88,8 +89,8 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 **5. Provas e certificado (sem fazer as 90 lições à mão)**
 - [ ] Abra o painel do dono (`/admin`), entre com a chave `admin-teste`, aba **Usuários**, toque na pessoa e em **Liberar todos os cursos**.
 - [ ] No app da pessoa os cadeados somem sozinhos (até 1 minuto, ou ao voltar para a aba) e aparece o aviso "Seus cursos foram liberados!".
-- [ ] Fazer a prova do Básico (10 questões, 70% para passar). Errar de propósito uma vez para ver o "recomeçar o nível".
-- [ ] Passar nas 3 provas de uma trilha e emitir o **certificado**; abrir o link público do certificado.
+- [ ] Fazer a **prova final** do Básico (uma tarefa só, 3 chances, sem dica). Errar de propósito 3 vezes: aparece "Não foi dessa vez" e **voltam 10 lições** (21 a 30). Depois refazer as 10 lições e passar: aparece o troféu e o nível Intermediário abre.
+- [ ] Passar nas 3 provas finais de uma trilha e emitir o **certificado**; abrir o link público do certificado.
 
 **6. Painel do dono**
 - [ ] Visão geral: quadro "Quem é quem" com quantas pessoas são feminino/masculino e quantas escolheram Tay/Cut. Na ficha da pessoa e no CSV aparecem **Gênero** e **Personagem**.

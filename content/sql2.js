@@ -1,7 +1,7 @@
 // SQL — NÍVEL INTERMEDIÁRIO
 const mkH = require('./h');
 const { LOJA, T_LOJA, RH, T_RH, CLI, T_CLI } = require('./seeds');
-const { L, X } = mkH('sql', 2, LOJA);
+const { L } = mkH('sql', 2, LOJA);
 const R = { seed: RH }, C = { seed: CLI };
 
 exports.lessons = [
@@ -65,19 +65,4 @@ exports.lessons = [
     "Crie a tabela metas(categoria TEXT, valor REAL), insira ('Móveis', 2000) e ('Papelaria', 300) e mostre todas as linhas dela ordenadas por categoria.", "CREATE TABLE metas(categoria TEXT, valor REAL); INSERT INTO metas VALUES ('Móveis', 2000), ('Papelaria', 300); SELECT * FROM metas ORDER BY categoria", ['create table', 'insert into'], 'CREATE TABLE ...; INSERT ...; SELECT ...'),
   L('Mini projeto: receita por categoria', 'Projeto do nível: junte tudo para entregar uma análise pronta para o chefe.', 'JOIN + GROUP BY + HAVING + ORDER BY',
     'Mostre a categoria, o total de unidades vendidas (unidades) e a receita (receita) de cada categoria, apenas as com receita acima de 1000, da maior para a menor.', 'SELECT p.categoria, SUM(v.qtd) AS unidades, SUM(p.preco * v.qtd) AS receita FROM vendas v JOIN produtos p ON p.id = v.produto_id GROUP BY p.categoria HAVING SUM(p.preco * v.qtd) > 1000 ORDER BY receita DESC', ['join', 'group by', 'having', 'order by'], 'HAVING SUM(p.preco * v.qtd) > 1000'),
-];
-
-exports.exam = [
-  X('Prova: JOIN', 'Mostre o nome do produto e a data de cada venda com qtd maior ou igual a 5.', 'SELECT p.nome, v.data FROM vendas v JOIN produtos p ON p.id = v.produto_id WHERE v.qtd >= 5', ['join', 'where']),
-  X('Prova: receita por categoria', 'Mostre cada categoria e a receita (preco * qtd) dela, apelido receita.', 'SELECT p.categoria, SUM(p.preco * v.qtd) AS receita FROM vendas v JOIN produtos p ON p.id = v.produto_id GROUP BY p.categoria', ['join', 'group by', 'receita']),
-  X('Prova: LEFT JOIN', 'Mostre o nome de cada produto e o total vendido (SUM de qtd, apelido total), incluindo os sem venda (NULL).', 'SELECT p.nome, SUM(v.qtd) AS total FROM produtos p LEFT JOIN vendas v ON v.produto_id = p.id GROUP BY p.nome', ['left join', 'group by']),
-  X('Prova: subconsulta', 'Liste o nome dos produtos cujo estoque é menor que o estoque médio.', 'SELECT nome FROM produtos WHERE estoque < (SELECT AVG(estoque) FROM produtos)', ['(select avg']),
-  X('Prova: CASE', "Mostre nome e uma coluna situacao: 'sem estoque' se estoque = 0, 'baixo' se estoque < 50, senão 'ok'.", "SELECT nome, CASE WHEN estoque = 0 THEN 'sem estoque' WHEN estoque < 50 THEN 'baixo' ELSE 'ok' END AS situacao FROM produtos", ['case', 'end']),
-  X('Prova: clientes sem pedido', 'Liste o nome dos clientes que nunca fizeram pedido.', 'SELECT c.nome FROM clientes c LEFT JOIN pedidos p ON p.cliente_id = c.id WHERE p.id IS NULL', ['left join', 'is null'], C),
-  X('Prova: ticket médio', "Mostre o valor médio (apelido ticket) dos pedidos com status 'pago'.", "SELECT AVG(valor) AS ticket FROM pedidos WHERE status = 'pago'", ['avg', 'where'], C),
-  X('Prova: pedidos por estado', "Mostre cada estado e quantos pedidos 'pago' foram feitos por clientes dele (apelido total).", "SELECT c.estado, COUNT(*) AS total FROM clientes c JOIN pedidos p ON p.cliente_id = c.id WHERE p.status = 'pago' GROUP BY c.estado", ['join', 'group by'], C),
-  X('Prova: salário', 'Mostre o nome do departamento e a soma dos salários (apelido folha), só dos departamentos com folha acima de 10000.', 'SELECT d.nome, SUM(f.salario) AS folha FROM funcionarios f JOIN departamentos d ON d.id = f.depto_id GROUP BY d.nome HAVING SUM(f.salario) > 10000', ['group by', 'having'], R),
-  X('Prova: mês', "Mostre cada mês (formato ano-mês, apelido mes) e o número de pedidos feitos nele.", "SELECT strftime('%Y-%m', data) AS mes, COUNT(*) AS total FROM pedidos GROUP BY mes", ['strftime', 'group by'], C),
-  X('Prova: UPDATE', "Dê aumento de 5% (salario * 1.05) aos funcionários do depto_id 1 e mostre nome e salario desse departamento ordenados por nome.", 'UPDATE funcionarios SET salario = salario * 1.05 WHERE depto_id = 1; SELECT nome, salario FROM funcionarios WHERE depto_id = 1 ORDER BY nome', ['update', 'where'], R),
-  X('Prova: UNION', "Liste, em um só resultado, o nome dos funcionários do depto 1 e do depto 3 (UNION).", 'SELECT nome FROM funcionarios WHERE depto_id = 1 UNION SELECT nome FROM funcionarios WHERE depto_id = 3', ['union'], R),
 ];

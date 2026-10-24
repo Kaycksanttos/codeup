@@ -3,7 +3,7 @@ const express = require('express'), fs = require('fs'), path = require('path'), 
 const { Worker } = require('worker_threads');
 const lessons = require('./lessons');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
-const { exams, checkpoints, TRACKS, LEVEL_NAMES, PASS_PCT, EXAM_SIZE } = lessons;
+const { checkpoints, finals, tests, TRACKS, LEVEL_NAMES } = lessons;
 const TRACK_NAMES = { python: 'Python', sql: 'SQL' };
 
 const PORT = process.env.PORT || 3000;
@@ -114,33 +114,37 @@ const unlockAllOn = () => { const a = settingsMain().unlockAll; return !!(a.on &
 // curso liberado: o dono liberou a trilha para esta pessoa (ou para todo mundo, no modo livre). Sem bloqueio de nível, sequência ou checkpoint.
 const unlocked = (u, track) => unlockAllOn() || !!(u.unlock && u.unlock[track]);
 const pub = u => ({
-  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
-  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, exams: Object.keys(u.exams || {}), fails: u.fails || {},
+  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
+  track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true]))
 });
 const idx = id => lessons.findIndex(l => l.id === String(id));
-const ACT = new Map([...lessons, ...checkpoints].map(l => [l.id, l]));
-const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // lições + checkpoints (desafio extra a cada 5 lições)
+const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                       // lições + checkpoints + provas finais
+const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
 const strip = ({ expectedSql, expectedOut, expectedRows, need, ...rest }) => rest;   // o gabarito nunca vai para o navegador
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, solution, hints, explain, example, ...rest }) => rest;   // na prova também não vai solução nem dica
-const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.certs ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.cpdone ??= {}; u.attempts ??= {}; return u; };
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, solution, hints, explain, example, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.certs ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
 
 // ---------- regras do curso: trilha -> nível -> lições (em ordem) ----------
 const key = (track, lv) => `${track}-${lv}`;
 const levelLessons = (track, lv) => lessons.filter(l => l.track === track && l.lv === lv);
 const levelOpen = (u, track, lv) => lv === 1 || unlocked(u, track) || !!u.passed[key(track, lv - 1)];
-// motivo de uma lição estar bloqueada: 'level' (nível anterior sem aprovação) | 'seq' (lição anterior não concluída) | null
+// motivo de uma lição (ou prova) estar bloqueada: 'level' (nível anterior sem aprovação) | 'seq' (lição anterior não concluída) | 'cp' (falta passar no checkpoint) | null
 function lockOf(u, l) {
   if (unlocked(u, l.track)) return null;                    // liberado pelo dono
   if (!levelOpen(u, l.track, l.lv)) return 'level';
-  if (l.cp) { const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); return prev && u.done[prev.id] ? null : 'seq'; }   // checkpoint libera depois da lição 5, 10, 15...
+  if (l.fin) return levelDone(u, l.track, l.lv) ? null : 'seq';                          // a prova final libera depois das 30 lições
+  if (l.cp) { const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); return prev && u.done[prev.id] ? null : 'seq'; }   // checkpoint libera depois da lição 10 e da 20
   if (l.n > 1 && !u.done[lessons[idx(l.id) - 1].id]) return 'seq';
-  if (!u.done[l.id] && l.n > 5 && (l.n - 1) % 5 === 0) { const c = cpBefore(l); if (c && !u.cpdone[c.id]) return 'cp'; }   // as lições 6, 11, 16, 21 e 26 só liberam depois do checkpoint (a consulta com o que se aprendeu)
+  if (!u.done[l.id] && l.n > 1 && (l.n - 1) % 10 === 0) { const c = cpBefore(l); if (c && !u.cpdone[c.id]) return 'cp'; }   // as lições 11 e 21 só liberam depois do checkpoint (a prova com o que se aprendeu)
   return null;
 }
 const cpBefore = l => CP_AFTER.get(`${l.track}-${l.lv}-${l.n - 1}`);   // checkpoint que vem logo antes da lição l (ou undefined)
-const LOCK_MSG = { level: 'Passe na prova do nível anterior para liberar este nível.', seq: 'Conclua a lição anterior para liberar esta.', cp: 'Faça o checkpoint (uma consulta com o que você aprendeu nas últimas 5 lições) para liberar esta lição.' };
+const LOCK_MSG = { level: 'Passe na prova final do nível anterior para liberar este nível.', seq: 'Conclua a lição anterior para liberar esta.', cp: 'Passe no checkpoint (a prova com o que você aprendeu nas últimas 10 lições) para liberar esta lição.' };
+const lockMsg = (lock, l) => lock === 'seq' && (l.cp || l.fin) ? (l.fin ? 'Conclua as 30 lições do nível para liberar a prova final.' : `Conclua a lição ${l.after} para liberar este checkpoint.`) : LOCK_MSG[lock];
+const isTest = l => !!(l.cp || l.fin);
+const chancesLeft = (u, l) => Math.max(0, l.chances - ((u.cptry || {})[l.id] || 0));    // chances que ainda restam nesta prova
 const levelDone = (u, track, lv) => levelLessons(track, lv).every(l => u.done[l.id]);
 const trackDone = (u, track) => [1, 2, 3].every(lv => u.passed[key(track, lv)]);
 const findUser = email => Object.values(DB.users).find(u => u.email === email);
@@ -482,15 +486,16 @@ app.post('/api/track', auth, (req, res) => {
 app.get('/api/lessons', auth, (req, res) =>
   res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, lock: lockOf(req.u, l) }))));
 
-// checkpoints: desafio extra (opcional) depois das lições 5, 10, 15, 20 e 25 de cada nível
+// provas: os 2 checkpoints de cada nível (depois das lições 10 e 20) e a prova final (depois da 30), com as chances que ainda restam
 app.get('/api/checkpoints', auth, (req, res) =>
-  res.json(checkpoints.map(c => ({ id: c.id, title: c.title, type: c.type, track: c.track, lv: c.lv, k: c.k, after: c.after, xp: c.xp, lock: lockOf(req.u, c) }))));
+  res.json(tests.map(c => ({ id: c.id, title: c.title, type: c.type, track: c.track, lv: c.lv, k: c.k, after: c.after, xp: c.xp, fin: !!c.fin, chances: c.chances, left: chancesLeft(req.u, c), back: c.back, backFrom: c.backFrom, lock: lockOf(req.u, c) }))));
 
 app.get('/api/lessons/:id', auth, (req, res) => {
   const l = actOf(req.params.id);
   if (!l) return res.sendStatus(404);
   const lock = lockOf(req.u, l);
-  if (lock) return res.status(409).json({ error: LOCK_MSG[lock], lock });
+  if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
+  if (isTest(l)) return res.json({ ...stripExam(l), left: chancesLeft(req.u, l) });    // prova: sem solução, sem dica e sem teoria
   res.json(strip(l));
 });
 
@@ -498,20 +503,28 @@ app.get('/api/lessons/:id', auth, (req, res) => {
 // Devolve true/false (certo/errado) ou null quando o PRÓPRIO SERVIDOR não consegue rodar o SQL (ex.: pacote sql.js não instalado):
 // nesse caso a resposta não pode ser tratada como "errada", senão o aluno acerta e é reprovado sem saber por quê.
 let SQL_ENGINE_ERR = '';
-function sqlCheck(l, code) {
+function sqlCheck(l, code, show) {
   return new Promise(resolve => {
     const w = new Worker(path.join(__dirname, 'sqlcheck.js'), { resourceLimits: { maxOldGenerationSizeMb: 128 } });
     let done = false, t;
     const end = v => { if (done) return; done = true; clearTimeout(t); w.terminate(); resolve(v); };
     t = setTimeout(() => { SQL_ENGINE_ERR = 'o sql.js demorou demais para iniciar'; end(null); }, 15000);        // só a inicialização (não conta no tempo da consulta)
     w.on('message', m => {
-      if (m.ready) { clearTimeout(t); t = setTimeout(() => end(false), 3000); w.postMessage({ seed: l.seed, code, expected: l.expectedSql }); }   // 3 s só para rodar a consulta
+      if (m.ready) { clearTimeout(t); t = setTimeout(() => end(false), 3000); w.postMessage({ seed: l.seed, code, expected: l.expectedSql, show }); }   // 3 s só para rodar a consulta
       else if (m.engineError) { SQL_ENGINE_ERR = m.engineError; end(null); }
+      else if ('view' in m) { SQL_ENGINE_ERR = ''; end(m.view); }
       else if ('result' in m) { SQL_ENGINE_ERR = ''; end(m.result === true); }
     });
     w.on('error', e => { SQL_ENGINE_ERR = String(e && e.message || e); end(null); });
     w.on('exit', () => end(null));
   });
+}
+// Resultado esperado (colunas e linhas) de uma prova de SQL. O gabarito não vai para o navegador: só depois de uma resposta errada o aluno recebe
+// o resultado esperado (nunca o código da solução), para entender o que ajustar. Fica em cache porque é sempre o mesmo.
+const SQL_VIEW = new Map();
+async function sqlView(l) {
+  if (!SQL_VIEW.has(l.id)) SQL_VIEW.set(l.id, (await sqlCheck(l, l.solution, true)) || null);
+  return SQL_VIEW.get(l.id);
 }
 const BAD_SQL = /\b(recursive|randomblob|zeroblob|attach|pragma|load_extension)\b/i;
 
@@ -553,7 +566,8 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
   const l = actOf(req.body.id);
   if (!l) return res.sendStatus(404);
   const lock = lockOf(req.u, l);
-  if (lock) return res.status(409).json({ error: LOCK_MSG[lock], lock });
+  if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
+  if (isTest(l)) return res.status(403).json({ error: 'Nas provas a conferência só acontece quando você entrega a resposta.' });   // sem conferência livre: cada entrega gasta uma chance
   const { ok, missing, engine } = await grade(l, cleanCode(req.body.code), req.body.out);
   if (engine) return res.status(503).json({ error: ENGINE_MSG, engine: true });
   res.json({ ok, missing: ok ? undefined : missing, expected: !ok && l.type === 'python' ? l.expectedOut : undefined });
@@ -562,78 +576,43 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
 app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   const l = actOf(req.body.id);
   if (!l) return res.sendStatus(404);
-  const u = req.u, k = l.id, lock = lockOf(u, l);
-  if (lock) return res.status(409).json({ error: LOCK_MSG[lock], lock });
+  const u = req.u, k = l.id, lock = lockOf(u, l), test = isTest(l), lk = key(l.track, l.lv);
+  if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
+  const already = test && (l.fin ? !!u.passed[lk] : !!u.cpdone[k]);                    // prova já vencida: pode refazer só para treinar, sem perder chance nem voltar lições
   u.attempts[k] = (u.attempts[k] || 0) + 1;
   const code = cleanCode(req.body.code), { ok, missing, busy, engine } = await grade(l, code, req.body.out, true);
   if (engine) { u.attempts[k]--; return res.status(503).json({ error: ENGINE_MSG, engine: true }); }
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
-  let gained = 0, streakUp = 0;     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
+  let gained = 0, streakUp = 0, rewind = null;     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
   if (ok) {
     const today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
     if (u.last !== today) { u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; streakUp = u.streak; }
-    (l.cp ? u.cpdone : u.done)[k] = { code, date: new Date().toISOString() };
-    if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
+    if (l.fin) {                                                                       // prova final aprovada: libera o próximo nível e dá o bônus (uma vez só)
+      u.passed[lk] ||= new Date().toISOString();
+      if (!u.xpd['exam-' + lk]) { u.xpd['exam-' + lk] = 1; gained = 50 * l.lv; gainXp(u, gained); u.gems = (u.gems || 0) + 20; }
+    } else {
+      (l.cp ? u.cpdone : u.done)[k] = { code, date: new Date().toISOString() };
+      if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
+    }
+    if (test) delete u.cptry[k];
+  } else if (test && !already) {
+    if (l.fin) { u.tries = u.tries || {}; u.tries[lk] = (u.tries[lk] || 0) + 1; }
+    u.cptry[k] = (u.cptry[k] || 0) + 1;
+    if (u.cptry[k] >= l.chances) {                                                     // acabaram as chances: volta `back` lições para relembrar (o XP já ganho fica)
+      levelLessons(l.track, l.lv).filter(x => x.n >= l.backFrom && x.n <= l.after).forEach(x => { delete u.done[x.id]; });
+      delete u.cptry[k]; u.fails[l.fin ? lk : k] = (u.fails[l.fin ? lk : k] || 0) + 1;
+      rewind = { from: l.backFrom, to: l.after, back: l.back };
+    }
   }
   save();
-  const lvDone = ok && !l.cp && levelDone(u, l.track, l.lv);
-  res.json({ ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, expected: !ok && l.type === 'python' ? l.expectedOut : undefined, levelComplete: lvDone || undefined, ...pub(u) });
-});
-
-// ---------- Provas ----------
-const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-function examCtx(req, res) {
-  const track = String(req.body.track || ''), lv = +req.body.level;
-  if (!TRACKS.includes(track) || ![1, 2, 3].includes(lv)) { res.status(400).json({ error: 'Prova inválida.' }); return null; }
-  return { track, lv, k: key(track, lv) };
-}
-
-app.post('/api/exam/start', auth, limit(60, 60e3), (req, res) => {
-  const c = examCtx(req, res); if (!c) return; const u = req.u;
-  if (u.passed[c.k]) return res.status(409).json({ error: 'Você já passou nesta prova.' });
-  if (!levelOpen(u, c.track, c.lv)) return res.status(409).json({ error: LOCK_MSG.level });
-  if (!levelDone(u, c.track, c.lv) && !unlocked(u, c.track)) return res.status(409).json({ error: 'Conclua as 30 lições do nível para liberar a prova.' });
-  if (!u.exams[c.k]) {
-    const pool = exams.filter(q => q.track === c.track && q.lv === c.lv);
-    u.exams[c.k] = { qs: shuffle(pool).slice(0, EXAM_SIZE).map(q => q.id), answers: {}, started: new Date().toISOString() };
-    u.tries = u.tries || {}; u.tries[c.k] = (u.tries[c.k] || 0) + 1;
-    save();
-  }
-  const ex = u.exams[c.k];
-  res.json({ key: c.k, passPct: PASS_PCT, answered: Object.keys(ex.answers), questions: ex.qs.map(id => stripExam(exams.find(q => q.id === id))) });
-});
-
-app.post('/api/exam/answer', auth, limit(300 * RELAX, 60e3), async (req, res) => {
-  const c = examCtx(req, res); if (!c) return; const u = req.u, ex = u.exams[c.k];
-  if (!ex) return res.status(409).json({ error: 'Nenhuma prova em andamento.' });
-  const qid = String(req.body.qid || '');
-  if (!ex.qs.includes(qid)) return res.status(400).json({ error: 'Questão inválida.' });
-  const q = exams.find(x => x.id === qid), code = cleanCode(req.body.code), { ok, busy, engine } = await grade(q, code, req.body.out, true);
-  if (engine) return res.status(503).json({ error: ENGINE_MSG, engine: true });
-  if (busy) return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente salvar de novo em instantes.' });
-  if (!u.exams[c.k]) return res.status(409).json({ error: 'Esta prova já foi encerrada.' });
-  ex.answers[qid] = { ok, code };                          // a prova NÃO diz se acertou: o resultado vem só no final
-  save(); res.json({ saved: true, answered: Object.keys(ex.answers).length, total: ex.qs.length });
-});
-
-app.post('/api/exam/finish', auth, limit(30, 60e3), (req, res) => {
-  const c = examCtx(req, res); if (!c) return; const u = req.u, ex = u.exams[c.k];
-  if (!ex) return res.status(409).json({ error: 'Nenhuma prova em andamento.' });
-  const total = ex.qs.length, score = ex.qs.filter(id => ex.answers[id] && ex.answers[id].ok).length, pct = Math.round(score / total * 100), passed = pct >= PASS_PCT;
-  delete u.exams[c.k];
-  let bonus = 0;
-  if (passed) {
-    u.passed[c.k] = new Date().toISOString();
-    if (!u.xpd['exam-' + c.k]) { u.xpd['exam-' + c.k] = 1; bonus = 50 * c.lv; gainXp(u, bonus); u.gems = (u.gems || 0) + 20; }
-  } else {
-    // reprovou: precisa recomeçar o nível do zero (as 30 lições voltam a ficar pendentes)
-    levelLessons(c.track, c.lv).forEach(l => { delete u.done[l.id]; });
-    checkpoints.filter(x => x.track === c.track && x.lv === c.lv).forEach(x => { delete u.cpdone[x.id]; });   // os desafios do nível também voltam (o XP já ganho fica)
-    u.fails[c.k] = (u.fails[c.k] || 0) + 1;
-  }
-  save();
-  res.json({ ...pub(u), passed, score, total, pct, passPct: PASS_PCT, bonus, restart: !passed, trackComplete: passed && trackDone(u, c.track), passedMap: u.passed });
+  const lvDone = ok && !test && levelDone(u, l.track, l.lv);
+  res.json({
+    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
+    view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
+    levelComplete: lvDone || undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
+    trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, ...pub(u)
+  });
 });
 
 // ---------- Certificado ----------
@@ -680,7 +659,7 @@ app.get('/certificado/:code', limit(120, 60e3), (req, res) => {
 // ============================================================================
 let SQL_SELF = null;                                      // resultado do autoteste do corretor de SQL (true/false)
 const admin = require('./admin')(app, {
-  DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, exams, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf,
+  DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf,
   info: () => { const a = adsNow(); return { mail: mailReady, verifyOn: VERIFY_ON, google: !!GOOGLE_ID, ads: a.on ? 'on' : ADS_PREVIEW ? 'preview' : 'off', adsFrom: a.from, adsClient: a.client, adsSlot: !!a.slot, pyServer: PY_SERVER, sqlServer: SQL_SELF, company: COMPANY, contact: CONTACT }; }
 });
 
