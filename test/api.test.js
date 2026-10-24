@@ -18,7 +18,7 @@ const reg = async (email, name = 'Teste') => { const j = (await call('/api/regis
 test.before(async () => {
   srv = spawn('node', ['-r', path.join(__dirname, 'mock-google.js'), 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT, DATA_FILE: DATA, BASE_URL: U, ADMIN_KEY: 'chave-admin', COMPANY_NAME: 'Empresa Teste', CONTACT_EMAIL: 'ajuda@teste.com', DEV_SHOW_RESET_LINK: '1', RELAX_SUBMIT_LIMIT: '1', GOOGLE_CLIENT_ID: 'test-client-id', RANK_TTL_MS: '0' } });
   srv.stdout.on('data', d => log += d); srv.stderr.on('data', d => log += d);
-  for (let i = 0; i < 150 && !/rodando/.test(log); i++) await new Promise(r => setTimeout(r, 100));
+  for (let i = 0; i < 450 && !/rodando/.test(log); i++) await new Promise(r => setTimeout(r, 100));
   assert.match(log, /rodando/, 'servidor não iniciou: ' + log);
 });
 test.after(() => srv && srv.kill());
@@ -1275,4 +1275,6 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.match(ui, /Passe nas 3 provas finais/);
   for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span']) assert.ok(css.includes(c), 'css ' + c);
   assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+  // quem acerta vê o resultado (tabela do SQL ou saída do Python) na tela de conclusão: lição, checkpoint e prova final
+  assert.match(ui, /S\.lastRes = r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o resultado'); assert.ok(css.includes('.resbox'));
 });

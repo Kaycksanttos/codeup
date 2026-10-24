@@ -761,3 +761,9 @@ body.wild .inf .ih b{color:var(--hi)}
 .fb .tip .ht{vertical-align:-3px;margin-right:2px}
 .infot{margin:16px 2px -2px;text-align:left;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
 .res h1.bad{color:#fb923c}
+
+/* resultado certo na tela de conclusão */
+.resbox{text-align:left;margin:14px 0 6px;border-color:color-mix(in srgb,var(--ok) 55%,var(--line))}
+.resbox .obh{color:var(--ok);font-weight:700}
+.resbox .out{white-space:normal}
+.resbox .out pre.inl{white-space:pre-wrap}

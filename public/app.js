@@ -734,16 +734,18 @@ async function openL(id) {
   if (m.lock == 'seq') return toast('Conclua a lição anterior para liberar esta.', true);
   if (m.lock == 'cp') { const c = cpBefore(m); if (c && !c.lock) { toast('Antes, faça o checkpoint: uma consulta com o que você aprendeu.'); return openTest(c.id); } return toast('Faça o checkpoint para liberar esta lição.', true); }
   try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
-  S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; lesson();
+  S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; lesson();
 }
 const isTest = l => !!(l && (l.cp || l.fin));
+// resultado que o aluno acabou de acertar (a tabela do SQL ou a saída do Python), mostrado na tela de conclusão
+const resBox = () => S.lastRes ? `<div class="ob resbox"><div class=obh>${ic('check', 14)}<span>${S.cur && S.cur.type == 'sql' ? 'Seu resultado' : 'Sua saída'}</span></div><div class=out>${S.lastRes}</div></div>` : '';
 // Provas: os 2 checkpoints de cada nível (depois das lições 10 e 20, 2 chances) e a prova final (depois da 30, 3 chances). Uma tarefa completa com o que se aprendeu,
 // sem teoria, dica nem solução. Acabaram as chances: o aluno volta 5 lições (checkpoint) ou 10 (prova final) para relembrar.
 async function openTest(id) {
   const c = (S.cps || []).find(x => x.id == id); if (!c) return;
   if (c.lock) return toast(c.lock == 'level' ? 'Passe na prova final do nível anterior para liberar este nível.' : c.fin ? `Conclua as 30 lições de ${LV[c.lv - 1]} (${TN[c.track]}) para liberar a prova final.` : `Conclua a lição ${c.after} para liberar este checkpoint.`, true);
   try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
-  S.h = 0; S.tries = 0; testIntro();
+  S.h = 0; S.tries = 0; S.lastRes = null; testIntro();
 }
 // corações = chances que ainda restam numa prova
 const chHearts = (n, max, sz = 22) => Array.from({ length: max }, (_, i) => `<span class="ht ${i < n ? 'on' : ''}">${ic('heart', sz)}</span>`).join('');
@@ -905,6 +907,7 @@ async function concluir() {
       l.left = s.left; const h = $('#chh'), n = $('#chn'); if (h) h.innerHTML = chHearts(s.left, l.chances, 20); if (n) n.innerHTML = chanceMsg(s.left, l);
       return setFb('bad', `<p class=tip>${chHearts(s.left, l.chances, 16)} <b>${s.left == 1 ? 'Resta 1 chance.' : `Restam ${s.left} chances.`}</b></p>` + tip);
     }
+    S.lastRes = r.html;                                                              // o resultado que o aluno acabou de acertar aparece na tela de conclusão
     const xb = S.me.xp, before = Math.floor(S.me.xp / 100); Object.assign(S.me, { xp: s.xp, gems: s.gems, streak: s.streak, done: s.done, cps: s.cps, passed: s.passed, certs: s.certs, fails: s.fails }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
     S.gained = s.gained; S.used = T ? l.chances - before0 + 1 : 0; S.lvlUp = Math.floor(s.xp / 100) > before ? Math.floor(s.xp / 100) + 1 : 0; try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
     if (l.fin) { try { await new Promise(res => passFx(s, l, res)); } catch { closeOv(true); } testPass(s); return streakLater(s); }   // prova final: tela do troféu e depois o resultado
@@ -1025,6 +1028,7 @@ function result() {
   ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a <b>prova final</b>: ${what} com tudo o que aprendeu desde o começo. São 3 chances${l.lv < 3 ? ' e, passando, o próximo nível abre' : ' e, passando, a trilha termina e o certificado é liberado'}.</p>` : ''}
   ${needCp ? `<p class=gl>Checkpoint liberado! Monte ${what} com o que você aprendeu nas lições 1 a ${needCp.after} para abrir a lição ${nx.n}. São 2 chances.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>na prática</small></div></div>
+  ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos desta lição.</p>'}
   ${btn}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button><button class="btn ghost block" onclick=lesson()>Rever explicação</button>${adSlot()}</div>`;
   loadAds();
@@ -1035,6 +1039,7 @@ function resultCp() {
   sfx(S.lvlUp || S.tierUp ? 'level' : 'cp'); confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!', 'cp')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${tierCard()}
   ${nx ? `<p class=gl>A lição ${nx.n} está liberada.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP extra</small></div><div><b>${S.used || 1}/${l.chances}</b><small>tentativas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>no desafio</small></div></div>
+  ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos deste checkpoint.</p>'}
   ${nx ? `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button>${adSlot()}</div>`;
   loadAds();
@@ -1047,6 +1052,7 @@ function testPass(r) {
   const l = S.cur, t = l.track, lv = l.lv, next = lv < 3, fin = !!r.trackComplete;
   confetti(); A.innerHTML = `<div class="c res">${winStage(240, fin ? 'Trilha concluída! Que orgulho!' : 'Aprovado! Que orgulho!', 'good epic', fin)}<h1>Prova final aprovada!</h1><p class=sub>${TN[t]} ${esc(l.level)}</p>${tierCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP bônus</small></div><div><b>${S.used || 1}/${l.chances}</b><small>tentativas</small></div><div><b>${lvDone(t, lv)}/30</b><small>lições feitas</small></div></div>
+  ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado o bônus desta prova.</p>'}
   <p class=gl>${fin ? `Você concluiu toda a trilha ${TN[t]}. Seu certificado está pronto.` : next ? `O nível <b>${LV[lv]}</b> foi liberado.` : ''}</p>
   ${fin ? `<button class="btn pri block" onclick="certFlow('${t}')">${ic('award', 16)} Emitir meu certificado</button>` : ''}
