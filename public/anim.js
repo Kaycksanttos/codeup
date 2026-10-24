@@ -268,9 +268,11 @@
   // A cor escolhida vale também aqui: a imagem colorida do corpo foi feita girando o matiz (HSV), e o app faz o mesmo nas poses ao carregar.
   var TAU2 = 6.2832, PZ = root.CodeUpPoses && root.CodeUpPoses.poses, pzC = {}, pzQ = [], pzPre = {};
   var KIND = { full: [700, 915], sit: [620, 720], bust: [620, 700] }, BASE = 952;     // caixa (largura, altura) em px da imagem 640×960 e linha do chão
-  // as 18 expressões das duas folhas (iguais nos dois guias): oi, piscada, pulo, apaixonado, pensando, ideia, codando, vitoria, coracao, apontando, estiloso, bravo, ops, dormindo, tchau, aponta2, explica, joinha
-  var DEF = { oi: 'bob', piscada: 'hop', pulo: 'jump2', apaixonado: 'bob', pensando: 'tilt', ideia: 'startle', codando: 'bob', vitoria: 'jump2', coracao: 'beat', apontando: 'bob', estiloso: 'snap', bravo: 'shake', ops: 'startle', dormindo: 'snooze', tchau: 'wave', aponta2: 'nod', explica: 'bob', joinha: 'nod' };
-  var FXP = { pulo: 'jump', vitoria: 'jump', piscada: 'star', ideia: 'star', estiloso: 'star', joinha: 'star', coracao: 'star', tchau: 'star' };
+  // as 18 expressões da folha da Tay (o Cut tem as mesmas, mais 7 só dele: serio, celular, tedio, deitado, dab, correndo, chorando; 'oi' e 'aponta2' dele repetem tchau e estiloso):
+  // oi, piscada, pulo, apaixonado, pensando, ideia, codando, vitoria, coracao, apontando, estiloso, bravo, ops, dormindo, tchau, aponta2, explica, joinha
+  var DEF = { oi: 'bob', piscada: 'hop', pulo: 'jump2', apaixonado: 'bob', pensando: 'tilt', ideia: 'startle', codando: 'bob', vitoria: 'jump2', coracao: 'beat', apontando: 'bob', estiloso: 'snap', bravo: 'shake', ops: 'startle', dormindo: 'snooze', tchau: 'wave', aponta2: 'nod', explica: 'bob', joinha: 'nod',
+    serio: 'bob', celular: 'bob', tedio: 'bob', deitado: 'bob', dab: 'snap', correndo: 'hop', chorando: 'shake' };
+  var FXP = { pulo: 'jump', vitoria: 'jump', piscada: 'star', ideia: 'star', estiloso: 'star', joinha: 'star', coracao: 'star', tchau: 'star', dab: 'star' };
   var FXN = { jump: [[.98, 8, 0], [1.76, 14, 1]], star: [[.2, 10, 0]], clap: [[.3, 5, 0], [1.2, 5, 0]] };
   // sequências de pose por situação: [pose, segundos, movimento, faíscas, balão]
   // win/cp/big: fim de lição, checkpoint e conquistas · ok/perfect: acerto e acerto de primeira · pass: prova aprovada · streak/streak7: dias seguidos
@@ -290,9 +292,22 @@
     wake: [[['ops', 1, 'startle'], ['tchau', 2.6, 'wave', 'star', 'Oi!']]],             // ele acorda assustado e já dá tchau/oi
     idea: [[['ideia', 3, 'startle', 'star']]], explain: [[['explica', 3.4, 'bob']]]
   };
-  var REELS = { tay: SEQ, cut: SEQ };
+  // o Cut tem poses a mais, que entram nas mesmas situações: dab (vitórias grandes), correndo (sequência de dias), celular (mapa), serio (acerto "de boa"),
+  // tedio → deitado → dormindo (aluno que sumiu: ele cansa de esperar, deita e dorme)
+  var SEQ_CUT = (function () {
+    var c = {}, k; for (k in SEQ) c[k] = SEQ[k];
+    c.win = [SEQ.win[0], SEQ.win[1], [['coracao', 1.8, 'beat', 'star'], ['joinha', 1.4, 'nod', 'star']], [['dab', 1.9, 'snap', 'star'], ['joinha', 1.4, 'nod', 'star']]];
+    c.big = [[['ops', 1, 'startle'], ['pulo', 2.1, 'jump2', 'jump'], ['vitoria', 1.9, 'jump2', 'jump'], ['dab', 1.8, 'snap', 'star']]];
+    c.pass = [[['vitoria', 2.1, 'jump2', 'jump'], ['pulo', 1.9, 'jump2', 'jump'], ['coracao', 1.5, 'beat', 'star'], ['dab', 1.7, 'snap', 'star'], ['joinha', 1.6, 'nod', 'star']]];
+    c.streak = [[['correndo', 1.7, 'hop'], ['piscada', 1.4, 'hop', 'star']], [['coracao', 1.4, 'beat', 'star'], ['pulo', 1.9, 'jump2', 'jump']]];
+    c.mapa = [[['piscada', 1.7, 'hop', 'star']], [['joinha', 1.6, 'nod', 'star']], [['explica', 1.7, 'bob']], [['celular', 1.8, 'bob']]];
+    c.ok = SEQ.ok.concat([[['serio', 1.5, 'bob']]]);
+    c.sleep = [[['tedio', 3.4, 'bob'], ['deitado', 3.4, 'bob'], ['dormindo', 600, 'snooze']]];
+    return c;
+  })();
+  var REELS = { tay: SEQ, cut: SEQ_CUT };
   var ROPT = { win: { delay: .25 }, cp: { delay: .25 }, big: { delay: 1.9 }, think: { delay: .4, period: 9 }, oops: { delay: .4 }, intro: { delay: .4, period: 9 }, hello: { delay: .8, period: 14 }, mapa: { delay: 2.5, period: 11 }, ok: { delay: .1, period: 'loop' }, perfect: { delay: .1, period: 'loop' }, pass: { delay: .15, period: 'loop' }, streak: { delay: .3, period: 'loop' }, streak7: { delay: .3, period: 'loop' }, sleep: { delay: .15, period: 'loop' }, wake: { delay: .1 }, idea: { delay: .2 }, explain: { delay: .6, period: 12 } };
-  var TAPS = { tay: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'aponta2'], cut: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'aponta2'] };
+  var TAPS = { tay: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'aponta2'], cut: ['piscada', 'apaixonado', 'pulo', 'joinha', 'estiloso', 'ideia', 'tchau', 'coracao', 'explica', 'apontando', 'dab', 'correndo', 'serio'] };
   var CALM = { tay: 'apontando', cut: 'joinha' };      // depois da bravinha (muitos toques seguidos), ele(a) volta a sorrir
   var lastReel = {};
 

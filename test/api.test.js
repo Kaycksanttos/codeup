@@ -1208,21 +1208,25 @@ test('animação: conquistas (título novo, nível novo, prova, trilha) e troca 
 
 test('animação: expressões da folha (poses) valem no motor, nas comemorações, no toque, no mapa e no Perfil', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), anim = rd('anim.js'), sw = rd('sw.js'), css = rd('style.css'), CRw = require('../public/rewards.js');
-  // tabela das poses (gerada por tools/anim/pacote.py) e os 36 arquivos (18 expressões por personagem)
+  // tabela das poses (gerada por tools/anim/pacote.py): Tay 18 expressões; Cut as mesmas 18 + 7 só dele (serio, celular, tedio, deitado, dab, correndo, chorando) = 25 arquivos (43 no total)
   const win = {}; new Function('window', rd('poses.js'))(win); const T = win.CodeUpPoses.poses;
-  const IDS18 = ['oi', 'piscada', 'pulo', 'apaixonado', 'pensando', 'ideia', 'codando', 'vitoria', 'coracao', 'apontando', 'estiloso', 'bravo', 'ops', 'dormindo', 'tchau', 'aponta2', 'explica', 'joinha'], expected = { tay: IDS18, cut: IDS18 };
+  const IDS18 = ['oi', 'piscada', 'pulo', 'apaixonado', 'pensando', 'ideia', 'codando', 'vitoria', 'coracao', 'apontando', 'estiloso', 'bravo', 'ops', 'dormindo', 'tchau', 'aponta2', 'explica', 'joinha'], CUT_EXTRA = ['serio', 'celular', 'tedio', 'deitado', 'dab', 'correndo', 'chorando'], expected = { tay: IDS18, cut: IDS18.concat(CUT_EXTRA) }, SIT = { tay: ['codando', 'dormindo'], cut: ['codando', 'dormindo', 'celular', 'apaixonado', 'tedio', 'deitado'] };
   for (const g of ['tay', 'cut']) {
     assert.deepEqual(Object.keys(T[g]).sort(), expected[g].slice().sort(), 'poses de ' + g);
     for (const id of expected[g]) {
       const m = T[g][id], f = path.join(pubDir, 'img', 'pose', `${g}-${id}.webp`), b = fs.readFileSync(f);
       assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 8000 && b.length < 90000, `${g}-${id} tem um tamanho razoável (${b.length})`);
-      assert.ok(m.w > 300 && m.h > 300 && ['full', 'sit', 'bust'].includes(m.k), `${g}-${id} tem tamanho (qualidade nova: poses grandes) e tipo`); assert.equal(m.k, id == 'codando' || id == 'dormindo' ? 'sit' : 'full', `${g}-${id} tipo`); assert.ok(Array.isArray(m.d) && m.d.every(d => d.length === 6 && d[2] > 0 && d[3] > 0), `${g}-${id} rabiscos bem formados`);
+      assert.ok(m.w > 300 && m.h > 300 && ['full', 'sit', 'bust'].includes(m.k), `${g}-${id} tem tamanho (qualidade nova: poses grandes) e tipo`); assert.equal(m.k, SIT[g].includes(id) ? 'sit' : 'full', `${g}-${id} tipo`); assert.ok(Array.isArray(m.d) && m.d.every(d => d.length === 6 && d[2] > 0 && d[3] > 0), `${g}-${id} rabiscos bem formados`);
       assert.equal((await fetch(`${U}/img/pose/${g}-${id}.webp`)).status, 200, `${g}-${id} é servida`);
     }
   }
   // os botões do Perfil cobrem exatamente as poses que existem
   const ex = new Function('return ' + /const EXPR = (\{[\s\S]*?\n\});/.exec(ui)[1])();
-  for (const g of ['tay', 'cut']) assert.deepEqual(ex[g].map(x => x[0]).sort(), expected[g].slice().sort(), 'botões do Perfil de ' + g + ' (as 18 expressões)');
+  // Tay: 18 botões; Cut: 23 (as poses 'oi' e 'aponta2' do Cut repetem 'tchau' e 'estiloso', então não ganham botão próprio)
+  assert.deepEqual(ex.tay.map(x => x[0]).sort(), expected.tay.slice().sort(), 'botões do Perfil da Tay (as 18 expressões)');
+  assert.deepEqual(ex.cut.map(x => x[0]).sort(), expected.cut.filter(k => k != 'oi' && k != 'aponta2').sort(), 'botões do Perfil do Cut (23 expressões sem repetidas)'); assert.equal(ex.cut.length, 23);
+  assert.equal(new Set(ex.cut.map(x => x[1])).size, 23, 'cada botão tem um nome diferente');
+  assert.match(anim, /var SEQ_CUT = /); assert.match(anim, /REELS = \{ tay: SEQ, cut: SEQ_CUT \}/, 'o Cut tem sequências próprias (dab, correndo, celular, tédio→deitado→dormindo)');
   assert.match(ui, /function playMove\(/); assert.match(ui, /playMove\('p:\$\{k\}'\)/); assert.match(ui, /Expressões/);
   // a cor escolhida vale nas poses: mesma conta do matiz que gerou as imagens coloridas do corpo
   assert.equal(CRw.hueShift('tay', 'verde'), 162); assert.equal(CRw.hueShift('tay', 'azul'), -116); assert.equal(CRw.hueShift('cut', 'verde'), -82); assert.equal(CRw.hueShift('cut', 'vermelho'), 134);
@@ -1246,8 +1250,9 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   for (const k of ['poseChip(st == \'err\' ? \'ops\' : \'pensando\'', 'poseChip(\'ideia\'', 'poseChip(\'explica\'', 'poseChip(\'codando\'', 'poseChip(\'apontando\'']) assert.ok(ui.includes(k), 'ação no app: ' + k);
   for (const k of ['ops', 'pensando', 'ideia', 'explica', 'codando', 'apontando']) used.add(k);
   const taps = anim.slice(anim.indexOf('var TAPS'), anim.indexOf('var CALM')); for (const m of taps.matchAll(/'([a-z0-9]+)'/g)) used.add(m[1]); used.add('bravo');
-  for (const k of IDS18) assert.ok(used.has(k), 'a expressão ' + k + ' tem uma ação no app');
-  for (const k of IDS18) assert.match(anim, new RegExp(`\\b${k}: '[a-z0-9]+'`), 'movimento padrão de ' + k);
+  used.add('chorando');   // prova reprovada (app.js: failImg)
+  for (const k of expected.cut) assert.ok(used.has(k), 'a expressão ' + k + ' tem uma ação no app');
+  for (const k of expected.cut) assert.match(anim, new RegExp(`\\b${k}: '[a-z0-9]+'`), 'movimento padrão de ' + k);
 });
 
 test('aluno que ficou dias sem entrar: o servidor marca a ausência uma vez e o app mostra o personagem dormindo', async () => {
@@ -1321,8 +1326,10 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>Solução<\/button>/, 'prova não tem Solução nem Teoria');
   assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
   // prova reprovada: o personagem chorando (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
-  assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\/img\/fail-\$\{gid\(\)\}\.webp"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
-  for (const g of ['cut', 'tay']) { const f = path.join(pubDir, 'img', `fail-${g}.webp`), b = fs.readFileSync(f); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 10000 && b.length < 200000, `fail-${g} tem tamanho razoável`); assert.equal((await fetch(`${U}/img/fail-${g}.webp`)).status, 200, `fail-${g} é servida`); }
+  assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\$\{failImg\(\)\}"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
+  assert.match(ui, /gid\(\) == 'cut' \? '\/img\/pose\/cut-chorando\.webp' : '\/img\/fail-tay\.webp'/, 'Cut chora com a pose da folha; Tay com a imagem dela');
+  for (const f of ['fail-tay.webp', 'pose/cut-chorando.webp']) { const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 10000 && b.length < 200000, `${f} tem tamanho razoável`); assert.equal((await fetch(`${U}/img/${f}`)).status, 200, `${f} é servida`); }
+  assert.ok(!fs.existsSync(path.join(pubDir, 'img', 'fail-cut.webp')), 'a imagem antiga do Cut chorando saiu (agora é a pose da folha)');
   assert.ok(!ui.includes('nada é gasto: você corrige'), 'a regra antiga (erro não gasta chance) saiu das regras da prova');
   assert.match(ui, /if \(T && s\.rewind\)/, 'acabaram as chances: tela de voltar lições'); assert.match(ui, /voltar|volta \$\{r\.back\} lições|você volta/i);
   assert.match(ui, /openTest\('\$\{fin\.id\}'\)/, 'o mapa tem o nó da prova final'); assert.match(ui, /Prova final · \$\{LV\[lv - 1\]\}/);
@@ -1347,7 +1354,7 @@ test('Perfil em abas e Ranking com pódio: telas, estilos e regras de privacidad
   for (const f of ['function profileView(', 'function pfTab(', 'function pfHero(', 'function pfProg(', 'function pfRes(', 'function pfChar(', 'function pfSet(', 'function tiersView(', 'function czTab(']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\['res', 'Resumo'\], \['per', 'Personagem'\], \['aju', 'Ajustes'\]/, 'as 3 abas do Perfil');
   for (const a of ['editName()', 'editGname()', "setSex('", "setGuide('", "setFrame('", 'rkVis(${k})', 'setSfx(${k})', "setSkin('", 'changePw()', 'exportData()', 'logout()', 'delAccount()', "studyTrack('"]) assert.ok(ui.includes(a), 'o Perfil continua com ' + a);
-  assert.match(ui, /Eu sou/); assert.match(ui, /Zona de perigo/); assert.match(ui, /class="czg ex"/, 'as 18 expressões continuam no Perfil'); assert.match(ui, /playMove\('p:\$\{k\}'\)/);
+  assert.match(ui, /Eu sou/); assert.match(ui, /Zona de perigo/); assert.match(ui, /class="czg ex"/, 'as expressões continuam no Perfil'); assert.match(ui, /playMove\('p:\$\{k\}'\)/);
   assert.match(ui, /CZG = \[\['ex', 'Expressões'\], \['color', 'Cor'\], \['outfit', 'Estilo'\], \['sticker', 'Adesivo'\], \['bg', 'Fundo'\]\]/, 'personalizar em grupos');
   // Ranking: pódio, linhas, "sua posição" e privacidade
   for (const f of ['function rankView(', 'class=podium', 'class="panel rkme"', 'class="panel rkpv"', 'class=rbar', 'Faltam ${nf(d)} XP para o']) assert.ok(ui.includes(f), f);
