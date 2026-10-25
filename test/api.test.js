@@ -1637,6 +1637,14 @@ test('admin: entrada fixa com e-mail e senha (ADMIN_EMAIL + ADMIN_PASSWORD), sem
     const au = (await j('/api/admin/audit', null, r.j.token)).j, txt = JSON.stringify(au); assert.ok(/login-falhou/.test(txt) && !txt.includes(PW) && !txt.includes(EM.toLowerCase()), 'a auditoria registra a falha sem guardar senha nem e-mail');
   } finally { p.kill(); }
   await new Promise(z => setTimeout(z, 400));
+  // se houver ADMIN_KEY antiga E ADMIN_PASSWORD, só a senha nova vale (nem o painel nem as rotas de script aceitam a chave velha)
+  p = await boot({ ADMIN_EMAIL: EM, ADMIN_PASSWORD: PW, ADMIN_KEY: 'chave-antiga-que-nao-vale-mais' });
+  try {
+    assert.equal((await j('/api/admin/login', { email: EM, key: 'chave-antiga-que-nao-vale-mais' })).status, 401, 'a chave antiga não entra mais');
+    assert.equal((await j('/api/admin/login', { email: EM, key: PW })).status, 200, 'a senha nova entra');
+    assert.equal((await j('/api/admin/stats', null, null, { 'x-admin-key': 'chave-antiga-que-nao-vale-mais' })).status, 404);
+  } finally { p.kill(); }
+  await new Promise(z => setTimeout(z, 400));
   // sem ADMIN_EMAIL: continua só a chave, como antes (e ADMIN_PASSWORD vale como a chave)
   p = await boot({ ADMIN_PASSWORD: PW });
   try {

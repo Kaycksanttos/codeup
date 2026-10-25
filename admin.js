@@ -25,7 +25,7 @@ module.exports = function mountAdmin(app, X) {
 
   // ---------- chave do admin ----------
   function adminKey() {
-    if (process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD) return process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD;   // ADMIN_PASSWORD é o mesmo que ADMIN_KEY, com o nome que a tela de e-mail e senha usa
+    if (process.env.ADMIN_PASSWORD || process.env.ADMIN_KEY) return process.env.ADMIN_PASSWORD || process.env.ADMIN_KEY;   // ADMIN_PASSWORD é a senha da tela de e-mail e senha; se existir, uma ADMIN_KEY antiga deixa de valer (em qualquer entrada)
     if (PROD) return '';
     DB.meta ??= {}; DB.meta.admin ??= {};
     if (!DB.meta.admin.devKey) { DB.meta.admin.devKey = crypto.randomBytes(12).toString('base64url'); save(); }   // só para uso local
