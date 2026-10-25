@@ -89,6 +89,10 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] No 3º, 7º, 14º, 30º, 60º e 100º dia seguidos aparece o bônus de diamantes da sequência, uma vez só por marco.
 - [ ] **Sem fantasia** volta ao personagem animado normal. Trocar de personagem guarda as fantasias do outro (o Cut tem as dele: Tubarão, Panda, Ursinho, Craque, Basquete, Chef, Ninja, Policial, Fotógrafo, Samurai, Super-herói, Diabinho na loja; Gatinho, Dino, Doutor, Astronauta, Mago, Rei e Anjinho por conquista); voltar ao primeiro traz tudo de volta.
 
+**4c-3. Aparência da entrada**
+- [ ] Escolha **Rosa** em Perfil → Ajustes → Aparência (ou entre como Tay), saia e abra o site de novo: a tela **Entre na sua conta**, o **cadastro** (feminino/masculino, personagem, nome) e o **Esqueci minha senha** aparecem sempre no visual **Azul** (floresta à noite), nunca no cenário rosa. Escolher a **Tay** no cadastro também não troca o cenário.
+- [ ] Depois de entrar com uma conta da Tay (que tem o Rosa salvo), **dentro do app** o visual Rosa volta. Quem escolheu **Claro** ou **Azul escuro** vê o seu também na entrada.
+
 **4d. Personagem animado e estilo da roupa**
 - [ ] **Tela de entrada** (login e cadastro): só a marca **CodeUp** e a frase, **sem personagem**.
 - [ ] O personagem de corpo inteiro (tela de resultado da lição/prova, escolha de trilha e a prévia do Perfil) **se mexe sozinho**: respira, balança de leve, inclina a cabeça e **pisca**. A Tay mexe o cabelo; o Cut balança o joinha.

@@ -1,5 +1,5 @@
 'use strict';
-try { const sk = localStorage.getItem('skin'), cl = document.body.classList; if (sk === 'rose') cl.add('wild', 'rose'); else if (sk === 'neo') cl.add('neo'); else if (sk !== '') cl.add('wild'); } catch { document.body.classList.add('wild'); }   // Azul (a floresta azul) é o padrão; '' = Azul escuro; estilos antigos voltam para o Azul
+try { const sk = localStorage.getItem('skin'), cl = document.body.classList; if (sk === 'rose') { cl.add('wild'); if (localStorage.getItem('tk')) cl.add('rose'); } else if (sk === 'neo') cl.add('neo'); else if (sk !== '') cl.add('wild'); } catch { document.body.classList.add('wild'); }   // Azul (a floresta azul) é o padrão; '' = Azul escuro; o Rosa só aparece dentro do app (quem ainda não entrou vê sempre o Azul)
 const SQLJS_V = '1.10.3', PYO_V = '0.26.4';           // versões das bibliotecas que rodam no navegador
 const $ = s => document.querySelector(s), A = $('#app');
 const S = { tk: localStorage.tk || null, me: null, ls: [], cfg: { contact: '', company: 'CodeUp', ads: null }, cur: null, h: 0, hearts: 5, tries: 0, errs: 0, gained: 0, lvlUp: 0,
@@ -240,7 +240,7 @@ async function api(p, o = {}) {
 
 // ============================================================ AUTENTICAÇÃO
 function showAuth() {
-  theme(null);
+  theme(null); applySkin(entrySkin());
   const m = S.auth, legal = `<p class=legal><a href="/termos" target="_blank">Termos de Uso</a> · <a href="/privacidade" target="_blank">Política de Privacidade</a></p>`;
   const F = {
     login: { t: 'Entre na sua conta', s: 'Continue de onde parou.', btn: 'Entrar',
@@ -348,7 +348,7 @@ async function boot() {
   }
   if (q.get('verificado')) { const ok = q.get('verificado') == '1'; history.replaceState({}, '', '/'); setTimeout(() => toast(ok ? 'E-mail confirmado! Obrigado.' : 'Este link de confirmação expirou ou já foi usado. Entre e peça um novo.', !ok), 400); }
   if (!S.tk) return LS.get('guide') || S.skipGuide ? showAuth() : startWizard(['sex', 'guide', 'gname'], false);   // quem chega pela primeira vez já começa o cadastro: feminino ou masculino e depois o personagem
-  go('home');
+  applySkin(skinOf()); go('home');                // dentro do app vale o visual salvo (Azul, Rosa da Tay, Claro...)
 }
 
 // ---------- Primeiros passos no cadastro: 1) feminino ou masculino  2) qual personagem (Tay ou Cut) vai guiar a jornada ----------
@@ -357,7 +357,7 @@ const hiFor = (g, n) => GUIDES[g].hi.replace('{n}', n || GUIDES[g].name).replace
 function startWizard(need, logged) { const me = logged && S.me || {}; S.wz = { need, logged: !!logged, i: 0, sex: (S.reg && S.reg.sex) || me.sex || null, guide: (S.reg && S.reg.guide) || me.guide || null, gname: (S.reg && S.reg.gname) || me.gname || null }; S.skin0 = skinOf(); wizard(); }
 function goRegister() { if (S.reg) { S.auth = 'register'; return showAuth(); } startWizard(['sex', 'guide', 'gname'], false); }
 function wizard() {
-  const w = S.wz, st = w.need[w.i]; theme(null);
+  const w = S.wz, st = w.need[w.i]; theme(null); if (!w.logged) applySkin(entrySkin());
   const dots = w.need.length > 1 ? `<div class=wdots aria-label="Passo ${w.i + 1} de ${w.need.length}">${w.need.map((_, k) => `<i class="${k <= w.i ? 'on' : ''}"></i>`).join('')}</div>` : '';
   const back = w.i > 0 ? `<div class=lnk><a onclick="wizBack()">Voltar</a></div>` : w.logged ? '' : `<div class=lnk>Já tem conta? <a onclick="S.wz=null;S.skipGuide=1;S.auth='login';showAuth()">Entrar</a></div>`;
   const logo = `<div class=hero-sm><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`, last = w.i === w.need.length - 1;
@@ -390,7 +390,7 @@ function pickSex(k) {
   $('.sexes').classList.add('has'); $('#wok').disabled = false;
 }
 function pickGuide(g) {
-  const w = S.wz; w.guide = g; applySkin(g === 'tay' ? 'rose' : S.skin0 === 'rose' ? 'wild' : S.skin0);   // mostra na hora o visual que vem junto
+  const w = S.wz; w.guide = g; if (w.logged) applySkin(g === 'tay' ? 'rose' : S.skin0 === 'rose' ? 'wild' : S.skin0);   // quem já está no app vê na hora o visual que vem junto; no cadastro a tela de entrada continua azul
   document.querySelectorAll('.gcard').forEach(b => { const on = b.dataset.g === g; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
   $('.gcards').classList.add('has'); const s = $('#gsay'); s.className = 'gsay on ' + g; s.innerHTML = `<b>${GUIDES[g].name}</b> ${esc(hiFor(g))}`;
   const b = $('#wok'); b.disabled = false; b.textContent = 'Continuar com ' + GUIDES[g].art;
@@ -407,7 +407,7 @@ async function wizNext() {
   const w = S.wz; if (!w || !w[w.need[w.i]]) return;
   if (w.i < w.need.length - 1) { w.i++; return wizard(); }
   const b = $('#wok'); b.disabled = true;
-  if (w.guide && w.need.includes('guide')) { const sk = w.guide === 'tay' ? 'rose' : S.skin0 === 'rose' ? 'wild' : S.skin0; LS.set('guide', w.guide); LS.set('skin', sk); applySkin(sk); }   // a Tay traz o visual Rosa; o Cut mantém o visual que a pessoa já usava
+  if (w.guide && w.need.includes('guide')) { const sk = w.guide === 'tay' ? 'rose' : S.skin0 === 'rose' ? 'wild' : S.skin0; LS.set('guide', w.guide); LS.set('skin', sk); applySkin(w.logged ? sk : entrySkin()); }   // a Tay traz o visual Rosa para dentro do app; o Cut mantém o visual que a pessoa já usava
   if (w.logged) {
     try { const body = {}; w.need.forEach(k => body[k] = w[k]); S.me = await api('guide', { body }); } catch (e) { b.disabled = false; return fail(e); }
     S.wz = null; S.scroll = true; return go('home');
@@ -576,6 +576,8 @@ function render() {
 // ============================================================ ANIMAÇÕES E TOUR DO PRIMEIRO ACESSO
 // números sobem até o valor novo (XP e dias seguidos) e a "pílula" dá um pulinho
 const skinOf = () => { const v = LS.get('skin'); return v === 'rose' || v === 'neo' || v === '' ? v : 'wild'; };   // Azul (a floresta azul) é o padrão
+// telas de entrada (login, cadastro, senha): nunca o cenário Rosa; quem escolheu Claro ou Azul escuro continua com o seu
+const entrySkin = () => { const v = skinOf(); return v === 'rose' ? 'wild' : v; };
 function applySkin(v) {
   const cl = document.body.classList; cl.toggle('wild', v === 'wild' || v === 'rose'); cl.toggle('rose', v === 'rose'); cl.toggle('neo', v === 'neo');
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = v === 'rose' ? '#2b0f3d' : v === 'wild' ? '#0a1c40' : v === 'neo' ? '#f1f4ff' : '#0a0f1c';

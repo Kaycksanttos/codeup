@@ -1656,3 +1656,14 @@ test('admin: entrada fixa com e-mail e senha (ADMIN_EMAIL + ADMIN_PASSWORD), sem
   for (const k of ['li.email', 'id="em"', 'autocomplete="username"', "email: e1 ? e1.value : ''", 'Entre com o e-mail e a senha de administrador.', 'ADMIN_EMAIL', 'ADMIN_PASSWORD']) assert.ok(adm.includes(k), 'admin.js: ' + k);
   assert.ok(env.includes('ADMIN_EMAIL=') && env.includes('ADMIN_PASSWORD=') && rd.includes('ADMIN_EMAIL') && rd.includes('ADMIN_PASSWORD'), 'documentado');
 });
+
+test('telas de entrada: nunca o cenário Rosa; o Rosa da Tay só vale dentro do app', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(app, /if \(sk === 'rose'\) \{ cl\.add\('wild'\); if \(localStorage\.getItem\('tk'\)\) cl\.add\('rose'\); \}/, 'antes da primeira pintura: sem conta aberta, o rosa não aparece');
+  assert.ok(app.includes("const entrySkin = () => { const v = skinOf(); return v === 'rose' ? 'wild' : v; };"), 'entrySkin troca só o Rosa pelo Azul');
+  assert.match(app, /function showAuth\(\) \{\n  theme\(null\); applySkin\(entrySkin\(\)\);/, 'login, cadastro e senha usam o visual de entrada');
+  assert.match(app, /function wizard\(\) \{\n  const w = S\.wz, st = w\.need\[w\.i\]; theme\(null\); if \(!w\.logged\) applySkin\(entrySkin\(\)\);/, 'o assistente do cadastro também');
+  assert.ok(app.includes('if (w.logged) applySkin(g === \'tay\' ? \'rose\' : S.skin0'), 'escolher a Tay no cadastro não troca o cenário na hora');
+  assert.ok(app.includes("applySkin(w.logged ? sk : entrySkin())"), 'ao terminar o cadastro a tela de entrada continua azul');
+  assert.ok(app.includes("applySkin(skinOf()); go('home');"), 'ao entrar no app vale o visual salvo');
+});
