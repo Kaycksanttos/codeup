@@ -57,6 +57,10 @@ const IC = {
 };
 const ic = (n, s = 18) => `<svg class=i width=${s} height=${s} viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.8 stroke-linecap=round stroke-linejoin=round aria-hidden=true>${IC[n] || ''}</svg>`;
 const LS = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { } } };
+// Aberto dentro do app das lojas? (Capacitor com "CodeUpApp" no user agent, ou Android TWA, que abre com referrer android-app://)
+// Lá o AdSense não vale (o Google proíbe anúncios de site dentro de apps) e o login do Google não funciona no WebView (o Google bloqueia): o app esconde os dois.
+const IN_WEBVIEW = /CodeUpApp/.test(navigator.userAgent) || !!window.Capacitor;
+const IN_STORE = IN_WEBVIEW || (() => { try { if (/^android-app:\/\//.test(document.referrer)) sessionStorage.setItem('twa', '1'); return sessionStorage.getItem('twa') === '1'; } catch { return false; } })();
 // Personagem que acompanha a pessoa: Tay (rosa, feminino) ou Cut (azul, masculino). A escolha fica na conta e neste aparelho.
 const GUIDES = {
   tay: { name: 'Tay', sex: 'Feminino', art: 'a Tay', hi: 'Oi! Eu sou {n}. Vamos aprender {j}?', intro: 'Oi! Eu sou {n}, sua guia no CodeUp', sugg: ['Luna', 'Nina', 'Mel'] },
@@ -296,7 +300,7 @@ async function onGoogle(resp, accept) {
   try {
     const r = await api('google', { body: { credential: resp.credential, accept: accept === true, ...(S.reg || {}) } });
     if (r.needsTerms) return googleTerms(resp, r);
-    S.tk = r.token; localStorage.tk = r.token; boot();
+    saveTk(r.token); boot();
   } catch (e) { fail(e); }
 }
 function googleTerms(resp, r) {
@@ -325,14 +329,14 @@ async function doAuth() {
   try {
     if (m === 'login' || m === 'register') {
       const body = m === 'login' ? { email: v('em'), password: v('pw') } : { name: v('nm'), email: v('em'), password: v('pw'), accept: $('#ac').checked, ...(S.reg || {}) };
-      const r = await api(m, { body }); S.tk = r.token; localStorage.tk = r.token; if (m === 'register') S.reg = null; boot();
+      const r = await api(m, { body }); saveTk(r.token); if (m === 'register') S.reg = null; boot();
     } else if (m === 'forgot') {
       const r = await api('forgot', { body: { email: v('em') } });
       if (r.devLink) { toast('Modo teste: abrindo o link de redefinição…'); return void (location.href = r.devLink); }
       S.auth = 'login'; showAuth(); toast('Se esse e-mail tiver conta, enviamos um link para criar uma nova senha. Pode levar alguns minutos; olhe também o spam.');
     } else {
       const r = await api('reset', { body: { token: S.resetToken, password: v('pw') } });
-      history.replaceState({}, '', '/'); S.resetToken = null; S.tk = r.token; localStorage.tk = r.token; toast('Senha alterada! Você já está conectado.'); boot();
+      history.replaceState({}, '', '/'); S.resetToken = null; saveTk(r.token); toast('Senha alterada! Você já está conectado.'); boot();
     }
   } catch (e) { fail(e); if (m === 'reset' && e.status === 400 && /Link/.test(e.error || '')) { S.auth = 'forgot'; showAuth(); } } finally { b.disabled = false; }
 }
@@ -353,9 +357,13 @@ function testBar() {
   };
   document.body.insertBefore(d, document.body.firstChild);
 }
+// Guarda o login. O servidor também deixa um cookie seguro de reserva (HttpOnly): se o navegador apagar o armazenamento local, o boot() recupera a sessão sem pedir senha.
+function saveTk(t) { S.tk = t; LS.set('tk', t); LS.set('nologin', ''); }
 async function boot() {
   const q = new URLSearchParams(location.search);
   try { S.cfg = await api('config'); } catch { }
+  if (S.cfg && IN_STORE) S.cfg.ads = null;                                // no app das lojas: sem anúncios do AdSense
+  if (S.cfg && IN_WEBVIEW) S.cfg.googleClientId = '';                      // e sem o botão do Google (bloqueado em WebView)
   if (S.cfg && S.cfg.teste) testBar();
   if (q.get('reset')) {
     S.resetToken = q.get('reset'); let ok = false;
@@ -364,6 +372,7 @@ async function boot() {
     S.auth = 'reset'; return showAuth();
   }
   if (q.get('verificado')) { const ok = q.get('verificado') == '1'; history.replaceState({}, '', '/'); setTimeout(() => toast(ok ? 'E-mail confirmado! Obrigado.' : 'Este link de confirmação expirou ou já foi usado. Entre e peça um novo.', !ok), 400); }
+  if (!S.tk && !LS.get('nologin')) { try { const r = await api('session/restore', { body: {} }); if (r.token) saveTk(r.token); } catch { } }   // o navegador apagou o armazenamento local (comum no Safari do iPhone)? o cookie de reserva devolve o login
   if (!S.tk) return LS.get('guide') || S.skipGuide ? showAuth() : startWizard(['sex', 'guide', 'gname'], false);   // quem chega pela primeira vez já começa o cadastro: feminino ou masculino e depois o personagem
   applySkin(skinOf()); go('home');                // dentro do app vale o visual salvo (Azul, Rosa da Tay, Claro...)
 }
@@ -961,7 +970,8 @@ async function exportData() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'meus-dados-codeup.json'; a.click();
   } catch (e) { fail(e); }
 }
-async function logout() { try { await api('logout', { body: {} }); } catch { } S.tk = null; S.awaySeen = 0; localStorage.removeItem('tk'); S.auth = 'login'; showAuth(); }
+// Sem internet na hora de sair, o cookie de reserva continua válido: a marca 'nologin' impede o app de restaurar o login sozinho.
+async function logout() { try { await api('logout', { body: {} }); } catch (e) { if (e && ((!e.status && !e.silent) || e.status >= 500)) LS.set('nologin', '1'); } S.tk = null; S.awaySeen = 0; localStorage.removeItem('tk'); S.auth = 'login'; showAuth(); }
 function changePw() {
   const has = S.me.hasPassword;
   dialog(has ? 'Alterar senha' : 'Criar senha', [...(has ? [{ id: 'cur', ph: 'Senha atual', ac: 'current-password' }] : []), { id: 'new', ph: 'Nova senha (mín. 8 caracteres)', ac: 'new-password' }], 'Salvar', async v => {

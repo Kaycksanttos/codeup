@@ -35,7 +35,8 @@ function adsNow() {
 }
 const GOOGLE_ID = process.env.GOOGLE_CLIENT_ID || '';
 const google = GOOGLE_ID ? new (require('google-auth-library').OAuth2Client)(GOOGLE_ID) : null;
-const SESSION_MS = 60 * 864e5, RESET_MS = 60 * 60e3;
+// Sessão longa e renovável: quem entrou continua conectado (1 ano por padrão, SESSION_DAYS muda) e cada uso renova o prazo, então só desconecta quem ficar um ano sem abrir o app ou tocar em "Sair".
+const SESSION_MS = (+process.env.SESSION_DAYS > 0 ? +process.env.SESSION_DAYS : 365) * 864e5, RENEW_MS = Math.min(864e5, SESSION_MS / 10), RESET_MS = 60 * 60e3;
 
 const app = express();
 app.set('trust proxy', 1);                               // atrás de Render/Railway/Nginx
@@ -217,11 +218,17 @@ const trackDone = (u, track) => Array.from({ length: LEVELS_OF[track] || 3 }, (_
 const findUser = email => Object.values(DB.users).find(u => u.email === email);
 const MAX_SESSIONS = 10;
 const tokOf = req => sha(String(req.headers['x-token'] || ''));
-const newSession = id => {                                // no banco fica só o HASH do token: vazar o banco não permite entrar nas contas
+// Cookie de reserva (HttpOnly: o JavaScript da página não lê): se o navegador apagar o armazenamento local (o Safari do iPhone faz isso depois de ~7 dias sem abrir o site), o app recupera o login por /api/session/restore.
+// Ele NÃO autentica as demais rotas (só o cabeçalho x-token autentica), então não abre brecha de CSRF.
+const COOKIE = 'cu_sid';
+const cookieOf = req => { const m = String(req.headers.cookie || '').match(/(?:^|;\s*)cu_sid=([0-9a-f]{64})(?:;|$)/); return m ? m[1] : ''; };
+const putCookie = (req, res, t) => res.append('Set-Cookie', `${COOKIE}=${t}; Max-Age=${Math.floor(SESSION_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+const dropCookie = (req, res) => res.append('Set-Cookie', `${COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+const newSession = (id, req, res) => {                    // no banco fica só o HASH do token: vazar o banco não permite entrar nas contas
   const t = crypto.randomBytes(32).toString('hex');
   const mine = Object.entries(DB.sessions).filter(([, v]) => v.id === id).sort((a, b) => a[1].exp - b[1].exp);
   while (mine.length >= MAX_SESSIONS) delete DB.sessions[mine.shift()[0]];
-  DB.sessions[sha(t)] = { id, exp: Date.now() + SESSION_MS }; save(); return t;
+  DB.sessions[sha(t)] = { id, exp: Date.now() + SESSION_MS }; save(); if (res) putCookie(req, res, t); return t;
 };
 const dropSessions = id => { for (const k in DB.sessions) if (DB.sessions[k].id === id) delete DB.sessions[k]; };
 
@@ -304,6 +311,13 @@ app.use((req, res, next) => {
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+// App Android na Play Store (TWA): o Android só abre o app em tela cheia, sem a barra do navegador, se o site provar que pertence ao app.
+// Preencha ANDROID_PACKAGE (ex.: com.seusite.codeup) e ANDROID_SHA256 (impressão digital SHA-256 do certificado de assinatura do app; várias separadas por vírgula).
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  const pkg = String(process.env.ANDROID_PACKAGE || '').trim(), fps = String(process.env.ANDROID_SHA256 || '').split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
+  if (!/^[A-Za-z][\w]*(\.[A-Za-z][\w]*)+$/.test(pkg) || !fps.length || !fps.every(x => /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(x))) return res.status(404).json({ error: 'Não encontrado.' });
+  res.set('Cache-Control', 'public, max-age=3600').json([{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fps } }]);
+});
 
 app.use(express.json({ limit: '50kb' }));
 // sql.js próprio (sem depender de CDN de terceiros). O caminho é descoberto pelo Node: funciona mesmo se o node_modules estiver numa pasta acima do projeto.
@@ -355,6 +369,9 @@ function auth(req, res, next) {
   const s = DB.sessions[tokOf(req)], u = s && s.exp > Date.now() && DB.users[s.id];
   if (!u) return res.status(401).json({ error: 'login' });
   if (u.banned) return res.status(403).json({ error: BAN_MSG(), banned: true });
+  const renew = s.exp - Date.now() < SESSION_MS - RENEW_MS;                                    // usou o app: renova o prazo (grava no máximo 1 vez por dia por aparelho)
+  if (renew) { s.exp = Date.now() + SESSION_MS; save(); }
+  if (renew || (req.path === '/api/me' && !cookieOf(req))) putCookie(req, res, String(req.headers['x-token']));   // mantém o cookie de reserva em dia (e cria para quem já estava conectado antes dele existir)
   const gap = u.seen ? Date.now() - Date.parse(u.seen) : 0;
   if (u.seen && !u.away && gap > AWAY_MS) { u.away = { from: u.seen }; u.seen = new Date().toISOString(); save(); }   // voltou depois de muito tempo: a tela do personagem dormindo fica pendente até ele tocar em "Acordar"
   else if (!u.seen || gap > 10 * 60e3) { u.seen = new Date().toISOString(); save(); }   // "último acesso" (gravado no máximo a cada 10 min)
@@ -373,7 +390,7 @@ app.post('/api/register', limit(20 * RELAX, 3600e3), async (req, res) => {
   if (findUser(email)) return res.status(409).json({ error: 'Este e-mail já tem conta. Faça login.' });
   const id = crypto.randomUUID(), now = new Date().toISOString();
   const u = DB.users[id] = { id, name, email, pass: hash(pw), verified: !VERIFY_ON, xp: 0, gems: 0, streak: 0, done: {}, attempts: {}, created: now, acceptedTerms: now, ...profileOf(req.body) };
-  const out = { token: newSession(id) };
+  const out = { token: newSession(id, req, res) };
   if (VERIFY_ON) { const link = await sendVerify(u); if (DEV_LINK) out.devVerifyLink = link; }
   res.json(out);
 });
@@ -384,10 +401,22 @@ app.post('/api/login', limit(10, 15 * 60e3), (req, res) => {
   const okPw = checkPw(String(req.body.password || ''), u && u.pass ? u.pass : DUMMY_HASH);   // gasta o mesmo tempo mesmo se a conta não existir
   if (!u || !u.pass || !okPw) return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
   if (u.banned) return res.status(403).json({ error: BAN_MSG(), banned: true });
-  res.json({ token: newSession(u.id) });
+  res.json({ token: newSession(u.id, req, res) });
 });
 
-app.post('/api/logout', auth, (req, res) => { delete DB.sessions[tokOf(req)]; save(); res.json({ ok: true }); });
+app.post('/api/logout', auth, (req, res) => {
+  delete DB.sessions[tokOf(req)];
+  const c = cookieOf(req), cs = c && DB.sessions[sha(c)]; if (cs && cs.id === req.u.id) delete DB.sessions[sha(c)];
+  dropCookie(req, res); save(); res.json({ ok: true });
+});
+
+// O app chama quando abre sem token no armazenamento local: se o cookie de reserva ainda vale, devolve o token e a pessoa continua conectada.
+app.post('/api/session/restore', (req, res) => {          // sem limite de tentativas: o cookie tem 256 bits aleatórios, não dá para adivinhar
+  const t = cookieOf(req), s = t && DB.sessions[sha(t)], u = s && s.exp > Date.now() && DB.users[s.id];
+  if (!u || u.banned) { if (t) dropCookie(req, res); return res.json({ token: null }); }
+  if (s.exp - Date.now() < SESSION_MS - RENEW_MS) { s.exp = Date.now() + SESSION_MS; save(); }
+  putCookie(req, res, t); res.json({ token: t });
+});
 
 app.post('/api/forgot', limit(10, 15 * 60e3), async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase(), u = findUser(email), out = { ok: true };   // resposta igual exista ou não a conta
@@ -416,7 +445,7 @@ app.post('/api/reset', limit(10, 15 * 60e3), async (req, res) => {
   const u = DB.users[r.id];
   if (u.banned) return res.status(403).json({ error: BAN_MSG(), banned: true });
   u.pass = hash(pw); dropSessions(u.id); delete DB.resets[sha(tk)];
-  const token = newSession(u.id);                          // já deixa a pessoa conectada
+  const token = newSession(u.id, req, res);                // já deixa a pessoa conectada
   res.json({ ok: true, token });
   sendMail(u.email, `${COMPANY} — sua senha foi alterada`, `Olá! A senha da sua conta foi alterada agora. Se não foi você, peça uma nova senha em ${BASE} e fale com ${CONTACT || 'o suporte'}.`,
     mailHtml('Senha alterada', 'A senha da sua conta foi alterada agora. Se não foi você, peça uma nova senha no app e fale com o suporte.')).catch(() => { });
@@ -449,7 +478,7 @@ app.post('/api/google', limit(20, 15 * 60e3), async (req, res) => {
     u = DB.users[id] = { id, name, email, pass: null, googleId: p.sub, xp: 0, gems: 0, streak: 0, done: {}, attempts: {}, created: now, acceptedTerms: now, verified: true, ...profileOf(req.body) };
   } else if (!u.googleId) { u.googleId = p.sub; if (u.verified === false) u.pass = null; }   // conta não confirmada: descarta a senha (evita sequestro por quem cadastrou o e-mail de outra pessoa)               // já tinha conta com esse e-mail: vincula
   if (u.banned) return res.status(403).json({ error: BAN_MSG(), banned: true });
-  u.verified = true; save(); res.json({ token: newSession(u.id) });
+  u.verified = true; save(); res.json({ token: newSession(u.id, req, res) });
 });
 
 // confirmação de e-mail
@@ -568,7 +597,7 @@ app.get('/api/export', auth, (req, res) => {
 app.delete('/api/account', auth, async (req, res) => {
   if (req.u.pass ? !checkPw(String(req.body.password || ''), req.u.pass) : req.body.confirm !== 'EXCLUIR')
     return res.status(403).json({ error: req.u.pass ? 'Senha incorreta.' : 'Digite EXCLUIR para confirmar.' });
-  dropSessions(req.u.id); delete DB.users[req.u.id]; RANK.at = 0; save(); res.json({ ok: true });
+  dropSessions(req.u.id); delete DB.users[req.u.id]; RANK.at = 0; dropCookie(req, res); save(); res.json({ ok: true });
 });
 
 // ============================================================================

@@ -148,6 +148,12 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Lição 28: monte um cartão, uma tabela e uma segmentação escolhendo os campos; o visual aparece antes de tocar em Concluído.
 - [ ] Checkpoints (depois da 10 e da 20) e prova final (12 perguntas, 3 delas escritas): 2 e 3 chances; sem Dica, Solução nem Teoria; passando a prova final o curso fica concluído.
 
+**5e. Continuar conectado**
+- [ ] Entre com e-mail e senha, feche o app/aba por completo e abra de novo (também depois de algumas horas/dias): você continua dentro, sem pedir senha.
+- [ ] No iPhone (Safari ou ícone na tela inicial): depois de uns 8 dias sem abrir o app, continua conectado.
+- [ ] Toque em **Sair**: o app volta para a tela de login e, ao fechar e abrir de novo, **não** entra sozinho.
+- [ ] Entrar em outro aparelho não derruba o primeiro (até 10 aparelhos por pessoa); trocar a senha derruba os outros aparelhos.
+
 **6. Painel do dono**
 - [ ] **Ajustes → Cursos do aplicativo:** desative o **Excel** (o painel pede confirmação). No app do aluno o Excel some da aba Cursos, da escolha do primeiro curso e dos Desafios, e as lições dele ficam bloqueadas. Reative e volte tudo ao normal. Tente desativar o último curso ativo: o painel recusa.
 - [ ] Visão geral: quadro "Quem é quem" com quantas pessoas são feminino/masculino e quantas escolheram Tay/Cut. Na ficha da pessoa e no CSV aparecem **Gênero** e **Personagem**.

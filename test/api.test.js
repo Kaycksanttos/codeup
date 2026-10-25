@@ -2203,3 +2203,79 @@ test('Análise de Dados e Storytelling: resposta negativa e com vírgula, escrit
   assert.ok(f.j.qz.some(q => q.t === 'write'), 'a prova final tem perguntas escritas');
   const fin = (await doFinal(tk, 'dados', 1)).j; assert.equal(fin.ok, true); assert.equal(fin.test, 'fin'); assert.equal(fin.trackComplete, true, 'o curso de Análise de Dados tem só o nível Básico por enquanto: passar nele conclui o curso');
 });
+
+
+test('continuar conectado: sessão de 1 ano, cookie de reserva HttpOnly, restauração e "Sair" que apaga tudo', async () => {
+  const cookieOf = r => (r.headers.getSetCookie ? r.headers.getSetCookie() : []).find(c => c.startsWith('cu_sid=')) || '';
+  const lg = await fetch(U + '/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-forwarded-proto': 'https' }, body: JSON.stringify({ name: 'Fixa', email: 'fixa@teste.com', password: 'segredo1', accept: true }) });
+  const tk = (await lg.json()).token, ck = cookieOf(lg);
+  assert.match(ck, /^cu_sid=[0-9a-f]{64};/, 'cadastro deixa o cookie de reserva'); assert.equal(ck.split(';')[0].slice(7), tk, 'o cookie guarda o mesmo token do app');
+  assert.match(ck, /HttpOnly/); assert.match(ck, /SameSite=Lax/); assert.match(ck, /Max-Age=31536000/, 'dura 1 ano'); assert.match(ck, /Secure/, 'atrás de HTTPS o cookie é Secure');
+  const cookie = ck.split(';')[0];
+  const plain = await fetch(U + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'fixa@teste.com', password: 'segredo1' }) });
+  assert.doesNotMatch(cookieOf(plain), /Secure/, 'em http local (testes) não marca Secure, senão o navegador o recusaria');
+  // restaurar: sem cookie, com cookie lixo e com o cookie certo
+  const rs = (c) => call('/api/session/restore', { body: {}, headers: c ? { Cookie: c } : {} });
+  assert.deepEqual((await rs()).j, { token: null }); assert.deepEqual((await rs('cu_sid=' + 'a'.repeat(64))).j, { token: null }); assert.deepEqual((await rs('cu_sid=lixo')).j, { token: null });
+  const ok = await rs(cookie); assert.equal(ok.status, 200); assert.equal(ok.j.token, tk); assert.match(cookieOf(ok.r), /Max-Age=31536000/, 'restaurar renova o cookie');
+  assert.equal((await call('/api/me', { token: ok.j.token })).status, 200);
+  // o cookie sozinho NÃO autentica nenhuma rota (nada de CSRF): só o cabeçalho x-token vale
+  assert.equal((await call('/api/me', { headers: { Cookie: cookie } })).status, 401);
+  assert.equal((await call('/api/logout', { body: {}, headers: { Cookie: cookie } })).status, 401);
+  assert.equal((await call('/api/me', { token: tk })).status, 200, 'a sessão continua viva');
+  // quem já estava conectado antes do cookie existir ganha o cookie no próximo /api/me; com o cookie em dia não reenvia
+  assert.match(cookieOf((await call('/api/me', { token: tk })).r), /^cu_sid=/); assert.equal(cookieOf((await call('/api/me', { token: tk, headers: { Cookie: cookie } })).r), '');
+  // no banco: só o hash (o token puro não fica gravado) e o prazo é de ~1 ano
+  await new Promise(r => setTimeout(r, 1600));
+  const db = JSON.parse(fs.readFileSync(DATA, 'utf8')), sh = require('node:crypto').createHash('sha256').update(tk).digest('hex');
+  assert.ok(!(tk in db.sessions) && db.sessions[sh], 'só o hash da sessão no banco'); assert.ok(db.sessions[sh].exp - Date.now() > 360 * 864e5, 'prazo de ~1 ano');
+  // Sair apaga a sessão e o cookie: depois disso não volta sozinho
+  const out = await call('/api/logout', { token: tk, body: {}, headers: { Cookie: cookie } }); assert.equal(out.status, 200); assert.match(cookieOf(out.r), /^cu_sid=;.*Max-Age=0/);
+  assert.equal((await call('/api/me', { token: tk })).status, 401); assert.deepEqual((await rs(cookie)).j, { token: null }, 'cookie de sessão encerrada não restaura');
+  // trocar a senha por "esqueci" derruba o cookie antigo e entrega outro; excluir a conta também limpa o cookie
+  const t2 = await reg('fixa2@teste.com'); const del = await call('/api/account', { method: 'DELETE', token: t2, body: { password: 'segredo1' } });
+  assert.equal(del.status, 200); assert.match(cookieOf(del.r), /Max-Age=0/); assert.equal((await call('/api/me', { token: t2 })).status, 401);
+  // o app: tenta restaurar quando abre sem token, guarda o login pelo mesmo caminho nos 3 fluxos e respeita o "Sair" sem internet
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(ui, /api\('session\/restore'/); assert.match(ui, /function saveTk\(/); assert.equal((ui.match(/saveTk\(r\.token\)/g) || []).length, 4, 'login/cadastro, Google, redefinição e restauração guardam o login do mesmo jeito'); assert.ok(!/localStorage\.tk = /.test(ui)); assert.match(ui, /nologin/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'legal', 'privacidade.html'), 'utf8'), /cookie de sessão essencial/, 'a política de privacidade informa o cookie');
+});
+
+test('continuar conectado: cada uso renova o prazo (sessão deslizante) e quem passa o prazo sem usar é desconectado', async () => {
+  const port = PORT + 977, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slide-')), 'data.json'); let lg = '';
+  const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, RELAX_SUBMIT_LIMIT: '1', SESSION_DAYS: '0.00003', DATABASE_URL: '' } });   // prazo de ~2,6 s para não esperar dias
+  p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  try {
+    for (let i = 0; i < 150 && !/rodando/.test(lg); i++) await wait(100);
+    const me = async tk => (await fetch(base + '/api/me', { headers: { 'x-token': tk } })).status;
+    const rg = await fetch(base + '/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Uso', email: 'uso@teste.com', password: 'segredo1', accept: true }) });
+    const tk = (await rg.json()).token, cookie = rg.headers.getSetCookie().find(c => c.startsWith('cu_sid=')).split(';')[0];
+    await wait(1500); assert.equal(await me(tk), 200, 'ainda dentro do prazo (e renova)');
+    await wait(1500); assert.equal(await me(tk), 200, 'passou do prazo original (3 s), mas o uso renovou: continua conectado');
+    await wait(1500); assert.equal(await me(tk), 200, 'idem: quem usa não é desconectado');
+    const rs = await fetch(base + '/api/session/restore', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: '{}' }); assert.equal((await rs.json()).token, tk, 'o cookie também restaura enquanto a sessão vale');
+    await wait(3600);
+    assert.equal(await me(tk), 401, 'sem usar até passar o prazo: sessão expirada');
+    const rs2 = await fetch(base + '/api/session/restore', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: '{}' }); assert.equal((await rs2.json()).token, null, 'sessão expirada não restaura'); assert.match(rs2.headers.getSetCookie().join(';'), /Max-Age=0/, 'e o cookie vencido é apagado');
+  } finally { p.kill(); }
+});
+
+
+test('app nas lojas: assetlinks.json do Android só existe configurado e válido; dentro do app não há AdSense nem botão do Google', async () => {
+  assert.equal((await call('/.well-known/assetlinks.json')).status, 404, 'sem ANDROID_PACKAGE/ANDROID_SHA256 não publica nada');
+  const FP = Array.from({ length: 32 }, (_, i) => (i * 7 % 256).toString(16).padStart(2, '0').toUpperCase()).join(':');
+  const run = async env => {
+    const port = PORT + 981 + Object.keys(env).length, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'alk-')), 'data.json'); let lg = '';
+    const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, DATABASE_URL: '', ...env } });
+    p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x);
+    try { for (let i = 0; i < 150 && !/rodando/.test(lg); i++) await new Promise(r => setTimeout(r, 100)); const r = await fetch(base + '/.well-known/assetlinks.json'); return { status: r.status, j: await r.json().catch(() => null) }; } finally { p.kill(); }
+  };
+  const ok = await run({ ANDROID_PACKAGE: 'com.exemplo.codeup', ANDROID_SHA256: FP.toLowerCase() + ' ' });
+  assert.equal(ok.status, 200); assert.deepEqual(ok.j, [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: 'com.exemplo.codeup', sha256_cert_fingerprints: [FP] } }]);
+  assert.equal((await run({ ANDROID_PACKAGE: 'com.exemplo.codeup' })).status, 404, 'sem impressão digital não publica');
+  assert.equal((await run({ ANDROID_PACKAGE: 'nome inválido"', ANDROID_SHA256: FP })).status, 404, 'pacote inválido não publica');
+  assert.equal((await run({ ANDROID_PACKAGE: 'com.exemplo.codeup', ANDROID_SHA256: 'AB:CD' })).status, 404, 'impressão digital inválida não publica');
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(ui, /CodeUpApp/); assert.match(ui, /android-app:/); assert.match(ui, /if \(S\.cfg && IN_STORE\) S\.cfg\.ads = null/, 'sem AdSense no app das lojas'); assert.match(ui, /if \(S\.cfg && IN_WEBVIEW\) S\.cfg\.googleClientId = ''/, 'sem botão do Google no WebView');
+});
