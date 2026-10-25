@@ -1,5 +1,5 @@
 'use strict';
-// Fundo do CodeUp: aurora de cores suaves (segue a trilha) + rede de pontos de dados que se ligam por linhas finas e reagem ao toque/mouse.
+// Fundo do CodeUp: aurora de cores suaves (segue o curso) + rede de pontos de dados que se ligam por linhas finas e reagem ao toque/mouse.
 // Leve: aurora é só CSS (placa de vídeo), a rede usa poucos pontos; pausa com a aba escondida, respeita "reduzir movimento" e fica mais calma na prática.
 (() => {
   const fx = document.createElement('div'); fx.id = 'bgfx'; fx.setAttribute('aria-hidden', 'true');

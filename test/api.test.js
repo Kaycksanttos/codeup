@@ -31,11 +31,10 @@ test('conferência ao vivo não grava progresso', async () => {
   assert.equal((await call('/api/check', { token: tk, body: { id: 'py-1-03', code: 'print(42)', out: '42' } })).status, 409);
 });
 
-test('confirmação de e-mail: bloqueia o certificado até confirmar', async () => {
+test('confirmação de e-mail: dá para estudar sem confirmar e o link só vale uma vez', async () => {
   const j = (await call('/api/register', { body: { name: 'Vera', email: 'vera@teste.com', password: 'segredo1', accept: true } })).j;
   assert.ok(j.devVerifyLink, 'em modo de teste devolve o link'); const tk = j.token;
   assert.equal((await call('/api/me', { token: tk })).j.verified, false);
-  const r = await call('/api/certificate', { token: tk, body: { track: 'sql' } }); assert.equal(r.status, 403); assert.equal(r.j.needsVerify, true);
   assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j.ok, true, 'pode estudar sem confirmar');
   const bad = await fetch(U + '/verificar?token=errado', { redirect: 'manual' }); assert.match(bad.headers.get('location'), /verificado=0/);
   const ok = await confirm(j.devVerifyLink); assert.match(ok.headers.get('location'), /verificado=1/);
@@ -61,7 +60,7 @@ test('segurança: cabeçalhos, CSP, JSON inválido, senha fraca e protótipo', a
   const b = { name: 'Fraca', email: 'fraca@teste.com', accept: true };
   assert.equal((await call('/api/register', { body: { ...b, password: '1234567' } })).status, 400, '7 caracteres');
   assert.equal((await call('/api/register', { body: { ...b, password: '12345678' } })).status, 400, 'senha comum');
-  assert.equal((await call('/certificado/__proto__')).status, 404); assert.equal((await call('/certificado/constructor')).status, 404);
+  assert.equal((await call('/certificado/__proto__')).status, 404); assert.equal((await call('/api/certificate', { body: {} })).status, 404, 'o certificado não existe mais');
   const sql = await fetch(U + '/vendor/sql/sql-wasm.js'); assert.equal(sql.status, 200);
   assert.equal((await call('/api/me', { token: '__proto__' })).status, 401);
 });
@@ -121,7 +120,7 @@ test('cadastro: validações, duplicidade e login', async () => {
 test('gabarito não vaza, ordem das lições e correção no servidor', async () => {
   const tk = await reg('bia@t.com');
   const list = (await call('/api/lessons', { token: tk })).j;
-  assert.equal(list.length, lessons.length); assert.equal(list.length, 180);
+  assert.equal(list.length, lessons.length); assert.equal(list.length, 210);
   const py1 = list.filter(l => l.track === 'python' && l.lv === 1).slice(0, 8).map(l => l.lock);
   assert.deepEqual(py1, [null, 'seq', 'seq', 'seq', 'seq', 'seq', 'seq', 'seq'], 'tudo gratuito; só a sequência das lições bloqueia');
   assert.equal((await call('/api/lessons/py-1-02', { token: tk })).status, 409, 'não pode pular lição');
@@ -142,12 +141,13 @@ test('gabarito não vaza, ordem das lições e correção no servidor', async ()
   assert.equal((await call('/api/submit', { token: tk, body: { id: 'prova-inexistente', code: 'x' } })).status, 404);
 });
 
-test('trilha: escolher Python ou SQL', async () => {
+test('curso: escolher Python, SQL ou Excel', async () => {
   const tk = await reg('tito@t.com');
   assert.equal((await call('/api/me', { token: tk })).j.track, null);
   assert.equal((await call('/api/track', { token: tk, body: { track: 'java' } })).status, 400);
   assert.equal((await call('/api/track', { token: tk, body: { track: 'sql' } })).j.track, 'sql');
   assert.equal((await call('/api/me', { token: tk })).j.track, 'sql');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).j.track, 'excel');
 });
 
 test('Sem cobrança: tudo gratuito, só a ordem bloqueia; proteção contra SQL pesado', async () => {
@@ -165,16 +165,17 @@ test('Sem cobrança: tudo gratuito, só a ordem bloqueia; proteção contra SQL 
   assert.equal(h.j.ok, false); assert.ok(mid < 1000, 'o servidor travou durante um SQL pesado'); assert.ok(Date.now() - t0 < 8000);
 });
 
-// ---------------- Curso: lições -> prova -> próximo nível -> certificado ----------------
+// ---------------- Curso: lições -> prova -> próximo nível -> curso concluído ----------------
 const lessonsOf = (track, lv) => lessons.filter(l => l.track === track && l.lv === lv);
 const premiumUser = (email, name) => reg(email, name);
-const doLesson = (tk, l) => call('/api/submit', { token: tk, body: { id: l.id, code: l.solution, out: l.expectedOut } });
+const codeOf = l => l.type === 'excel' ? JSON.stringify(l.answer) : l.solution;           // no Excel a resposta é o JSON das fórmulas das células
+const doLesson = (tk, l) => call('/api/submit', { token: tk, body: { id: l.id, code: codeOf(l), out: l.expectedOut } });
 const cpBefore = l => lessons.checkpoints.find(c => c.track === l.track && c.lv === l.lv && c.after === l.n - 1);   // só existe antes das lições 11 e 21
 const finOf = (track, lv) => lessons.finals.find(f => f.track === track && f.lv === lv);
-const doTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: t.solution, out: t.expectedOut } });
+const doTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: codeOf(t), out: t.expectedOut } });
 const missTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: t.type === 'sql' ? 'SELECT 1' : 'print("errado")', out: 'x' } });
 const doCp = doTest, doFinal = (tk, track, lv) => doTest(tk, finOf(track, lv));
-const LEAK = ['solution', 'expectedSql', 'expectedOut', 'expectedRows', 'need', 'hints', 'explain', 'example'];   // nada disso pode chegar ao navegador numa prova
+const LEAK = ['solution', 'expectedSql', 'expectedOut', 'expectedRows', 'need', 'hints', 'explain', 'example', 'answer', 'altSet', 'keep', 'noAlt'];   // nada disso pode chegar ao navegador numa prova
 const doneOf = async (tk, prefix) => Object.keys((await call('/api/me', { token: tk })).j.done).filter(k => k.startsWith(prefix)).sort();
 const idsOf = (prefix, a, b) => Array.from({ length: b - a + 1 }, (_, i) => prefix + String(a + i).padStart(2, '0'));
 // faz as 30 lições do nível; antes das lições 11 e 21 é preciso passar no checkpoint (a prova com o que se aprendeu)
@@ -221,12 +222,12 @@ test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10
   r = (await missTest(tk, F)).j; assert.equal(r.ok, false); assert.equal(r.rewind, undefined); assert.equal(r.left, 3);
   assert.equal((await doneOf(tk, 'py-1-')).length, 30);
   assert.equal((await doFinal(tk, 'python', 1)).j.gained, 0, 'bônus só na 1ª vez');
-  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Paula Prova' } })).status, 409, 'certificado só depois dos 3 níveis');
+  assert.equal(p.trackComplete, undefined, 'o curso só termina depois dos 3 níveis');
 });
 
 test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; errou as 2 volta 5 lições; XP só na 1ª vez', async () => {
   const tk = await reg('cp@teste.com'), C10 = lessons.checkpoints.find(c => c.id === 'cp-py-1-10'), C20 = lessons.checkpoints.find(c => c.id === 'cp-py-1-20'), L1 = lessonsOf('python', 1);
-  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 18, '12 checkpoints + 6 provas finais');
+  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 21, '14 checkpoints + 7 provas finais');
   assert.ok(list.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
   const c1 = list.find(c => c.id === 'cp-py-1-10'); assert.equal(c1.after, 10); assert.equal(c1.chances, 2); assert.equal(c1.left, 2); assert.equal(c1.back, 5); assert.equal(c1.backFrom, 6); assert.equal(c1.lock, 'seq'); assert.equal(c1.fin, false);
   assert.deepEqual(list.filter(c => c.track === 'python' && c.lv === 1).map(c => c.after), [10, 20, 30]);
@@ -272,7 +273,7 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(r.cps, ['cp-py-1-10', 'cp-py-1-20']);
   assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'checkpoint 2 feito: a lição 21 abre');
   assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
-  assert.equal((await call('/api/lessons', { token: tk })).j.length, 180);
+  assert.equal((await call('/api/lessons', { token: tk })).j.length, 210);
 });
 
 test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a solução) e a mesma regra de chances vale', async () => {
@@ -305,23 +306,17 @@ test('prova: código que dá erro (sintaxe, tabela inexistente) também gasta um
   assert.equal(r.ok, false); assert.equal(r.left, 1, 'erro de sintaxe no Python gasta a 1ª chance');
 });
 
-test('trilha completa: 3 níveis aprovados geram certificado verificável (e SQL continua sem certificado)', async () => {
+test('curso completo: os 3 níveis aprovados concluem o curso (sem certificado) e a conta pode ser excluída', async () => {
   const tk = await premiumUser('cert@t.com', 'Carol');
   for (const lv of [1, 2, 3]) {
     await doLevelLessons(tk, 'python', lv);
     const r = (await doFinal(tk, 'python', lv)).j;
     assert.equal(r.ok, true, 'nível ' + lv); assert.ok(r.passed['python-' + lv]); assert.equal(r.trackComplete, lv === 3 ? true : undefined);
   }
-  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'sql' } })).status, 409);
-  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Al' } })).status, 400);
-  const c = (await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Carolina <b>Silva</b>' } })).j;
-  assert.match(c.code, /^CUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
-  const again = (await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Carolina Silva' } })).j; assert.equal(again.code, c.code, 'o código do certificado não muda');
-  const page = await fetch(U + '/certificado/' + c.code.toLowerCase()); const html = await page.text();
-  assert.equal(page.status, 200); assert.match(html, /Carolina Silva/); assert.match(html, /Python/); assert.match(html, /autêntico/); assert.ok(!html.includes('<b>Silva'), 'nome precisa ser escapado');
+  const me = (await call('/api/me', { token: tk })).j; assert.equal(me.certs, undefined, 'não existe mais certificado no perfil');
+  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Carolina Silva' } })).status, 404, 'a rota do certificado foi removida');
   assert.equal((await fetch(U + '/certificado/CUP-AAAA-BBBB-CCCC')).status, 404);
   assert.equal((await call('/api/account', { method: 'DELETE', token: tk, body: { password: 'segredo1' } })).status, 200);
-  assert.equal((await fetch(U + '/certificado/' + c.code)).status, 404, 'excluir a conta apaga o certificado');
 });
 
 test('recuperação de senha, perfil, exportação e exclusão de conta', async () => {
@@ -465,7 +460,7 @@ test('SQL: resposta certa é aprovada (inclusive várias de uma vez) e o autotes
 
 test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de marcar como errado', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nosql-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -495,7 +490,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
 
 test('SQL: com a cópia vendor/sql do projeto, corrige mesmo sem o pacote sql.js instalado (caso do "npm install" não rodado)', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vend-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools', 'vendor']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -578,7 +573,7 @@ const act = async (id, body) => A(`users/${id}/action`, body);
 const setSettings = async body => { const r = await A('settings', body); assert.equal(r.status, 200, JSON.stringify(r.j)); return r.j; };
 
 test('admin: sem credencial o painel "não existe" (404), chave errada 401, login dá token de 12 h e logout o encerra', async () => {
-  for (const p of ['overview', 'users', 'users.csv', 'learning', 'certs', 'settings', 'system', 'audit']) assert.equal((await call('/api/admin/' + p)).status, 404, p);
+  for (const p of ['overview', 'users', 'users.csv', 'learning', 'settings', 'system', 'audit']) assert.equal((await call('/api/admin/' + p)).status, 404, p);
   assert.equal((await call('/api/admin/overview', { headers: { 'x-admin-key': 'errada' } })).status, 404);
   assert.equal((await call('/api/admin/overview', { headers: { 'x-admin-token': 'lixo' } })).status, 401, 'token inválido pede novo login');
   const aluno = await reg('curioso@t.com');
@@ -623,12 +618,12 @@ test('admin: visão geral, lista com busca/filtro/ordem/página e detalhe do alu
   assert.ok(!/\$\{\s*(u|r|c|x)\.(name|email|note)\s*\}/.test(ui), 'nenhum nome/e-mail/nota entra no HTML sem esc()');
 });
 
-test('admin: liberar curso tira os bloqueios daquela trilha (inclusive a prova), mas não dá certificado de graça', async () => {
+test('admin: liberar curso tira os bloqueios daquele curso (inclusive a prova), mas não conclui nada de graça', async () => {
   const tk = await reg('liberar@t.com', 'Lia Liberada'), id = await uidOf('liberar@t.com');
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 409, 'antes: bloqueada por sequência');
   assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 409);
   assert.deepEqual((await call('/api/me', { token: tk })).j.unlocked, {});
-  assert.equal((await act(id, { action: 'unlock', tracks: ['xx'], on: true })).status, 400, 'trilha inválida');
+  assert.equal((await act(id, { action: 'unlock', tracks: ['xx'], on: true })).status, 400, 'curso inválido');
   assert.equal((await act(id, { action: 'unlock', tracks: [], on: true })).status, 400);
   let r = (await act(id, { action: 'unlock', tracks: ['python'], on: true })).j;
   assert.equal(r.user.byTrack.python.unlocked, true); assert.equal(r.user.byTrack.sql.unlocked, false); assert.deepEqual(r.user.unlock, ['python']);
@@ -641,8 +636,8 @@ test('admin: liberar curso tira os bloqueios daquela trilha (inclusive a prova),
   assert.equal((await doLesson(tk, lessons.find(l => l.id === 'py-1-07'))).j.ok, true, 'faz a lição fora de ordem');
   assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 200, 'prova final sem ter feito as 30 lições');
   assert.equal((await call('/api/lessons/cp-py-1-20', { token: tk })).status, 200, 'checkpoint também abre');
-  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Lia Liberada' } })).status, 409, 'certificado continua exigindo as 3 provas');
-  r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['python', 'sql']);
+  assert.equal((await call('/api/me', { token: tk })).j.passed['python-1'], undefined, 'liberar não aprova a prova final');
+  r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['excel', 'python', 'sql']);
   assert.equal((await call('/api/lessons/sql-1-12', { token: tk })).status, 200, 'agora SQL também');
   assert.equal((await A('users?status=unlocked&q=liberar')).j.total, 1);
   r = (await act(id, { action: 'unlock', tracks: 'all', on: false })).j; assert.deepEqual(r.user.unlock, []);
@@ -650,21 +645,13 @@ test('admin: liberar curso tira os bloqueios daquela trilha (inclusive a prova),
   assert.equal((await A('users?status=unlocked&q=liberar')).j.total, 0);
 });
 
-test('admin: com o curso liberado dá para fazer as 3 provas, pegar o certificado e o dono pode revogar e restaurar', async () => {
-  const tk = await reg('certadm@t.com', 'Cris Certificada'), id = await uidOf('certadm@t.com');
+test('admin: com o curso liberado dá para fazer as 3 provas e o curso conclui (não existe mais certificado no painel)', async () => {
+  const tk = await reg('certadm@t.com', 'Cris Concluida'), id = await uidOf('certadm@t.com');
   await act(id, { action: 'unlock', tracks: ['python'], on: true });
-  for (const lv of [1, 2, 3]) assert.equal((await doFinal(tk, 'python', lv)).j.ok, true, 'nível ' + lv);
-  const code = (await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Cris Certificada' } })).j.code; assert.ok(code);
-  assert.equal((await fetch(U + '/certificado/' + code)).status, 200);
-  const c = (await A('certs?q=cris cert')).j; assert.equal(c.total, 1); assert.equal(c.rows[0].code, code); assert.equal(c.rows[0].revoked, null);
-  assert.equal((await A('certs/CUP-NAO-EXISTE-AAAA', { revoke: true })).status, 404);
-  assert.equal((await A('certs/' + code, { revoke: true, reason: 'teste' })).status, 200);
-  const page = await fetch(U + '/certificado/' + code); assert.equal(page.status, 410); assert.match(await page.text(), /revogado/i);
-  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Cris Certificada' } })).j.code, code, 'mesmo código');
-  assert.equal((await fetch(U + '/certificado/' + code)).status, 410, 'pedir o certificado de novo não desfaz a revogação');
-  assert.equal((await A('certs?q=' + code)).j.rows[0].revoked.reason, 'teste');
-  assert.equal((await A('certs/' + code, { revoke: false })).status, 200); assert.equal((await fetch(U + '/certificado/' + code)).status, 200, 'restaurado');
-  assert.ok((await A('overview')).j.totals.certs >= 1);
+  let r; for (const lv of [1, 2, 3]) { r = (await doFinal(tk, 'python', lv)).j; assert.equal(r.ok, true, 'nível ' + lv); }
+  assert.equal(r.trackComplete, true, 'as 3 provas finais concluem o curso');
+  assert.equal((await A('certs?q=cris')).status, 404, 'a lista de certificados do painel foi removida');
+  const ov = (await A('overview')).j; assert.equal(ov.totals.certs, undefined);
 });
 
 test('admin: suspender derruba as sessões e impede login; reativar volta ao normal', async () => {
@@ -730,13 +717,63 @@ test('admin: cadastros fechados (e-mail e Google), comunicado do dono e modo liv
   s = await setSettings({ unlockAll: { on: true, days: 7 } }); assert.equal(s.unlockAll.on, true); assert.ok(Date.parse(s.unlockAll.until) - Date.now() > 6.9 * 864e5);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 200, 'modo livre abre para todos'); assert.equal((await call('/api/lessons/sql-3-30', { token: tk })).status, 200);
   assert.equal((await call('/api/lessons/fin-sql-1', { token: tk })).status, 200);
-  const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['python', 'sql']);
-  assert.equal((await call('/api/certificate', { token: tk, body: { track: 'sql', name: 'Livia Livre' } })).status, 409, 'certificado continua exigindo as provas');
+  const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['excel', 'python', 'sql']);
   assert.equal((await A('overview')).j.settings.unlockAll.on, true);
   s = await setSettings({ unlockAll: { on: false } }); assert.equal(s.unlockAll.on, false);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 409, 'desligou: bloqueios voltam');
   s = await setSettings({ unlockAll: { on: true, days: 0 } }); assert.equal(s.unlockAll.until, null, 'sem prazo'); await setSettings({ unlockAll: { on: false } });
   assert.equal((await A('settings', {})).status, 400, 'nada para salvar');
+});
+
+test('admin: cursos ativos no aplicativo: desligar esconde e bloqueia o curso (mesmo com tudo liberado), religar volta ao normal e o último curso não desliga', async () => {
+  const tk = await reg('cursos-onoff@t.com', 'Cris Cursos');
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true }, 'começa tudo ativo');
+  const painel = (await A('settings')).j.courses; assert.deepEqual(painel.map(c => c.id), ['python', 'sql', 'excel']);
+  assert.ok(painel.every(c => c.on === true && c.lessons > 0 && typeof c.students === 'number' && c.name), 'o painel lista nome, lições e alunos de cada curso');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 200);
+  assert.equal((await call('/api/lessons/xl-1-01', { token: tk })).status, 200, 'Excel aberto');
+
+  // validações
+  for (const bad of [{ courses: { java: false } }, { courses: { excel: 'nao' } }, { courses: {} }, { courses: [] }, { courses: 'excel' }]) assert.equal((await A('settings', bad)).status, 400, JSON.stringify(bad));
+  const all = await A('settings', { courses: { python: false, sql: false, excel: false } }); assert.equal(all.status, 400); assert.match(all.j.error, /pelo menos um curso/);
+  assert.equal((await call('/api/config')).j.courses.excel, true, 'pedido inválido não muda nada');
+
+  // desliga o Excel
+  let s = await setSettings({ courses: { excel: false } });
+  assert.equal(s.courses.find(c => c.id === 'excel').on, false); assert.equal(s.courses.find(c => c.id === 'python').on, true);
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: false });
+  const r = await call('/api/lessons/xl-1-01', { token: tk }); assert.equal(r.status, 409); assert.equal(r.j.lock, 'off');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 409, 'ninguém escolhe curso desligado');
+  assert.equal((await call('/api/lessons/py-1-01', { token: tk })).status, 200, 'os outros cursos seguem normais');
+  const lk = (await call('/api/lessons', { token: tk })).j; assert.ok(lk.filter(x => x.track === 'excel').every(x => x.lock === 'off'), 'todas as lições do Excel aparecem como desligadas');
+  assert.ok(lk.filter(x => x.track === 'python').every(x => x.lock !== 'off'));
+  // nem o modo livre nem a liberação individual religam um curso desligado
+  await setSettings({ unlockAll: { on: true, days: 0 } });
+  assert.equal((await call('/api/lessons/xl-1-30', { token: tk })).status, 409, 'modo livre não abre curso desligado');
+  assert.equal((await call('/api/lessons/py-1-30', { token: tk })).status, 200);
+  await setSettings({ unlockAll: { on: false } });
+  assert.equal((await A('users/' + (await uidOf('cursos-onoff@t.com')) + '/action', { action: 'unlock', tracks: ['excel'], on: true })).status, 200);
+  assert.equal((await call('/api/lessons/xl-1-30', { token: tk })).status, 409, 'liberação individual também não');
+  assert.ok((await A('audit')).j.rows.some(x => /curso Excel desativado/.test(JSON.stringify(x))), 'a mudança fica no registro de ações do painel');
+
+  // não deixa desligar o último ativo
+  await setSettings({ courses: { sql: false } });
+  const last = await A('settings', { courses: { python: false } }); assert.equal(last.status, 400);
+  assert.equal((await call('/api/lessons/py-1-01', { token: tk })).status, 200);
+
+  // religa
+  s = await setSettings({ courses: { excel: true, sql: true } }); assert.ok(s.courses.every(c => c.on));
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true });
+  assert.equal((await call('/api/lessons/xl-1-30', { token: tk })).status, 200, 'liberação individual volta a valer ao religar');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 200);
+});
+
+test('telas: a aba Cursos tem o visual de lista (busca, categorias, ilha com logo) e o admin tem o card "Cursos do aplicativo"; ninguém vê mais "trilha" nem certificado', async () => {
+  const app = await (await fetch(U + '/app.js')).text(), css = await (await fetch(U + '/style.css')).text(), adm = await (await fetch(U + '/admin.js')).text();
+  for (const k of ['crtop', 'crbust', 'island(', 'courseRow', 'soonRow', 'cfilter', 'ACTIVE', 'Buscar curso']) assert.ok(app.includes(k), 'app.js tem ' + k);
+  for (const k of ['.crl .cr', '.crisl', '.crc button', '.bub', '.crs']) assert.ok(css.includes(k), 'style.css tem ' + k);
+  assert.match(adm, /Cursos do aplicativo/); assert.match(adm, /data-course/); assert.match(adm, /layers:/, 'o ícone usado no card existe');
+  assert.ok(!/certificad/i.test(app), 'o certificado saiu do app'); assert.ok(!/\btrilhas?\b/i.test(app.replace(/\/\/.*$/gm, '').replace(/['"`]\w*trilha\w*['"`]/g, '')), 'a palavra trilha não aparece para o aluno');
 });
 
 test('admin: anúncios (AdSense) pelo painel: IDs validados, liga/desliga, ads.txt, meta tag e CSP seguem o que foi salvo; o painel manda mais que o ambiente e "voltar ao padrão" limpa', async () => {
@@ -809,11 +846,11 @@ test('admin: aprendizado, sistema e auditoria (registra quem fez o quê, sem gua
   const tk = await reg('trava@t.com', 'Tito Trava');
   await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'x' } });
   const l = (await A('learning')).j; assert.ok(l.stuck.some(r => r.id === 'py-1-01' && r.stuck >= 1), 'lição com tentativa sem conclusão aparece como "travada"');
-  assert.equal(l.exams.length, 6); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
+  assert.equal(l.exams.length, 7); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
   const sy = (await A('system')).j; assert.equal(sy.db, 'arquivo'); assert.equal(typeof sy.pyServer, 'boolean'); assert.equal(sy.keyFromEnv, true); assert.ok(sy.users >= 1 && sy.memMB > 0 && sy.uptime >= 0);
   assert.ok(!JSON.stringify(sy).includes('chave-admin'), 'a chave nunca aparece no painel');
   const au = (await A('audit?limit=300')).j.rows, acts = new Set(au.map(r => r.action));
-  for (const a of ['login', 'login-falhou', 'liberou-curso', 'tirou-liberacao', 'suspendeu', 'reativou', 'excluiu-conta', 'ajustes', 'revogou-certificado', 'exportou-csv', 'ajustou-xp', 'zerou-progresso']) assert.ok(acts.has(a), 'auditoria sem "' + a + '"');
+  for (const a of ['login', 'login-falhou', 'liberou-curso', 'tirou-liberacao', 'suspendeu', 'reativou', 'excluiu-conta', 'ajustes', 'exportou-csv', 'ajustou-xp', 'zerou-progresso']) assert.ok(acts.has(a), 'auditoria sem "' + a + '"');
   assert.ok(au.every((r, i) => i === 0 || au[i - 1].at >= r.at), 'mais recentes primeiro');
   assert.ok(au.find(r => r.action === 'liberou-curso').target.includes('@t.com'));
   assert.ok(!JSON.stringify(au).includes('segredo1') && !JSON.stringify(au).includes('chave-admin'), 'auditoria não guarda senhas');
@@ -1240,7 +1277,7 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.match(anim, /if \(reduce \|\| !PZ/, 'com "reduzir movimento" as poses não entram'); assert.match(anim, /if \(reduce\) return false;/);
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
-  assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.ok(!/const hero = [^\n]*(body\(|class=hb\b|<img)/.test(ui) && !/'hello'/.test(ui), 'a tela de entrada (login/cadastro) não tem personagem: só a marca CodeUp'); assert.match(ui, /'Qual trilha você quer fazer\?', '', '', 'think'/);
+  assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.ok(!/const hero = [^\n]*(body\(|class=hb\b|<img)/.test(ui) && !/'hello'/.test(ui), 'a tela de entrada (login/cadastro) não tem personagem: só a marca CodeUp'); assert.match(ui, /'Qual curso você quer fazer\?', '', '', 'think'/);
   assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 3, 'o mapa usa o personagem nas três paradas (lição, checkpoint e prova final)');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
@@ -1337,11 +1374,11 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   assert.match(ui, /c\.fin && c\.track == t && !passedLv\(t, c\.lv\) && !c\.lock/, 'com as 30 lições feitas o "Continuar" leva à prova final');
   assert.ok(!/examIntro|examStart|examQ\(|examFinish|execOnly|api\('exam\//.test(ui), 'a prova antiga de 10 questões saiu do app');
   assert.ok(!/S\.me\.exams/.test(ui));
-  assert.match(ui, /Passe nas 3 provas finais/);
+  assert.match(ui, /Passando na prova final, o próximo nível abre/);
   for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span']) assert.ok(css.includes(c), 'css ' + c);
   assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
   // quem acerta vê o resultado (tabela do SQL ou saída do Python) na tela de conclusão: lição, checkpoint e prova final
-  assert.match(ui, /S\.lastRes = r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o resultado'); assert.ok(css.includes('.resbox'));
+  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o resultado'); assert.ok(css.includes('.resbox'));
   // ao conquistar algo a tela mostra o que foi desbloqueado: lição, checkpoint, prova final, nível, certificado e (por XP) título, moldura e itens de personalização
   assert.match(ui, /function unlocksOf\(lk0, xb, s\)/); assert.match(ui, /S\.unl = unlocksOf\(lk0, xb, s\)/); assert.match(ui, /Desbloqueado!/);
   assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
@@ -1385,20 +1422,23 @@ test('acabamento: abertura com a marca, falha de carregamento, sessão expirada,
   assert.ok(!/(^|\n)\.tg\{display:grid/.test(css), '.tg do logo não vira grade'); assert.match(css, /\.tgr\{display:grid/); assert.match(ui, /<div class=tgr>/);
 });
 
-test('trilhas: logos novas do Python e do SQL e a tela Trilhas redesenhada', async () => {
+test('cursos: logos de Python, SQL e Excel e a tela Cursos em lista (busca, categorias, XP e progresso)', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js');
-  // as duas logos (recortadas da imagem do dono, com fundo transparente) valem em todas as telas no lugar do "py" e do ícone de banco
-  for (const f of ['logo-python.webp', 'logo-sql.webp']) {
+  // as logos (fundo transparente) valem em todas as telas no lugar do "py" e do ícone de banco; a do Excel é um desenho original
+  for (const f of ['logo-python.webp', 'logo-sql.webp', 'logo-excel.webp']) {
     const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 8000 && b.length < 80000, `${f} tem tamanho razoável (${b.length})`);
     assert.equal((await fetch(`${U}/img/${f}`)).status, 200, f + ' é servida'); assert.ok(sw.includes(`/img/${f}`), f + ' fica no cache offline');
   }
-  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{t == 'python' \? 'python' : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
+  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{t == 'python' \|\| t == 'excel' \? t : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
   assert.ok(!/\.tg\.py|\.tg\.sq/.test(css), 'sem o CSS antigo do "py" e do ícone de banco');
-  // Trilhas: resumo, cartão por trilha (logo, anel, níveis com estado, próximo passo, certificado) e "Em breve"
-  for (const k of ['class=jr', 'panel trk2', 'class=ringw', 'class="lv2 ${st}"', 'class=nx2', 'class="cert2', "onclick=\"studyTrack('${t}')\"", 'class=sec2>Em breve', 'class="panel soon"', 'class=sr>', 'class=sbadge']) assert.ok(ui.includes(k), 'Trilhas: ' + k);
-  for (const k of ['.jr{', '.trk2{', '.lv2{', '.nx2{', '.cert2{', '.soon{', '.soon .sr{']) assert.ok(css.includes(k), 'CSS de ' + k);
-  assert.ok(!css.includes('.soon .sn') && !css.includes('.soon .chip'), 'sem colidir com .sn (número da sequência) e .chip (botões)');
-  assert.match(ui, /Certificado ao passar nas 3 provas finais/); assert.match(ui, /Análise de Dados/); assert.match(ui, /Projetos Reais/);
+  // tela Cursos: cabeçalho com mascote e balão, busca, categorias e a lista (um cartão por curso + os que estão "em breve")
+  for (const k of ['class=crh', 'class=crm', 'class=bub', 'class=crs', 'id=cq', 'oninput="cfilter()"', 'class=crc', "onclick=\"ccat('${c}')\"", 'class=crl id=crl', 'class=crx', 'class=crbar', 'class=crgo', "onclick=\"studyTrack('${t}')\"", 'class=sbadge', 'Em breve']) assert.ok(ui.includes(k), 'Cursos: ' + k);
+  for (const k of ['.crh{', '.crs{', '.crc{', '.crl{', '.crl .cr{', '.crbar{', '.crgo{', '.sbadge{', 'body.t-excel{', 'body.wild.t-excel{', 'body.neo.t-excel', 'body.rose.t-excel']) assert.ok(css.includes(k), 'CSS de ' + k);
+  for (const x of ['Todos', 'Programação', 'Dados', 'Produtividade']) assert.ok(ui.includes(`'${x}'`), 'categoria ' + x);
+  assert.match(ui, /Power BI e DAX/); assert.match(ui, /Análise de Dados e Storytelling/); assert.ok(!/Projetos Reais/.test(ui), 'só aparecem cursos que existem ou que estão no roteiro');
+  // a palavra "trilha" saiu da tela: agora é "curso"
+  assert.ok(!/trilha/i.test(ui.replace(/\/\/[^\n]*/g, '')), 'a palavra "trilha" não aparece mais no texto do app');
+  assert.ok(!/certific/i.test(ui), 'o app não fala mais de certificado');
 });
 
 test('mapa com cenário: floresta ao longo da trilha, personagem no pedestal e cartão da lição (visual Azul)', async () => {
@@ -1666,4 +1706,65 @@ test('telas de entrada: nunca o cenário Rosa; o Rosa da Tay só vale dentro do 
   assert.ok(app.includes('if (w.logged) applySkin(g === \'tay\' ? \'rose\' : S.skin0'), 'escolher a Tay no cadastro não troca o cenário na hora');
   assert.ok(app.includes("applySkin(w.logged ? sk : entrySkin())"), 'ao terminar o cadastro a tela de entrada continua azul');
   assert.ok(app.includes("applySkin(skinOf()); go('home');"), 'ao entrar no app vale o visual salvo');
+});
+
+// ---------------- Excel ----------------
+test('Excel: o servidor entrega a planilha sem o gabarito, corrige as fórmulas e barra valor digitado à mão', async () => {
+  const tk = await reg('excel1@t.com', 'Exa');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).j.track, 'excel');
+  const list = (await call('/api/lessons', { token: tk })).j, ex = list.filter(l => l.track === 'excel');
+  assert.equal(ex.length, 30); assert.deepEqual(ex.map(l => l.n), Array.from({ length: 30 }, (_, i) => i + 1)); assert.ok(ex.every(l => l.lv === 1 && l.type === 'excel'));
+  assert.deepEqual(ex.slice(0, 3).map(l => l.lock), [null, 'seq', 'seq']);
+  const l1 = (await call('/api/lessons/xl-1-01', { token: tk })).j;
+  assert.ok(l1.sheet && l1.sheet.rows.length && l1.targets.length, 'a planilha e as células pedidas chegam ao navegador');
+  for (const k of ['answer', 'altSet', 'keep', 'noAlt', 'need']) assert.ok(!(k in l1), `o gabarito (${k}) não pode chegar ao navegador`);
+  assert.equal((await call('/api/lessons/xl-1-02', { token: tk })).status, 409, 'não pula lição');
+  assert.equal((await call('/api/lessons/xl-2-01', { token: tk })).status, 404, 'o Excel Intermediário ainda não existe');
+  // errado: o resultado de cada célula volta com o valor que veio e o esperado
+  let r = (await call('/api/submit', { token: tk, body: { id: 'xl-1-01', code: JSON.stringify({ B2: '=15+26' }) } })).j;
+  assert.equal(r.ok, false); assert.equal(r.xl.cells[0].why, 'valor'); assert.equal(r.xl.cells[0].got, '41'); assert.equal(r.xl.cells[0].want, '42'); assert.equal((await call('/api/me', { token: tk })).j.xp, 0);
+  r = (await call('/api/submit', { token: tk, body: { id: 'xl-1-01', code: '' } })).j; assert.equal(r.ok, false, 'resposta vazia');
+  r = (await call('/api/submit', { token: tk, body: { id: 'xl-1-01', code: JSON.stringify({ B2: '42' }) } })).j; assert.equal(r.ok, false); assert.equal(r.xl.cells[0].why, 'fixo', 'número digitado no lugar da fórmula');
+  r = (await call('/api/submit', { token: tk, body: { id: 'xl-1-01', code: JSON.stringify({ B2: '=15+(27' }) } })).j; assert.equal(r.xl.cells[0].why, 'sintaxe');
+  // certo
+  r = (await doLesson(tk, lessons.find(l => l.id === 'xl-1-01'))).j; assert.equal(r.ok, true); assert.equal(r.gained, 10); assert.equal(r.xp, 10);
+  assert.equal((await call('/api/lessons/xl-1-02', { token: tk })).status, 200, 'a lição seguinte abre');
+  // a lição 3: usar o valor em vez da célula dá o número certo hoje, mas não passa na planilha alternativa
+  assert.equal((await doLesson(tk, lessons.find(l => l.id === 'xl-1-02'))).j.ok, true);
+  r = (await call('/api/submit', { token: tk, body: { id: 'xl-1-03', code: JSON.stringify({ D2: '=2,5*10' }) } })).j; assert.equal(r.ok, false); assert.equal(r.xl.cells[0].why, 'alt', 'fórmula que não acompanha os dados');
+  r = (await call('/api/submit', { token: tk, body: { id: 'xl-1-03', code: JSON.stringify({ D2: '=C2*B2' }) } })).j; assert.equal(r.ok, true, 'qualquer fórmula certa vale');
+  // conferência ao vivo não dá XP
+  const before = (await call('/api/me', { token: tk })).j.xp; r = (await call('/api/check', { token: tk, body: { id: 'xl-1-04', code: '{}' } }));
+  assert.ok([200, 409].includes(r.status)); assert.equal((await call('/api/me', { token: tk })).j.xp, before);
+});
+
+test('Excel: provas (checkpoints e prova final) sem gabarito, com chances e o curso conclui no nível Básico', async () => {
+  const tk = await reg('excel2@t.com', 'Xavier');
+  const cps = (await call('/api/checkpoints', { token: tk })).j.filter(c => c.track === 'excel');
+  assert.deepEqual(cps.map(c => c.id), ['cp-xl-1-10', 'cp-xl-1-20', 'fin-xl-1']); assert.ok(cps.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
+  const C10 = (await call('/api/lessons/cp-xl-1-10', { token: tk }));
+  assert.equal(C10.status, 409, 'o checkpoint só abre depois da lição 10');
+  for (const l of lessonsOf('excel', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  const c = (await call('/api/lessons/cp-xl-1-10', { token: tk })).j; assert.ok(c.sheet && c.targets.length); assert.ok(!LEAK.some(k => k in c), 'a prova aberta não tem gabarito nem solução');
+  let r = (await missTest(tk, lessons.checkpoints.find(x => x.id === 'cp-xl-1-10'))).j; assert.equal(r.ok, false); assert.equal(r.left, 1);
+  r = (await call('/api/submit', { token: tk, body: { id: 'cp-xl-1-10', code: JSON.stringify({ D2: '=B2*C2' }) } })).j; assert.equal(r.ok, false); assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }, 'gastou as 2 chances: volta 5 lições');
+  // faz o curso inteiro (o nível Básico): lições, checkpoints e prova final
+  const tk2 = await reg('excel3@t.com', 'Xuxa');
+  await doLevelLessons(tk2, 'excel', 1);
+  assert.equal((await call('/api/lessons/fin-xl-1', { token: tk2 })).status, 200);
+  r = (await doFinal(tk2, 'excel', 1)).j; assert.equal(r.ok, true); assert.equal(r.test, 'fin'); assert.equal(r.gained, 50); assert.ok(r.passed['excel-1']); assert.equal(r.trackComplete, true, 'o Excel tem só o nível Básico por enquanto: passar nele conclui o curso');
+  const me = (await call('/api/me', { token: tk2 })).j; assert.equal(me.certs, undefined);
+});
+
+test('Excel: arquivos da planilha no navegador (motor, tela, logo) e carregados antes do app', async () => {
+  const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), html = rd('index.html'), sw = rd('sw.js'), ui = rd('app.js'), xu = rd('xlui.js'), css = rd('style.css');
+  assert.ok(html.indexOf('/xl.js') > 0 && html.indexOf('/xl.js') < html.indexOf('/xlui.js') && html.indexOf('/xlui.js') < html.indexOf('/app.js'), 'xl.js, xlui.js e só depois o app');
+  for (const f of ['/xl.js', '/xlui.js']) { assert.equal((await fetch(U + f)).status, 200); assert.ok(sw.includes(`'${f}'`), f + ' fica no cache offline'); }
+  assert.match(sw, /codeup-v(5[5-9]|[6-9]\d)/, 'cache novo para quem já tinha a versão anterior');
+  assert.ok(!/(^|[^.\w])eval\s*\(|new Function|Function\s*\(/.test(rd('xl.js').replace(/\/\/[^\n]*/g, '')), 'o motor da planilha não executa código do aluno');
+  for (const k of ['xlBox', 'xlInit', 'xlCode', 'xlCommit', 'xlStatic', 'xlPreview', 'xlDiag', 'xlMark', 'xlFill', 'xlTap', 'xlIns']) assert.ok(new RegExp('(function|const) ' + k + '\\b').test(xu), 'função ' + k);
+  for (const k of ['.xs{', '.xfb{', '.xsym', '.xk{', '.xt{', '.xt td.xtg', '.xt td.xsel', '.xt td.xvok', '.xt td.xvno']) assert.ok(css.includes(k), 'CSS ' + k);
+  // a prática de Excel usa a planilha, e o botão Concluído manda o JSON das células
+  for (const k of ["X = l.type == 'excel'", 'xlBox(l)', 'xlInit(l)', 'xlCode()', 'xlDiag(l, s)', 'xlMark(s)', 'OUT0X']) assert.ok(ui.includes(k), 'app.js: ' + k);
+  assert.equal((await fetch(U + '/img/logo-excel.webp')).status, 200);
 });

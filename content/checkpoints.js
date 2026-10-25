@@ -4,7 +4,7 @@
 //   • Checkpoint depois da lição 10  → 2 chances. Errou as duas: volta 5 lições (6 a 10) para relembrar.
 //   • Checkpoint depois da lição 20  → 2 chances. Errou as duas: volta 5 lições (16 a 20) para relembrar.
 //   • Prova final (depois da lição 30) → 3 chances. Acertou: passa para o próximo nível. Errou as três: volta 10 lições (21 a 30).
-// Sem dica e sem ver a solução (a solução nunca vai para o navegador). Total: 2 trilhas x 3 níveis x (2 checkpoints + 1 final) = 18 tarefas.
+// Sem dica e sem ver a solução (a solução nunca vai para o navegador). Total: 2 cursos x 3 níveis x (2 checkpoints + 1 final) = 18 tarefas.
 // As regras (chances e quantas lições voltam) ficam em lessons.js. Para editar: mude aqui, rode `npm run build:content` e `npm test`.
 const { LOJA, RH, CLI, VM } = require('./seeds');
 
@@ -123,7 +123,7 @@ const out = [];
       "SELECT d.nome AS departamento, f.nome, f.salario, COALESCE(g.nome, 'Sem gerente') AS gerente, RANK() OVER (PARTITION BY f.depto_id ORDER BY f.salario DESC) AS pos_depto, ROUND(f.salario - AVG(f.salario) OVER (PARTITION BY f.depto_id), 0) AS dif FROM funcionarios f JOIN departamentos d ON d.id = f.depto_id LEFT JOIN funcionarios g ON g.id = f.gerente_id WHERE f.salario IS NOT NULL ORDER BY departamento, pos_depto",
       ['join', 'left join', 'coalesce(', 'rank(', 'avg(', 'over', 'partition by', 'round('],
       [`É a PROVA FINAL do nível Avançado: um painel completo de RH que junta tabelas, acha o gerente de cada pessoa na mesma tabela, trata os campos vazios e calcula posição e média com funções de janela. Usa tudo desde a lição 1.`,
-        `É o tipo de análise que responde "quem ganha mais em cada departamento e quanto cada pessoa está acima ou abaixo da média?". Passando aqui, você conclui a trilha de SQL!`,
+        `É o tipo de análise que responde "quem ganha mais em cada departamento e quanto cada pessoa está acima ou abaixo da média?". Passando aqui, você conclui o curso de SQL!`,
         `JOIN com departamentos, LEFT JOIN da tabela com ela mesma para o gerente, COALESCE para o 'Sem gerente', RANK() e AVG() com OVER (PARTITION BY ...), ROUND para a diferença, WHERE para o salário e ORDER BY no final.`,
         `Uma tabelinha com 6 colunas (departamento, nome, salario, gerente, pos_depto e dif) e uma linha para cada pessoa com salário, separada por departamento e na ordem da posição.`])
   );
@@ -204,7 +204,7 @@ const out = [];
     P.fin('Prova final: relatório com pandas', 'O DataFrame df tem as colunas produto, categoria, qtd, preco e mes. Crie a coluna total (qtd vezes preco). Imprima uma linha por categoria, da maior receita para a menor, no formato Eletrônicos: R$ 8120 em 3 vendas (receita da categoria e número de linhas dela). Na última linha imprima Melhor mês: seguido do mês com maior receita.',
       'df["total"] = df["qtd"] * df["preco"]\nr = df.groupby("categoria")["total"].agg(["sum", "count"]).sort_values("sum", ascending=False)\nfor cat, linha in r.iterrows():\n    print(f"{cat}: R$ {int(linha[\'sum\'])} em {int(linha[\'count\'])} vendas")\npor_mes = df.groupby("mes")["total"].sum()\nprint(f"Melhor mês: {por_mes.idxmax()}")', ['groupby(', 'print('],
       [`É a PROVA FINAL do nível Avançado: uma análise de dados completa com pandas, que cria colunas, agrupa, ordena e resume uma tabela. Usa tudo o que você aprendeu desde a lição 1.`,
-        `É o trabalho de uma pessoa analista: transformar uma tabela solta em respostas de verdade (qual categoria rende mais? qual mês foi o melhor?). Passando aqui, você conclui a trilha de Python!`,
+        `É o trabalho de uma pessoa analista: transformar uma tabela solta em respostas de verdade (qual categoria rende mais? qual mês foi o melhor?). Passando aqui, você conclui o curso de Python!`,
         `Crie a coluna total, agrupe por categoria com groupby e agg (soma e contagem), ordene com sort_values, percorra com iterrows() e mostre com f-string. Para o mês, use groupby("mes") e idxmax().`,
         `Quatro linhas: as três categorias, da maior para a menor receita, e embaixo o melhor mês.`],
       { prelude: DF, peek: 'print(df)' })

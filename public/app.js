@@ -49,7 +49,11 @@ const IC = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   volume: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
   palette: '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>',
-  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>'
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/>'
 };
 const ic = (n, s = 18) => `<svg class=i width=${s} height=${s} viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.8 stroke-linecap=round stroke-linejoin=round aria-hidden=true>${IC[n] || ''}</svg>`;
 const LS = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { } } };
@@ -110,8 +114,8 @@ const body = (h = 200, cls = '', extra = '', fxc = '', reel = '') => COS() ? cos
 const stage = (h, text, cls = '', fxc = '', reel = '') => `<div class="stage ${cls}"${(b => { const v = [b ? '--gl:' + b.c1 : '', /^#[0-9a-f]{6}$/i.test(fxc) ? '--fx:' + fxc : ''].filter(Boolean).join(';'); return v ? ` style="${v}"` : ''; })(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls, '', fxc, reel)}<span class=gn>${esc(gnm())}</span></div>`;
 // personagem do mapa: de frente, com o corpo animado (respira, pisca) e, de tempos em tempos, uma expressãozinha (reel 'mapa')
 const walker = () => COS() ? `<img class=pm src="${cosPic(COS())}" alt="">` : window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h: 120, cls: 'pm', reel: 'mapa', hue: HUE(), alt: '' }) : `<img class=pm src="${IMG().full}" alt="">`;
-// personagem do resultado de uma conquista: título novo (cor do título) > trilha concluída > nível novo > só passou (ou prova aprovada, que também é conquista)
-// cada comemoração sorteia uma das sequências de expressões (anim.js, REELS): lição = 'win', checkpoint = 'cp', conquista (título, nível, prova, trilha) = 'big'
+// personagem do resultado de uma conquista: título novo (cor do título) > curso concluído > nível novo > só passou (ou prova aprovada, que também é conquista)
+// cada comemoração sorteia uma das sequências de expressões (anim.js, REELS): lição = 'win', checkpoint = 'cp', conquista (título, nível, prova, curso) = 'big'
 const winStage = (h, text, base = 'win', big = false) => {
   const t = S.tierUp ? CR.TIERS[S.tierUp] : null;
   if (t) return stage(h, `Agora você é ${t.title}!`, 'good epic2', t.color, 'big');
@@ -120,7 +124,7 @@ const winStage = (h, text, base = 'win', big = false) => {
   if (/epic/.test(base)) return stage(h, text, 'good epic', '#fbbf24', 'big');
   return stage(h, text, 'good', '', base == 'cp' ? 'cp' : 'win');
 };
-const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${t == 'python' ? 'python' : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo da trilha (Python ou SQL)
+const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${t == 'python' || t == 'excel' ? t : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo do curso (Python, SQL ou Excel)
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
 // destaque de sintaxe simples (só para exemplos e soluções exibidos)
@@ -128,7 +132,17 @@ const PY_KW = 'def return if elif else for while in import from as class try exc
 const PY_FN = 'print len range sum max min sorted list dict set tuple int float str bool type enumerate zip map filter any all abs round reversed isinstance super iter next'.split(' ');
 const SQ_KW = 'select from where and or not in between like order by group having limit distinct as join left right inner outer on union all except intersect case when then else end insert into values update set delete create table view index with over partition rows preceding current row asc desc is null exists offset unbounded following'.split(' ');
 const SQ_FN = 'count sum avg min max round upper lower length coalesce row_number rank dense_rank lag lead ntile first_value strftime julianday substr cast date integer text real'.split(' ');
+function hlXl(code) {   // fórmulas do Excel: funções, células/intervalos, textos e números
+  const re = /("(?:[^"]|"")*")|(\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?)|([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9._]*)(?=\()|(\d+(?:,\d+)?%?)/g;
+  let out = '', last = 0, m; code = String(code ?? '');
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index)); last = re.lastIndex;
+    out += m[1] ? `<span class=s>${esc(m[1])}</span>` : m[2] ? `<span class=k>${esc(m[2])}</span>` : m[3] ? `<span class=f>${esc(m[3])}</span>` : `<span class=n>${esc(m[4])}</span>`;
+  }
+  return out + esc(code.slice(last));
+}
 function hl(code, type) {
+  if (type == 'excel') return hlXl(code);
   const sql = type == 'sql', kw = new Set(sql ? SQ_KW : PY_KW), fn = new Set(sql ? SQ_FN : PY_FN);
   const re = sql ? /(--[^\n]*)|('(?:[^'\n]|'')*')|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_][A-Za-z_0-9]*)\b/g : /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_][A-Za-z_0-9]*)\b/g;
   let out = '', last = 0, m; code = String(code ?? '');
@@ -199,8 +213,8 @@ const TROPHY = `<svg class=trophy viewBox="0 0 120 130" aria-hidden=true><defs><
   <path d="M30 14h60v32c0 20-13 34-30 34S30 66 30 46z" fill=url(#tgd) stroke=#b45309 stroke-width=3 stroke-linejoin=round /><g clip-path="url(#tcl)"><rect class=shn x=-50 y=6 width=26 height=84 fill=#fff opacity=.6 /></g>
   <path d="m60 26 5.2 11 12 1.5-8.8 8.3 2.3 11.9L60 52.8l-10.7 5.9 2.3-11.9-8.8-8.3 12-1.5z" fill=#fff7d6 stroke=#d97706 stroke-width=1.6 stroke-linejoin=round /></svg>`;
 function passFx(r, l, done) {   // prova final aprovada: r = resposta do /api/submit, l = a prova
-  const fin = !!r.trackComplete, title = fin ? 'Trilha concluída!' : 'Nível aprovado!';
-  openOv('pass', `<div class=trw>${TROPHY}</div><h2 class=fxt>${title}</h2><div class=fxscore><b>${TN[l.track]} ${esc(l.level)}</b> · prova final</div><div class=fxch>${sparks(14, true)}${ovHero(ovH(190), 'pass', '#fbbf24')}</div>${fin ? '<span class=fxchip>Seu certificado está liberado</span>' : r.gained ? `<span class=fxchip>+${r.gained} XP de bônus</span>` : ''}<button class="btn pri block fxbtn" data-go style="--bd:1.9s">Continuar</button>`, { tap: false, label: title, done });
+  const fin = !!r.trackComplete, title = fin ? 'Curso concluído!' : 'Nível aprovado!';
+  openOv('pass', `<div class=trw>${TROPHY}</div><h2 class=fxt>${title}</h2><div class=fxscore><b>${TN[l.track]} ${esc(l.level)}</b> · prova final</div><div class=fxch>${sparks(14, true)}${ovHero(ovH(190), 'pass', '#fbbf24')}</div>${fin ? '<span class=fxchip>Você concluiu o curso. Parabéns!</span>' : r.gained ? `<span class=fxchip>+${r.gained} XP de bônus</span>` : ''}<button class="btn pri block fxbtn" data-go style="--bd:1.9s">Continuar</button>`, { tap: false, label: title, done });
   confetti(70); setTimeout(() => confetti(60), 650); sfx('pass');
 }
 // sequência de dias (frequência): chama + número rolando + semana com os dias feitos; marcos (3, 7, 14, 30…) ganham destaque e fanfarra
@@ -225,7 +239,7 @@ function setSfx(v) { const on = window.CodeUpSfx ? CodeUpSfx.set(v) : false; if 
 
 function toast(m, err) { document.querySelectorAll('.toast').forEach(x => x.remove()); const d = document.createElement('div'); d.className = 'toast' + (err ? ' err' : ''); d.innerHTML = ic(err ? 'info' : 'check', 18) + '<span></span>'; d.lastChild.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 4500); }
 const fail = e => { if (!e.silent) toast(e.error || e.message || 'Algo deu errado.', true); };
-const theme = t => { document.body.classList.remove('t-python', 't-sql'); if (t) document.body.classList.add('t-' + t); };
+const theme = t => { document.body.classList.remove('t-python', 't-sql', 't-excel'); if (t) document.body.classList.add('t-' + t); };
 
 async function api(p, o = {}) {
   let r;
@@ -246,7 +260,7 @@ function showAuth() {
     login: { t: 'Entre na sua conta', s: 'Continue de onde parou.', btn: 'Entrar',
       body: `<input class=in type=email id=em placeholder="E-mail" autocomplete=email><input class=in type=password id=pw placeholder="Senha" autocomplete=current-password>`,
       links: `<div class=lnk><a onclick="S.auth='forgot';showAuth()">Esqueci minha senha</a></div><div class=lnk>Ainda não tem conta? <a onclick="goRegister()">Criar conta grátis</a></div>` },
-    register: { t: 'Crie sua conta grátis', s: 'Grátis, do básico ao avançado, com prova e certificado.', btn: 'Criar conta grátis',
+    register: { t: 'Crie sua conta grátis', s: 'Grátis, do básico ao avançado, com provas e ranking.', btn: 'Criar conta grátis',
       body: `<input class=in type=text id=nm placeholder="Seu nome" maxlength=30 autocomplete=name><input class=in type=email id=em placeholder="E-mail" autocomplete=email><input class=in type=password id=pw placeholder="Senha (mín. 8 caracteres)" autocomplete=new-password>
         <label class=chk><input type=checkbox id=ac><span>Li e aceito os <a href="/termos" target="_blank">Termos de Uso</a> e a <a href="/privacidade" target="_blank">Política de Privacidade</a>.</span></label>`,
       links: `<div class=lnk>Já tem conta? <a onclick="S.auth='login';showAuth()">Entrar</a></div>` },
@@ -255,8 +269,8 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python e SQL do básico ao avançado, com prova e certificado.</p></div></div>
-    <div class=feat><span>${ic('code', 16)} 180 lições práticas</span><span>${ic('cap', 16)} 3 níveis com provas</span><span>${ic('award', 16)} Certificado</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python, SQL e Excel do básico ao avançado, com provas.</p></div></div>
+    <div class=feat><span>${ic('code', 16)} 210 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
   if (g) googleBtn();
@@ -436,7 +450,7 @@ async function go(t) {
   if (t) S.tab = t;
   try {
     let cf; [S.me, S.ls, S.cps, cf] = await Promise.all([api('me'), api('lessons'), api('checkpoints'), api('config').catch(() => null)]);
-    if (cf && S.cfg) S.cfg.announce = cf.announce;                          // comunicado do dono: atualiza sem precisar recarregar a página
+    if (cf && S.cfg) { S.cfg.announce = cf.announce; S.cfg.courses = cf.courses; }   // comunicado e cursos ativos do dono: atualizam sem precisar recarregar a página
     const g = S.me.guide, l = LS.get('guide');
     if (g && g !== l) LS.set('guide', g);                                   // a conta manda: o mesmo personagem em todos os aparelhos
     const need = [!S.me.sex && 'sex', !S.me.guide && 'guide', !S.me.gname && 'gname'].filter(Boolean);
@@ -453,21 +467,25 @@ async function go(t) {
 }
 const done = l => S.me.done[l.id];
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
-const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL' };
+const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', excel: 'Excel' };
+const COURSES = ['python', 'sql', 'excel'];                                   // ordem dos cursos na tela Cursos
+const courseOn = t => !S.cfg || !S.cfg.courses || S.cfg.courses[t] !== false;   // o dono pode desativar cursos no painel (Ajustes → Cursos)
+const ACTIVE = () => COURSES.filter(courseOn);
+const lvs = t => { const n = Math.max(1, ...(S.ls || []).filter(l => l.track == t).map(l => l.lv)); return Array.from({ length: n }, (_, i) => i + 1); };   // níveis que o curso tem hoje (o Excel começa só com o Básico)
 const lessonsOf = (t, lv) => S.ls.filter(l => l.track == t && l.lv == lv);
 const lvDone = (t, lv) => lessonsOf(t, lv).filter(done).length;
 const passedLv = (t, lv) => !!S.me.passed[t + '-' + lv];
-const unl = t => !!(S.me && S.me.unlocked && S.me.unlocked[t]);               // trilha liberada pelo dono (sem bloqueio de nível, sequência ou checkpoint)
+const unl = t => !!(S.me && S.me.unlocked && S.me.unlocked[t]);               // curso liberado pelo dono (sem bloqueio de nível, sequência ou checkpoint)
 const lvOpen = (t, lv) => lv == 1 || unl(t) || passedLv(t, lv - 1);
-const trackPassed = t => [1, 2, 3].every(lv => passedLv(t, lv));
+const trackPassed = t => lvs(t).every(lv => passedLv(t, lv));
 const lvPct = (t, lv) => Math.round((lvDone(t, lv) + (passedLv(t, lv) ? 1 : 0)) / 31 * 100);
-const trackPct = t => Math.round([1, 2, 3].reduce((a, lv) => a + lvDone(t, lv) + (passedLv(t, lv) ? 1 : 0), 0) / 93 * 100);
-const curLevel = t => [1, 2, 3].find(lv => !passedLv(t, lv)) || 3;
+const trackPct = t => Math.round(lvs(t).reduce((a, lv) => a + lvDone(t, lv) + (passedLv(t, lv) ? 1 : 0), 0) / (lvs(t).length * 31) * 100);
+const curLevel = t => lvs(t).find(lv => !passedLv(t, lv)) || lvs(t).length;
 const nextLesson = t => S.ls.find(l => l.track == t && !done(l) && !l.lock);
 const cpBefore = l => (S.cps || []).find(c => !c.fin && c.track == l.track && c.lv == l.lv && c.after == l.n - 1);   // checkpoint que vem logo antes da lição l (só antes da 11 e da 21)
 const chTxt = c => c.left == 1 ? 'última chance' : `${c.left} chances`;                                              // chances que ainda restam numa prova
 const finOf = (t, lv) => (S.cps || []).find(c => c.fin && c.track == t && c.lv == lv);                               // prova final do nível
-// próximo passo da trilha: a lição livre, o checkpoint que precisa ser feito antes das lições 11 e 21 ou, com as 30 lições feitas, a prova final do nível
+// próximo passo do curso: a lição livre, o checkpoint que precisa ser feito antes das lições 11 e 21 ou, com as 30 lições feitas, a prova final do nível
 const nextStep = t => {
   const l = S.ls.find(x => x.track == t && !done(x) && (!x.lock || x.lock == 'cp'));
   if (!l) { const f = (S.cps || []).find(c => c.fin && c.track == t && !passedLv(t, c.lv) && !c.lock); return f ? { cp: f } : null; }
@@ -475,21 +493,54 @@ const nextStep = t => {
   return l;
 };
 
-const nav = () => `<nav class=nav>${[['home', 'home', 'Início'], ['tr', 'map', 'Trilhas'], ['rk', 'crown', 'Ranking'], ['ch', 'trophy', 'Desafios'], ['pf', 'user', 'Perfil']].map(x => `<button class="${S.tab == x[0] ? 'on' : ''}" onclick="go('${x[0]}')">${ic(x[1], 22)}<span>${x[2]}</span></button>`).join('')}</nav>`;
+const nav = () => `<nav class=nav>${[['home', 'home', 'Início'], ['tr', 'map', 'Cursos'], ['rk', 'crown', 'Ranking'], ['ch', 'trophy', 'Desafios'], ['pf', 'user', 'Perfil']].map(x => `<button class="${S.tab == x[0] ? 'on' : ''}" onclick="go('${x[0]}')">${ic(x[1], 22)}<span>${x[2]}</span></button>`).join('')}</nav>`;
 
 async function resendVerify() { try { const r = await api('resend-verification', { body: {} }); if (r.devVerifyLink) { toast('Modo teste: abrindo o link de confirmação…'); return void (location.href = r.devVerifyLink); } toast(r.already ? 'Seu e-mail já está confirmado.' : 'E-mail enviado! Olhe também a caixa de spam.'); if (r.already) go(); } catch (e) { fail(e); } }
 function chooseTrack() {
   theme(null);
-  A.innerHTML = `<div class="c auth"><div class=hero-sm><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>${stage(210, 'Qual trilha você quer fazer?', '', '', 'think')}
-  <h2 style="text-align:center;margin:6px 0 4px">O que você quer aprender?</h2><p class="sub" style="text-align:center">Escolha sua trilha. Você passa pelos níveis Básico, Intermediário e Avançado, cada um com 30 lições, 2 checkpoints e uma prova final, e recebe um certificado no final.</p>
-  ${['python', 'sql'].map(t => `<div class="card pick ${t}" onclick="pickTrack('${t}')">${tg(t, 52)}<div class=bd><b>${TN[t]}</b><small>${t == 'python' ? 'Da lógica de programação à análise de dados com Pandas' : 'Do primeiro SELECT às funções de janela e CTEs'}</small><small class=mut>90 lições · provas a cada 10 · certificado</small></div>${ic('arrow', 20)}</div>`).join('')}
-  <p class=tn style="text-align:center">Você pode estudar a outra trilha depois: o progresso de cada uma é separado.</p></div>`;
+  A.innerHTML = `<div class="c auth"><div class=hero-sm><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>${stage(210, 'Qual curso você quer fazer?', '', '', 'think')}
+  <h2 style="text-align:center;margin:6px 0 4px">O que você quer aprender?</h2><p class="sub" style="text-align:center">Escolha seu primeiro curso. Cada nível tem 30 lições, 2 checkpoints e uma prova final. O progresso de cada curso é separado: você pode estudar os outros depois.</p>
+  <div class=crl>${ACTIVE().map(courseRow).join('')}</div></div>`;
 }
-async function pickTrack(t) { try { S.me = await api('track', { body: { track: t } }); S.lv = 0; S.scroll = true; go('home'); } catch (e) { fail(e); } }
 async function studyTrack(t) { try { S.me = await api('track', { body: { track: t } }); S.lv = 0; S.scroll = true; S.tab = 'home'; go('home'); } catch (e) { fail(e); } }
+const pickTrack = studyTrack;
+
+// ---------- tela Cursos: lista de cursos com busca e categorias ----------
+const CRS = {
+  python: { d: 'Da lógica de programação à análise de dados com Pandas.', c: 'Programação' },
+  sql: { d: 'Do primeiro SELECT às funções de janela e CTEs.', c: 'Dados' },
+  excel: { d: 'Fórmulas, SOMA, SE e PROCV na prática, com uma planilha de verdade.', c: 'Produtividade' }
+};
+const SOON = [{ n: 'Power BI e DAX', d: 'Medidas, CALCULATE e relatórios que contam histórias.', c: 'Dados', i: 'chart' }, { n: 'Análise de Dados e Storytelling', d: 'Pandas, gráficos e dados que contam histórias.', c: 'Dados', i: 'code' }];
+const CATI = { Todos: 'grid', Programação: 'code', Dados: 'db', Produtividade: 'chart', Outros: 'smile' };
+const CATS = () => ['Todos', ...['Programação', 'Dados', 'Produtividade', 'Outros'].filter(c => [...ACTIVE().map(t => CRS[t].c), ...SOON.map(x => x.c)].includes(c))];   // só aparecem categorias que têm curso
+const cnorm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const xpTotal = t => S.ls.filter(l => l.track == t).reduce((a, l) => a + l.xp, 0) + (S.cps || []).filter(c => c.track == t && !c.fin).reduce((a, c) => a + c.xp, 0) + lvs(t).reduce((a, lv) => a + 50 * lv, 0);
+const xpGot = t => S.ls.filter(l => l.track == t && done(l)).reduce((a, l) => a + l.xp, 0) + (S.cps || []).filter(c => c.track == t && !c.fin && (S.me.cps || []).includes(c.id)).reduce((a, c) => a + c.xp, 0) + lvs(t).filter(lv => passedLv(t, lv)).reduce((a, lv) => a + 50 * lv, 0);
+// a "ilha" de cada curso: uma plataforma de pedra com brilho na cor do curso e capim nas pontas; o logo fica em cima
+const island = () => `<svg class=isl viewBox="0 0 160 100" aria-hidden=true><ellipse class=ig cx=80 cy=72 rx=74 ry=24 /><path class=iw d="M16 64v13c0 11 29 20 64 20s64-9 64-20V64z"/><ellipse class=it cx=80 cy=64 rx=64 ry=20 /><ellipse class=ir cx=80 cy=64 rx=54 ry=15 />
+  <g class=gs><path d="M20 66q-6-9-3-17q4 7 7 15zM28 69q-3-10 1-17q3 7 3 16zM140 66q6-9 3-17q-4 7-7 15zM132 69q3-10-1-17q-3 7-3 16z"/></g></svg>`;
+function courseRow(t) {
+  const m = S.me, p = trackPct(t), cur = m.track == t, n = S.ls.filter(l => l.track == t).length, c = CRS[t], k = lvs(t).length;
+  return `<div class="cr ${t}${cur ? ' cur' : ''}" data-c="${c.c}" data-q="${esc(cnorm(TN[t] + ' ' + c.d + ' ' + c.c))}" onclick="studyTrack('${t}')" onkeydown="if(event.key=='Enter')studyTrack('${t}')" role=button tabindex=0 aria-label="${TN[t]}: ${p}% concluído">
+    <span class=crisl>${island()}${tg(t, 84)}</span>
+    <div class=crb><div class=crt1><b>${TN[t]}${cur ? ' <span class=badge>Atual</span>' : ''}</b><span class=crx>${ic('crown', 15)} ${nf(xpGot(t))}/${nf(xpTotal(t))} XP</span></div><small class=crd>${c.d}</small>
+      <div class=crtg><span><i class=dg style="--d:#34d399"></i>${k > 1 ? 'Básico ao Avançado' : 'Básico'}</span><span><i class=dg style="--d:${CATC[c.c] || '#38bdf8'}"></i>${c.c}</span><span>${ic('layers', 13)} ${n} lições</span></div>
+      <div class=crf><div class=crbar><i style="width:${p}%"></i></div><b class=crp>${p}%</b><span class=crgo>${ic('arrow', 20)}</span></div></div></div>`;
+}
+const CATC = { Programação: '#a78bfa', Dados: '#38bdf8', Produtividade: '#fb923c', Outros: '#f472b6' };
+const soonRow = x => `<div class="cr soon" data-c="${x.c}" data-q="${esc(cnorm(x.n + ' ' + x.d + ' ' + x.c))}" aria-disabled=true>
+  <span class=crisl>${island()}<span class=cis>${ic(x.i, 44)}</span></span><div class=crb><div class=crt1><b>${x.n}</b><span class=sbadge>Em breve</span></div><small class=crd>${x.d}</small>
+  <div class=crtg><span><i class=dg style="--d:${CATC[x.c] || '#38bdf8'}"></i>${x.c}</span></div></div></div>`;
+function cfilter() {
+  const i = $('#cq'); if (i) S.cq = i.value; const q = cnorm(S.cq || '').trim(), c = S.cc || 'Todos'; let n = 0;
+  document.querySelectorAll('#crl .cr').forEach(r => { const ok = (c == 'Todos' || r.dataset.c == c) && (!q || r.dataset.q.includes(q)); r.hidden = !ok; if (ok) n++; });
+  const z = $('#crnone'); if (z) z.hidden = n > 0;
+}
+function ccat(c) { S.cc = c; document.querySelectorAll('.crc button').forEach(b => b.classList.toggle('on', b.dataset.cat == c)); cfilter(); }
 
 // ============================================================ TELAS
-// Trilha do mapa: curvas suaves (estilo caminho de jogo) passando pelo centro de cada botão. A parte já percorrida fica acesa.
+// Caminho do mapa: curvas suaves (estilo caminho de jogo) passando pelo centro de cada botão. A parte já percorrida fica acesa.
 function mapSvg(X, upto, M) {
   const y = i => M.top + 41 + i * M.row, H = M.top + X.length * M.row + 10;
   const seg = (a, b) => { const ym = (y(a) + y(b)) / 2; return ` C${X[a]} ${ym} ${X[b]} ${ym} ${X[b]} ${y(b)}`; };
@@ -499,22 +550,22 @@ function mapSvg(X, upto, M) {
 function render() {
   delete document.body.dataset.calm; S.step = '';
   const m = S.me, L = S.ls;
-  if (!m.track) return chooseTrack();
+  if (!m.track || !courseOn(m.track)) return chooseTrack();       // sem curso (ou o dono desativou o curso dele): escolhe outro
   const T = m.track; theme(T); let h = '';
   if (!S.lv) S.lv = curLevel(T);
   const an = (a => a && LS.get('ann') != a.id ? `<div class="note ${a.kind}" style="margin-top:10px">${ic(a.kind == 'ok' ? 'check' : 'info', 18)}<div style="flex:1">${esc(a.text)}</div><button class=ibtn aria-label="Fechar aviso" onclick="LS.set('ann',${+a.id});render()">${ic('x', 16)}</button></div>` : '')(S.cfg && S.cfg.announce);
-  const vb = m.verified ? '' : `<div class=note style="margin-top:10px">${ic('info', 18)}<div><b>Confirme seu e-mail</b><br>Enviamos um link para ${esc(m.email)}. Você já pode estudar, mas precisa confirmar para emitir o certificado. <a onclick=resendVerify() style="cursor:pointer;font-weight:800">Reenviar e-mail</a></div></div>`;
+  const vb = m.verified ? '' : `<div class=note style="margin-top:10px">${ic('info', 18)}<div><b>Confirme seu e-mail</b><br>Enviamos um link para ${esc(m.email)}. Você já pode estudar. Confirme para proteger sua conta e poder recuperar a senha. <a onclick=resendVerify() style="cursor:pointer;font-weight:800">Reenviar e-mail</a></div></div>`;
   const head = `<header class=hd>${mascot(46, 'ring')}<div class=who><b>${document.body.classList.contains('wild') ? 'Olá, ' + esc(String(m.name).split(' ')[0]) + '!' : esc(m.name)}</b><small>${document.body.classList.contains('wild') ? 'Vamos continuar seus estudos?' : 'Estudando ' + TN[m.track]}</small></div><div class=chips-r><span class="pill fire" title="Dias seguidos">${ic('flame', 16)} <b class=n data-k=streak data-v="${m.streak}">${m.streak}</b></span><span class="pill xp" title="Pontos de experiência">${ic('bolt', 16)} <b class=n data-k=xp data-v="${m.xp}">${m.xp}</b></span><button class="pill gem" onclick="openWardrobe()" title="Seus diamantes: toque para ver o guarda-roupa" aria-label="${m.gems || 0} diamantes. Abrir o guarda-roupa">${ic('gem', 16)} <b class=n data-k=gems data-v="${m.gems || 0}">${m.gems || 0}</b></button></div></header>`;
   if (S.tab == 'home') {
     const lv = S.lv, ls = lessonsOf(T, lv), open = lvOpen(T, lv), cur = ls.findIndex(l => !done(l) && !l.lock), nd = lvDone(T, lv), fin = finOf(T, lv), finReady = !!fin && !fin.lock && open && !passedLv(T, lv), pct = trackPct(T), nx = nextStep(T);
-    // mapa em curva: cada lição ganha uma posição horizontal (onda suave) e uma trilha desenhada liga os botões.
+    // mapa em curva: cada lição ganha uma posição horizontal (onda suave) e um caminho desenhado liga os botões.
     // Depois das lições 10 e 20 entra um CHECKPOINT (prova obrigatória: uma consulta com o que se aprendeu, 2 chances) e, no fim, a PROVA FINAL do nível (3 chances).
     const cpOk = c => (m.cps || []).includes(c.id), cpsLv = (S.cps || []).filter(c => !c.fin && c.track == T && c.lv == lv);
     const rows = []; ls.forEach((l, i) => { rows.push({ l, i }); const c = cpsLv.find(c => c.after == l.n); if (c) rows.push({ c }); });
-    const NR = rows.length + 1 + (lv == 3 ? 1 : 0), MAP = { row: document.body.classList.contains('wild') ? 140 : 170, top: document.body.classList.contains('wild') ? 128 : 100 };
+    const NR = rows.length + 1, MAP = { row: document.body.classList.contains('wild') ? 140 : 170, top: document.body.classList.contains('wild') ? 128 : 100 };
     const X = Array.from({ length: NR }, (_, r) => r < rows.length ? +(50 + 26 * Math.sin((r - 1) * Math.PI / 4)).toFixed(1) : 50);
-    const okRow = [...rows.map(r => r.l ? !!done(r.l) : false), passedLv(T, lv), !!m.certs[T]];
-    rows.forEach((r, k) => { if (r.c) okRow[k] = cpOk(r.c) || !!okRow[k + 1]; });          // checkpoint pulado não "trava" a trilha acesa
+    const okRow = [...rows.map(r => r.l ? !!done(r.l) : false), passedLv(T, lv)];
+    rows.forEach((r, k) => { if (r.c) okRow[k] = cpOk(r.c) || !!okRow[k + 1]; });          // checkpoint pulado não "trava" o caminho aceso
     let pi = 0; while (pi < NR && okRow[pi]) pi++; pi = Math.min(pi, NR - 1);
     const pathSvg = mapSvg(X, pi, MAP);
     const curK = cur >= 0 ? rows.findIndex(r => r.l && r.i == cur) : (c => c >= 0 ? c : finReady ? rows.length : -1)(rows.findIndex(r => r.c && !cpOk(r.c) && !r.c.lock && !done(ls.find(l => l.n == r.c.after + 1) || {})));
@@ -523,52 +574,41 @@ function render() {
     const WL = document.body.classList.contains('wild'), Wm = Math.min(488, innerWidth - 32), lcard = (k, kick, title) => `<div class=lc style="--lw:${Math.max(96, Math.round((X[k] > 50.5 ? X[k] : 100 - X[k]) * Wm / 100 - 58))}px"><small>${kick}</small><b>${esc(String(title).replace(/^Checkpoint:\s*/i, ''))}</b><em class=lcb>INICIAR</em></div>`;
     const rowHtml = (r, k) => r.l ? (l => { const i = r.i; return `<div class="ti ${done(l) ? 'ok' : i == cur ? 'cur' : l.lock ? 'lk' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openL('${l.id}')"><div class=rail>${i == cur && !WL ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${done(l) ? ic('check', 28) : l.lock ? ic('lock', 24) : ic('star', 28)}<i class=nn>${l.n}</i></span>${i == cur ? walker() + lcard(k, 'Lição ' + l.n, l.title) : ''}</div><div class=tb><b>${esc(l.title)}</b><small>Lição ${l.n}${done(l) ? '' : ' · +' + l.xp + ' XP'}</small></div></div>`; })(r.l)
       : (c => { const need = !cpOk(c) && !c.lock && !done(ls.find(l => l.n == c.after + 1) || {}); return `<div class="ti cp ${cpOk(c) ? 'ok' : c.lock ? 'lk' : 'av'}${need ? ' cur' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openTest('${c.id}')"><div class=rail>${need && !WL ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${cpOk(c) ? ic('check', 28) : c.lock ? ic('lock', 24) : ic('flag', 28)}</span>${need ? walker() + lcard(k, 'Checkpoint', c.title) : ''}</div><div class=tb><b>${esc(c.title)}</b><small>${cpOk(c) ? 'Checkpoint concluído' : c.lock ? 'Checkpoint · depois da lição ' + c.after : 'Checkpoint · ' + chTxt(c) + ' · +' + c.xp + ' XP'}</small></div></div>`; })(r.c);
-    const prog = `<div class=cprog><div class=ph><span>Progresso em ${TN[T]}</span><b>${pct}%</b></div><div class=segs>${[1, 2, 3].map(x => `<div class=seg><i style="width:${lvPct(T, x)}%"></i></div>`).join('')}</div><div class=sl><span>Básico</span><span>Intermediário</span><span>Avançado</span></div></div>`;
+    const prog = `<div class=cprog><div class=ph><span>Progresso em ${TN[T]}</span><b>${pct}%</b></div><div class=segs>${lvs(T).map(x => `<div class=seg><i style="width:${lvPct(T, x)}%"></i></div>`).join('')}</div><div class=sl>${lvs(T).map(x => `<span>${LV[x - 1]}</span>`).join('')}</div></div>`;
     const cont = nx ? (nx.cp ? `<div class="card cont" onclick="openTest('${nx.cp.id}')">${tg(T, 44)}<div class=bd><small class=up>${nx.cp.fin ? 'Prova final · libera o próximo nível' : 'Checkpoint · obrigatório'}</small><b>${esc(nx.cp.title)}</b><small>${TN[T]} · ${LV[nx.cp.lv - 1]} · ${nx.cp.fin ? 'todas as 30 lições' : 'libera a lição ' + (nx.cp.after + 1)}</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`
       : `<div class="card cont" onclick="openL('${nx.id}')">${tg(T, 44)}<div class=bd><small class=up>Continuar</small><b>${esc(nx.title)}</b><small>${TN[T]} · ${LV[nx.lv - 1]} · lição ${nx.n} de 30</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`) : '';
     const trk = `<div class="card cont tkc"${nx ? ` onclick="${nx.cp ? `openTest('${nx.cp.id}')` : `openL('${nx.id}')`}"` : ''}>${tg(T, 58)}<div class=bd><b>${TN[T]}</b><small>Nível ${lv} · ${LV[lv - 1]}</small><div class=tkb><i style="width:${Math.round(nd / 30 * 100)}%"></i></div></div><div class=tkn><b>${nd}</b>/30</div>${nx ? `<span class=go>${ic('arrow', 20)}</span>` : ''}</div>`;
     h = `${head}${an}${vb}
     ${document.body.classList.contains('wild') ? trk : cont || `<div class=panel>${prog}</div>`}
-    <div class=tabs>${[1, 2, 3].map(x => `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
-    <div class="unit slim"><span class=uflag>${ic('flag', 18)}</span><div><small>NÍVEL ${lv} DE 3</small><b>${LV[lv - 1]}</b></div><div class=uc>${nd}/30</div></div>
+    <div class=tabs>${[1, 2, 3].map(x => x > lvs(T).length ? `<button class=soon onclick="toast('${LV[x - 1]} de ${TN[T]} chega em breve.')">${ic('lock', 15)}<span>${LV[x - 1]}</span><small>em breve</small></button>` : `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
+    <div class="unit slim"><span class=uflag>${ic('flag', 18)}</span><div><small>NÍVEL ${lv}</small><b>${LV[lv - 1]}</b></div><div class=uc>${nd}/30</div></div>
     ${!open ? `<div class="note">${ic('lock', 18)}<div><b>Nível bloqueado</b><br>Passe na prova final de ${LV[lv - 2]} (30 lições + a prova) para entrar aqui.</div></div>` : ''}
     ${adSlot()}<div class=tl style="--n:${NR};--row:${MAP.row}px;--top:${MAP.top}px">${scene}${pathSvg}${rows.map(rowHtml).join('')}
     <div class="ti exam ${passedLv(T, lv) ? 'ok' : finReady ? 'cur' : 'lk'}" style="--i:${rows.length};--x:50%" onclick="${fin ? `openTest('${fin.id}')` : ''}"><div class=rail>${finReady && !WL ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${passedLv(T, lv) ? ic('check', 28) : ic('cap', 28)}</span>${finReady && cur < 0 ? walker() + lcard(rows.length, 'Prova final', LV[lv - 1]) : ''}</div><div class=tb><b>Prova final · ${LV[lv - 1]}</b><small>${passedLv(T, lv) ? 'Aprovado' : finReady ? 'Liberada · ' + (fin ? chTxt(fin) : '3 chances') + ' · libera o próximo nível' : 'Libera ao concluir as 30 lições'}</small></div></div>
-    ${lv == 3 ? `<div class="ti exam ${m.certs[T] ? 'ok' : trackPassed(T) ? 'cur' : 'lk'}" style="--i:${rows.length + 1};--x:50%" onclick="certFlow('${T}')"><div class=rail><span class=nd>${ic('award', 28)}</span></div><div class=tb><b>Certificado ${TN[T]}</b><small>${m.certs[T] ? 'Emitido. Toque para abrir' : trackPassed(T) ? fm('Pronto', 'Pronta') + ' para emitir' : 'Passe nas 3 provas finais'}</small></div></div>` : ''}</div>`;
+</div>`;
   }
   if (S.tab == 'ch') {
     const cpS = c => (m.cps || []).includes(c.id);
-    h = `<h2 class=ttl>Desafios</h2><p class=sub>Prova a cada 10 lições, sem dica e sem solução. Passou nas três finais, você emite o certificado.</p>
+    h = `<h2 class=ttl>Desafios</h2><p class=sub>Prova a cada 10 lições, sem dica e sem solução. Passando na prova final, o próximo nível abre.</p>
     <div class="panel rules2"><div class=rl><span class=ri>${ic('flag', 20)}</span><div><b>Checkpoint · lições 10 e 20</b><small>2 chances. Errou as duas, volta 5 lições.</small></div></div><div class=rl><span class=ri>${ic('cap', 20)}</span><div><b>Prova final · lição 30</b><small>3 chances, com tudo desde o começo. Errou as três, volta 10 lições.</small></div></div></div>`
-      + ['python', 'sql'].map(t => `<div class=sec>${tg(t, 22)} ${TN[t]}</div>` + [1, 2, 3].map(lv => `<div class=lvh>${bars(lv)} ${LV[lv - 1]}</div>` + (S.cps || []).filter(c => c.track == t && c.lv == lv).sort((a, b) => a.after - b.after).map(c => {
+      + ACTIVE().map(t => `<div class=sec>${tg(t, 22)} ${TN[t]}</div>` + lvs(t).map(lv => `<div class=lvh>${bars(lv)} ${LV[lv - 1]}</div>` + (S.cps || []).filter(c => c.track == t && c.lv == lv).sort((a, b) => a.after - b.after).map(c => {
         const ok = c.fin ? passedLv(t, lv) : cpS(c), fl = m.fails[c.fin ? t + '-' + lv : c.id] || 0, lk = !ok && c.lock;
         const st = ok ? (c.fin ? 'Aprovado' : 'Concluído') : lk ? (c.fin ? 'Libera ao concluir as 30 lições' : 'Libera ao concluir a lição ' + c.after) : `${chTxt(c)} de ${c.chances}`;
         return `<div class="card ${lk ? 'lk' : ''}" onclick="openTest('${c.id}')"><span class="ib ${ok ? 'ok' : ''}">${ok ? ic('check', 20) : ic(c.fin ? 'cap' : 'flag', 20)}</span><div class=bd><b>${c.fin ? 'Prova final' : 'Checkpoint · lição ' + c.after}</b><small>${st}${fl ? ' · voltou ' + fl + (fl == 1 ? ' vez' : ' vezes') : ''}</small></div><span class=r>${ok ? 'Feito' : lk ? ic('lock', 16) : 'Fazer'}</span></div>`;
-      }).join('')).join('') + `<div class="card ${trackPassed(t) ? '' : 'lk'}" onclick="certFlow('${t}')"><span class="ib gold">${ic('award', 20)}</span><div class=bd><b>Certificado ${TN[t]}</b><small>${m.certs[t] ? 'Emitido · ' + esc(m.certs[t].code) : trackPassed(t) ? fm('Pronto', 'Pronta') + ' para emitir' : 'Passe nas 3 provas finais'}</small></div><span class=r>${m.certs[t] ? 'Abrir' : trackPassed(t) ? 'Emitir' : ic('lock', 16)}</span></div>`).join('');
+      }).join('')).join('')).join('');
   }
   if (S.tab == 'rk') h = rankView();
   if (S.tab == 'tr') {
-    const TAG = { python: 'Da lógica de programação à análise de dados com Pandas', sql: 'Do primeiro SELECT às funções de janela' };
-    const nDone = S.ls.filter(done).length, nPass = ['python', 'sql'].reduce((a, t) => a + [1, 2, 3].filter(lv => passedLv(t, lv)).length, 0), nCert = ['python', 'sql'].filter(t => m.certs[t]).length;
-    const ring = p => `<span class=ringw role=img aria-label="${p}% concluído"><svg viewBox="0 0 60 60" aria-hidden=true><circle class=rb cx=30 cy=30 r=24 /><circle class=rf cx=30 cy=30 r=24 stroke-dasharray="${(p / 100 * 150.8).toFixed(1)} 150.8" transform="rotate(-90 30 30)" /></svg><b>${p}%</b></span>`;
-    const SOON = [['code', 'Análise de Dados', 'Pandas e análise na prática'], ['chart', 'Dashboards e Visualização', 'Gráficos e Power BI'], ['target', 'Projetos Reais', 'Do dado ao relatório']];
-    h = `<h2 class=ttl>Trilhas</h2><p class=sub>Escolha onde estudar. O progresso de cada trilha é separado.</p>
-    <div class=jr><div><b>${nDone}<i>/${S.ls.length}</i></b><small>lições feitas</small></div><div><b>${nPass}<i>/6</i></b><small>provas finais</small></div><div><b>${nCert}<i>/2</i></b><small>certificados</small></div></div>`
-      + ['python', 'sql'].map(t => {
-        const p = trackPct(t), cur = m.track == t, cl = curLevel(t), nx = nextStep(t), np = [1, 2, 3].filter(lv => passedLv(t, lv)).length, started = S.ls.some(l => l.track == t && done(l));
-        const nxt = nx ? (nx.cp ? (nx.cp.fin ? `Prova final · ${LV[nx.cp.lv - 1]}` : nx.cp.title) : `Lição ${nx.n} · ${nx.title}`) : 'Trilha concluída. Parabéns!';
-        return `<div class="panel trk2 ${t}${cur ? ' cur' : ''}">
-        <div class=th>${tg(t, 64)}<div class=bd><b>${TN[t]}${cur ? ' <span class=badge>Atual</span>' : ''}</b><small>${TAG[t]}</small></div>${ring(p)}</div>
-        <div class=tb2>${[1, 2, 3].map(lv => { const ps = passedLv(t, lv), op = lvOpen(t, lv), st = ps ? 'ok' : !op ? 'lk' : lv == cl ? 'cur' : 'op';
-          return `<div class="lv2 ${st}"><span class=lvi>${ps ? ic('check', 16) : !op ? ic('lock', 15) : lv == cl ? ic('play', 14) : bars(lv)}</span><div class=lvb><b>${LV[lv - 1]}</b><div class=bar><i style="width:${lvPct(t, lv)}%"></i></div></div><small>${ps ? 'Aprovado' : op ? lvDone(t, lv) + '/30' : 'Bloqueado'}</small></div>`; }).join('')}
-        ${nx || cur || started ? `<div class=nx2>${ic('play', 14)}<span><small>Próximo passo</small><b>${esc(nxt)}</b></span></div>` : ''}
-        <div class="cert2${m.certs[t] ? ' ok' : trackPassed(t) ? ' rdy' : ''}"${m.certs[t] || trackPassed(t) ? ` onclick="certFlow('${t}')" role=button tabindex=0` : ''}>${ic('award', 18)}<span>${m.certs[t] ? 'Certificado emitido · toque para abrir' : trackPassed(t) ? 'Pronto para emitir o certificado' : `Certificado ao passar nas 3 provas finais (${np}/3)`}</span></div>
-        <button class="btn ${cur ? 'ghost' : 'pri'} block" onclick="studyTrack('${t}')">${cur ? 'Continuar estudando' : started ? 'Continuar ' + TN[t] : 'Começar ' + TN[t]}</button></div></div>`;
-      }).join('')
-      + `<div class=sec2>Em breve</div><div class="panel soon">${SOON.map(([i, n, d]) => `<div class=sr><span class=ib>${ic(i, 20)}</span><div class=bd><b>${n}</b><small>${d}</small></div><span class=sbadge>Em breve</span></div>`).join('')}</div>`;
+    const lvl = Math.floor(m.xp / 100) + 1;
+    h = `<header class="crtop"><span class=cravw>${mascot(56, 'ring')}</span><div class=crw><b>${esc(String(m.name).split(' ')[0])}</b><small>Nível ${lvl}</small><div class=crxp><i style="width:${m.xp % 100}%"></i></div></div><span class=crxl>${m.xp % 100}/100 XP</span>
+      <div class=chips-r><span class="pill fire" title="Dias seguidos">${ic('flame', 16)} <b class=n data-k=streak data-v="${m.streak}">${m.streak}</b></span><button class="pill gem" onclick="openWardrobe()" aria-label="${m.gems || 0} diamantes. Abrir o guarda-roupa">${ic('gem', 16)} <b class=n data-k=gems data-v="${m.gems || 0}">${m.gems || 0}</b></button></div></header>
+    <section class=crh><div class=crh1><h2 class=ttl>Cursos</h2><p class=sub><b>Escolha um curso para estudar.</b><br>Aprenda jogando, ganhe XP e evolua no seu ritmo!</p></div><div class=crm><span class=bub>Aprender também pode ser divertido!</span><span class=crbust><img src="${IMG().full}" alt="${esc(gnm())}"></span></div></section>
+    <label class=crs>${ic('search', 20)}<input id=cq type=search placeholder="Buscar curso..." value="${esc(S.cq || '')}" oninput="cfilter()" autocomplete=off aria-label="Buscar curso"></label>
+    <div class=crc role=group aria-label="Categorias">${CATS().map(c => `<button class="${c == (S.cc || 'Todos') ? 'on' : ''}" data-cat="${c}" onclick="ccat('${c}')">${ic(CATI[c], 17)}<span>${c}</span></button>`).join('')}</div>
+    <div class=crl id=crl>${ACTIVE().map(courseRow).join('')}${SOON.map(soonRow).join('')}</div><p class="tn crnone" id=crnone hidden>Nenhum curso encontrado. Tente outra palavra.</p>`;
   }
   if (S.tab == 'pf') h = profileView(L, T);
-  A.innerHTML = `<div class=c>${h}${S.tab == 'home' ? '' : adSlot()}</div>${nav()}`; loadAds(); countUp(); if (S.tab == 'home') setTimeout(startTour, 700);
+  A.innerHTML = `<div class=c>${h}${S.tab == 'home' ? '' : adSlot()}</div>${nav()}`; loadAds(); countUp(); if (S.tab == 'tr') cfilter(); if (S.tab == 'home') setTimeout(startTour, 700);
   if (S.tab == 'home' && S.scroll) { S.scroll = false; const c = document.querySelector('.ti.cur'); if (c) c.scrollIntoView({ block: 'center' }); }
 }
 
@@ -596,7 +636,7 @@ const TOUR = [
   { t: 'Oi! Eu sou o guia do CodeUp', p: 'Aqui você aprende Python e SQL escrevendo código de verdade, um passo de cada vez. Quer um tour de 20 segundos?', sel: null },
   { t: 'Este é o seu próximo passo', p: 'Toque na lição que brilha no mapa. Primeiro você lê a teoria, depois pratica, e quando terminar, você toca em Concluído para conferir.', sel: '.ti.cur' },
   { t: 'Estude todo dia', p: 'Cada dia seguido aumenta sua sequência, e cada lição dá XP. Pequenos treinos diários vencem maratonas.', sel: '.hd .chips-r' },
-  { t: 'Seu menu', p: 'Em Trilhas você troca entre Python e SQL. No Ranking você vê sua posição. Em Desafios ficam as provas e os certificados. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
+  { t: 'Seu menu', p: 'Em Cursos você escolhe entre Python, SQL e Excel. No Ranking você vê sua posição. Em Desafios ficam as provas. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
 ];
 function startTour(force) {
   if ($('.tour') || S.tab != 'home' || !S.me) return;
@@ -671,11 +711,11 @@ function pfProg() {
     <div class=pfp><div class=ph><span>Nível ${lvl} → ${lvl + 1}</span><b>${m.xp % 100} / 100 XP</b></div><div class="bar thin"><i style="width:${m.xp % 100}%"></i></div></div></div>`;
 }
 function pfRes(L, T) {
-  const m = S.me, n = L.filter(done).length, np = Object.keys(m.passed).length, nc = Object.keys(m.certs).length;
-  const ach = [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', ['python', 'sql'].some(t => passedLv(t, 2))],
-    ['trophy', 'Avançado aprovado', ['python', 'sql'].some(t => passedLv(t, 3))], ['award', 'Certificado', nc > 0], ['chart', 'Meio caminho', trackPct(T) >= 50], ['bolt', '1.000 XP', m.xp >= 1000]];
+  const m = S.me, n = L.filter(done).length, np = Object.keys(m.passed).length;
+  const ach = [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', COURSES.some(t => passedLv(t, 2))],
+    ['trophy', 'Avançado aprovado', COURSES.some(t => passedLv(t, 3))], ['award', 'Curso concluído', COURSES.some(trackPassed)], ['chart', 'Meio caminho', trackPct(T) >= 50], ['bolt', '1.000 XP', m.xp >= 1000]];
   const kp = (i, v, l) => `<div class=kp><span class=kpi>${ic(i, 17)}</span><b>${v}</b><small>${l}</small></div>`;
-  return `${pfProg()}<div class=kpg>${kp('flame', m.streak, 'dias de treino') + kp('file', n, 'lições feitas') + kp('cap', np, 'provas aprovadas') + kp('bolt', nf(m.xp), 'XP total') + kp('chart', nf(m.wk), 'XP na semana') + kp('award', nc, nc == 1 ? 'certificado' : 'certificados')}</div>
+  return `${pfProg()}<div class=kpg>${kp('flame', m.streak, 'dias de treino') + kp('file', n, 'lições feitas') + kp('cap', np, 'provas aprovadas') + kp('bolt', nf(m.xp), 'XP total') + kp('chart', nf(m.wk), 'XP na semana') + kp('gem', nf(m.gems || 0), 'diamantes')}</div>
     <div class=sec>Conquistas <span class=cnt>${ach.filter(a => a[2]).length} de ${ach.length}</span></div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
     ${tiersView()}`;
 }
@@ -701,14 +741,14 @@ function pfSet(T) {
     </div>
     <div class=sec>Minha conta</div>
     <div class="panel lst">
-      ${row('swap', `Estudar ${T == 'python' ? 'SQL' : 'Python'}`, `studyTrack('${T == 'python' ? 'sql' : 'python'}')`, 'Trocar de trilha')}
+      ${row('swap', 'Trocar de curso', "go('tr')", 'Python, SQL, Excel…')}
       ${row('key', m.hasPassword ? 'Alterar senha' : 'Criar senha', 'changePw()')}
       ${row('bulb', 'Rever o tour', "go('home').then(() => startTour(true))")}
       ${row('down', 'Baixar meus dados', 'exportData()')}
       ${row('out', 'Sair', 'logout()')}
     </div>
     <div class=sec>Zona de perigo</div>
-    <div class="panel dz"><div class=bd><b>Excluir minha conta</b><small>Apaga seu progresso e seus certificados. Não dá para desfazer.</small></div><button class="btn danger" onclick=delAccount()>${ic('trash', 16)} Excluir</button></div>
+    <div class="panel dz"><div class=bd><b>Excluir minha conta</b><small>Apaga seu progresso. Não dá para desfazer.</small></div><button class="btn danger" onclick=delAccount()>${ic('trash', 16)} Excluir</button></div>
     <p class=legal>${S.cfg.contact ? `Precisa de ajuda? <a href="mailto:${esc(S.cfg.contact)}">${esc(S.cfg.contact)}</a><br>` : ''}<a href="/termos" target="_blank">Termos de Uso</a> · <a href="/privacidade" target="_blank">Política de Privacidade</a></p>`;
 }
 // Títulos e molduras: cada título novo chega com um XP; a moldura aparece no aro do personagem (topo, perfil e ranking). Dá para escolher qualquer moldura já conquistada.
@@ -809,13 +849,13 @@ async function czSet(kind, key) {
 // botões "Expressões" do Perfil: o personagem do preview faz a expressão escolhida ('p:<pose>', veja as poses em img/pose/)
 function playMove(k) { const el = document.querySelector('.czp .abody'); if (window.CodeUpAnim && el && CodeUpAnim.play(el, k)) return; toast('Este aparelho não mostra o personagem animado (ou o movimento reduzido está ligado).', true); }
 async function setFrame(key) { try { S.me = await api('guide', { body: { frame: key } }); toast('Moldura trocada!'); render(); } catch (e) { fail(e); } }
-// "Desbloqueado!": o que a conquista acabou de abrir. Lições, checkpoint, prova final, nível e certificado (o que estava com cadeado e agora está livre)
+// "Desbloqueado!": o que a conquista acabou de abrir. Lições, checkpoint, prova final e nível (o que estava com cadeado e agora está livre)
 // e, quando o XP chega a um título novo, o título, a moldura e os itens de personalização (cor, adesivo, fundo e estampa) que ele libera
 function unlocksOf(lk0, xb, s) {
   const opened = x => lk0[x.id] && !x.lock, g = [], cur = S.cur;
   S.ls.filter(opened).forEach(x => g.push(x.n == 1 && x.lv > 1 ? { i: 'flag', t: `Nível ${LV[x.lv - 1]}`, d: `${TN[x.track]} · a lição 1 já está livre` } : { i: 'play', t: `Lição ${x.n}`, d: x.title }));
   (S.cps || []).filter(opened).forEach(c => g.push(c.fin ? { i: 'cap', t: 'Prova final', d: `${TN[c.track]} ${LV[c.lv - 1]} · 3 chances` } : { i: 'flag', t: `Checkpoint da lição ${c.after}`, d: `${c.title.replace(/^Checkpoint: /, '')} · 2 chances` }));
-  if (s.trackComplete && cur) g.push({ i: 'award', t: `Certificado de ${TN[cur.track]}`, d: 'Pronto para emitir' });
+  if (s.trackComplete && cur) g.push({ i: 'award', t: `Curso de ${TN[cur.track]} concluído`, d: 'Você terminou todos os níveis. Parabéns!' });
   (s.newCos || []).forEach(k => g.push({ i: 'star', t: `Nova fantasia: ${cosName(k)}`, d: 'Já está no guarda-roupa, em Perfil › Personagem', cos: k }));
   if (s.gemBonus) g.push({ i: 'gem', t: `+${s.gemBonus} diamantes de bônus`, d: `Pela sequência de ${s.streak} dias seguidos` });
   const tiers = []; for (let k = CR.tierOf(xb) + 1; k <= CR.tierOf(s.xp); k++) tiers.push({ k, items: [['color', 'Cor', CR.COLORS], ['sticker', 'Adesivo', CR.STICKERS], ['bg', 'Fundo', CR.BACKS], ['outfit', 'Estampa', CR.OUTFITS]].flatMap(([kind, nm, list]) => list.filter(x => x.tier == k).map(it => ({ kind, nm, it }))) });
@@ -862,7 +902,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ============================================================ ANÚNCIOS (Google AdSense)
-// Só aparecem se os anúncios estiverem ligados (painel do dono → Ajustes → Anúncios, ou ADSENSE_CLIENT/ADSENSE_SLOT no servidor) e houver o ID do bloco. Ficam em telas de "pausa" (início, trilhas, perfil, fim de lição) e NUNCA durante a lição ou a prova.
+// Só aparecem se os anúncios estiverem ligados (painel do dono → Ajustes → Anúncios, ou ADSENSE_CLIENT/ADSENSE_SLOT no servidor) e houver o ID do bloco. Ficam em telas de "pausa" (início, cursos, perfil, fim de lição) e NUNCA durante a lição ou a prova.
 // O aluno NÃO escolhe o tipo de anúncio: os anúncios carregam direto e são sempre não personalizados (não usam o histórico da pessoa).
 // O aviso de cookies é só informativo (um botão "Entendi") e não trava nada.
 const adPref = () => { try { return localStorage.adpref || ''; } catch { return ''; } };
@@ -906,7 +946,7 @@ function changePw() {
   });
 }
 function delAccount() {
-  if (!confirm('Excluir sua conta apaga seu progresso e seus certificados. Isso não pode ser desfeito.')) return;
+  if (!confirm('Excluir sua conta apaga seu progresso. Isso não pode ser desfeito.')) return;
   const has = S.me.hasPassword;
   dialog('Excluir conta', [{ id: 'c', type: has ? 'password' : 'text', ph: has ? 'Digite sua senha para confirmar' : 'Digite EXCLUIR para confirmar' }], 'Excluir para sempre', async v => {
     try { await api('account', { method: 'DELETE', body: has ? { password: v.c } : { confirm: v.c } }); S.tk = null; localStorage.removeItem('tk'); S.auth = 'register'; showAuth(); toast('Conta excluída.'); }
@@ -925,7 +965,7 @@ async function openL(id) {
 }
 const isTest = l => !!(l && (l.cp || l.fin));
 // resultado que o aluno acabou de acertar (a tabela do SQL ou a saída do Python), mostrado na tela de conclusão
-const resBox = () => S.lastRes ? `<div class="ob resbox"><div class=obh>${ic('check', 14)}<span>${S.cur && S.cur.type == 'sql' ? 'Seu resultado' : 'Sua saída'}</span></div><div class=out>${S.lastRes}</div></div>` : '';
+const resBox = () => S.lastRes ? `<div class="ob resbox"><div class=obh>${ic('check', 14)}<span>${S.cur && S.cur.type == 'sql' ? 'Seu resultado' : S.cur && S.cur.type == 'excel' ? 'Sua planilha' : 'Sua saída'}</span></div><div class=out>${S.lastRes}</div></div>` : '';
 // Provas: os 2 checkpoints de cada nível (depois das lições 10 e 20, 2 chances) e a prova final (depois da 30, 3 chances). Uma tarefa completa com o que se aprendeu,
 // sem teoria, dica nem solução. Acabaram as chances: o aluno volta 5 lições (checkpoint) ou 10 (prova final) para relembrar.
 async function openTest(id) {
@@ -939,13 +979,13 @@ const chHearts = (n, max, sz = 22) => Array.from({ length: max }, (_, i) => `<sp
 const testDone = l => l.fin ? passedLv(l.track, l.lv) : (S.me.cps || []).includes(l.id);
 function testIntro() {
   delete document.body.dataset.calm;
-  const l = S.cur, fin = !!l.fin, ok = testDone(l), left = l.left ?? l.chances, nxt = l.lv < 3 ? `o nível ${LV[l.lv]}` : 'o certificado';
+  const l = S.cur, fin = !!l.fin, ok = testDone(l), left = l.left ?? l.chances, nxt = l.lv < lvs(l.track).length ? `o nível ${LV[l.lv]}` : 'a conclusão do curso';
   theme(l.track);
   A.innerHTML = `<div class="c res">${stage(220, fm('Pronto', 'Pronta') + ' para ' + (fin ? 'a prova final' : 'o checkpoint') + '? Você consegue!', '', '', 'intro')}<h1>${fin ? 'Prova final' : 'Checkpoint'} · ${TN[l.track]} ${esc(l.level)}</h1>
   <p class=sub>${fin ? 'Tudo o que você aprendeu desde a lição 1' : `Tudo o que você aprendeu da lição 1 até a ${l.after}`}</p>
   <div class=chances>${chHearts(ok ? l.chances : left, l.chances, 26)}<small>${ok ? 'Você já passou: pode treinar sem perder nada' : left == 1 ? 'Última chance' : `${left} de ${l.chances} chances`}</small></div>
-  <div class="panel rules"><b>Como funciona</b><ul><li>É uma tarefa só: você monta ${l.type == 'sql' ? 'uma consulta completa' : 'um programa completo'} com o que aprendeu.</li><li>Sem dica, sem solução e sem teoria durante a prova.</li>
-    <li>Cada resposta errada gasta uma chance. Código que dá erro (erro de digitação, tabela que não existe) também conta como resposta errada e gasta uma chance. Confira bem antes de tocar em Concluído.</li>
+  <div class="panel rules"><b>Como funciona</b><ul><li>É uma tarefa só: você monta ${l.type == 'sql' ? 'uma consulta completa' : l.type == 'excel' ? 'uma planilha completa' : 'um programa completo'} com o que aprendeu.</li><li>Sem dica, sem solução e sem teoria durante a prova.</li>
+    <li>Cada resposta errada gasta uma chance. ${l.type == 'excel' ? 'Célula vazia ou fórmula com erro também conta como resposta errada.' : 'Código que dá erro (erro de digitação, tabela que não existe) também conta como resposta errada e gasta uma chance.'} Confira bem antes de tocar em Concluído.</li>
     <li><b>Acertou:</b> ${fin ? `abre ${nxt} (+${50 * l.lv} XP de bônus na 1ª vez)` : `abre a lição ${l.after + 1} (+${l.xp} XP na 1ª vez)`}.</li>
     <li><b>Gastou as ${l.chances} chances:</b> você volta ${l.back} lições (da ${l.backFrom} à ${l.after}) para relembrar. O XP que já ganhou continua seu.</li></ul></div>
   ${infoCards(l.info)}
@@ -967,8 +1007,8 @@ function editor(l) {
 }
 const edBox = (q, value) => `<div class=ed><div class=edh><i></i><i></i><i></i><span>${q.type == 'sql' ? 'consulta.sql' : 'main.py'}</span></div>
   <div class=edb><div class=gut id=gut>1</div><pre class=hlp id=hlp aria-hidden=true></pre><textarea id=ed wrap=off spellcheck=false autocapitalize=off autocomplete=off autocorrect=off>${esc(value)}</textarea></div></div>`;
-const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em <b>Concluído</b>.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', DONE_BTN = `${ic('check', 18)} Concluído`;
-const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
+const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em <b>Concluído</b>.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', OUT0X = 'Escreva as fórmulas nas células <b>verdes</b> e toque em <b>Concluído</b> para conferir.<div class=tn>Toque numa célula para escolher · Enter confirma · depois de = ou ( toque nas células para apontar</div>', DONE_BTN = `${ic('check', 18)} Concluído`;
+const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : S.cur.type == 'excel' ? 'Ajuda' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
 
 const steps = n => `<div class=steps><span class="${n == 1 ? 'on' : 'ok'}">${n == 1 ? '1' : ic('check', 14)} Teoria</span><i></i><span class="${n == 2 ? 'on' : ''}">2 Prática</span></div>`;
 // As 4 explicações de cada atividade (em linguagem de criança de 10 anos): o que é, para que serve, como você vai usar aqui e o que vai aparecer na tela
@@ -979,31 +1019,32 @@ function lesson() {   // etapa 1: teoria
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
   ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${codeBox(l.example, l.type, 'Exemplo')}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}
+  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${codeBox(l.example, l.type, 'Exemplo')}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
   window.scrollTo(0, 0);
 }
 function practice() {   // etapa 2: prática. Nada é executado nem mostrado enquanto o aluno digita: resultado, erro e dicas de correção só aparecem depois que ele toca em Concluído (botão fixo no rodapé)
   document.body.dataset.calm = '1';   // fundo 3D mais leve enquanto o aluno digita
-  const l = S.cur, T = isTest(l), ok = T && testDone(l); theme(l.track); S.step = 'pratica'; S.lt = 0; S.t0 = Date.now(); S.h = 0; clearTimeout(LT);
+  const l = S.cur, T = isTest(l), ok = T && testDone(l), X = l.type == 'excel'; theme(l.track); S.step = 'pratica'; S.lt = 0; S.t0 = Date.now(); S.h = 0; clearTimeout(LT);
   const left = l.left ?? l.chances;
   A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>`}</div>
   ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
   <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : 'Desafio'}</small>${esc(l.task)}</div></div>
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
-  ${edBox(l, l.starter)}
-  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}<button class="btn ghost" onclick=peek() aria-label="Ver dados">${ic('eye', 20)}<span>Dados</span></button>${T ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button><button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
-  ${outBox(OUT0)}
+  ${X ? xlBox(l) : edBox(l, l.starter)}
+  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : `<button class="btn ghost" onclick=peek() aria-label="Ver dados">${ic('eye', 20)}<span>Dados</span></button>`}${T ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button><button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
+  ${outBox(X ? OUT0X : OUT0)}
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
   dockBar();
-  editor(l); const ed = $('#ed'); ed.addEventListener('focus', () => { if (ed.selectionStart == 0 && ed.selectionEnd == 0) ed.setSelectionRange(ed.value.length, ed.value.length); }, { once: true }); window.scrollTo(0, 0);
+  if (X) xlInit(l); else { editor(l); const ed = $('#ed'); ed.addEventListener('focus', () => { if (ed.selectionStart == 0 && ed.selectionEnd == 0) ed.setSelectionRange(ed.value.length, ed.value.length); }, { once: true }); }
+  window.scrollTo(0, 0);
 }
 // texto das chances restantes de uma prova
 const chanceMsg = (n, l) => n <= 1 ? `<b>Última chance.</b> Se não acertar, você volta ${l.back} lições para relembrar.` : `Você tem <b>${n} chances</b>. Cada resposta errada gasta uma; sem chances, você volta ${l.back} lições.`;
 function hint() { const l = S.cur, o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=hintb>${poseChip('ideia', 52)}${ic('bulb', 16)} <span></span></div>`; o.querySelector('span').textContent = l.hints[Math.min(S.h++, l.hints.length - 1)]; }
-function sol() { const o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=tn style="margin:0 0 6px">Solução</div><pre class=inl>${hl(niceSql(S.cur.solution, S.cur.type), S.cur.type)}</pre>`; }
+function sol() { const o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=tn style="margin:0 0 6px">Solução</div><pre class=inl>${hl(niceSql(S.cur.solution, S.cur.type), S.cur.type)}</pre>`; }   // no Excel, a solução mostra as fórmulas das células
 
 // ---------- correção: o código só é executado e conferido quando o aluno toca em "Concluído" ----------
 let LT;
@@ -1071,13 +1112,14 @@ function diagPy(l, out, expected, missing) {
 }
 // Botão "Concluído" (fixo no rodapé): só agora o código é executado e conferido. Certo → tela da lição concluída (e dali, próxima lição); errado → mostra o resultado e explica o que ajustar.
 async function concluir() {
-  const l = S.cur, ed = $('#ed'); if (!ed || S.step != 'pratica' || S.busy) return;
-  const code = ed.value, id = ++S.lt, o = $('#out'), b = $('#bdone'), fb = $('#fb');
-  if (!code.replace(/(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', ['Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
+  const l = S.cur, X = l.type == 'excel', ed = X ? $('#xin') : $('#ed'); if (!ed || S.step != 'pratica' || S.busy) return;
+  if (X && !xlCommit()) return;                                   // o que está sendo digitado na barra de fórmulas entra na célula antes de conferir
+  const code = X ? xlCode() : ed.value, id = ++S.lt, o = $('#out'), b = $('#bdone'), fb = $('#fb');
+  if (X ? xlEmpty() : !code.replace(/(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', [X ? 'Preencha as células <b>verdes</b> com fórmulas e depois toque em <b>Concluído</b>.' : 'Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
   S.busy = true; if (b) { b.disabled = true; b.innerHTML = '<span class=spin></span> Conferindo…'; } if (fb) fb.classList.add('stale');   // o botão só troca o texto: não muda de tamanho nem de lugar
   try {
     let r, err = null;
-    try { r = l.type == 'sql' ? await runSql(l, code) : await runPy(l, code, () => id != S.lt); }
+    try { r = X ? { out: '', html: '' } : l.type == 'sql' ? await runSql(l, code) : await runPy(l, code, () => id != S.lt); }   // Excel: nada roda aqui, o servidor calcula e confere as fórmulas
     catch (e) {
       if (e.message == 'STALE') return setFb('idle');
       showErr(e);
@@ -1086,24 +1128,25 @@ async function concluir() {
       if (!isTest(l) || testDone(l) || e.message == 'OFFLINE') return setFb('err', diagErr(e, code, l));
       err = e; r = { out: '', html: '' };
     }
-    if (!err) { o.className = 'out'; o.innerHTML = r.html; }
+    if (!err && !X) { o.className = 'out'; o.innerHTML = r.html; }
     let s;
     try { s = await api('submit', { body: { id: l.id, code, out: r.out || '' } }); }
     catch (e) { if (e.engine || e.status == 503) return setFb('srv', fixit(0, '', [esc(e.error || 'O servidor não respondeu agora. Toque em Concluído de novo.')])); throw e; }
     const T = isTest(l), before0 = l.left ?? l.chances;
     if (!s.ok) {
       if (T && s.rewind) {                                                             // gastou a última chance: volta algumas lições para relembrar
-        Object.assign(S.me, { done: s.done, cps: s.cps, fails: s.fails }); try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
+        if (S.xlKeep) delete S.xlKeep[l.id]; Object.assign(S.me, { done: s.done, cps: s.cps, fails: s.fails }); try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
         return testFail(s);
       }
-      const tip = err ? diagErr(err, code, l) : l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing, s.view) : diagPy(l, r.out, s.expected, s.missing), kind = err ? 'err' : 'bad';
+      if (X) xlMark(s);
+      const tip = err ? diagErr(err, code, l) : X ? (xlDiag(l, s) || fixit(0, '', ['Não consegui ler a planilha. Toque em Concluído de novo.'])) : l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing, s.view) : diagPy(l, r.out, s.expected, s.missing), kind = err ? 'err' : 'bad';
       if (!T || s.left === undefined || testDone(l)) return setFb(kind, tip);        // lição comum, ou prova já vencida (treino sem perder chance)
       l.left = s.left; const h = $('#chh'), n = $('#chn'); if (h) h.innerHTML = chHearts(s.left, l.chances, 20); if (n) n.innerHTML = chanceMsg(s.left, l);
       return setFb(kind, `<p class=tip>${chHearts(s.left, l.chances, 16)} <b>${s.left == 1 ? 'Resta 1 chance.' : `Restam ${s.left} chances.`}</b></p>` + tip);
     }
-    S.lastRes = r.html;                                                              // o resultado que o aluno acabou de acertar aparece na tela de conclusão
+    S.lastRes = X ? xlStatic() : r.html; if (X && S.xlKeep) delete S.xlKeep[l.id];     // o resultado que o aluno acabou de acertar aparece na tela de conclusão (no Excel, a planilha preenchida)
     const lk0 = {}; [...S.ls, ...(S.cps || [])].forEach(x => { lk0[x.id] = x.lock; });                                              // o que estava com cadeado antes desta conquista
-    const xb = S.me.xp, before = Math.floor(S.me.xp / 100); S.gemsGot = s.gemsGot || 0; Object.assign(S.me, { xp: s.xp, gems: s.gems, days: s.days, own: s.own, cos: s.cos, streak: s.streak, done: s.done, cps: s.cps, passed: s.passed, certs: s.certs, fails: s.fails }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
+    const xb = S.me.xp, before = Math.floor(S.me.xp / 100); S.gemsGot = s.gemsGot || 0; Object.assign(S.me, { xp: s.xp, gems: s.gems, days: s.days, own: s.own, cos: s.cos, streak: s.streak, done: s.done, cps: s.cps, passed: s.passed, fails: s.fails }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
     S.gained = s.gained; S.used = T ? l.chances - before0 + 1 : 0; S.lvlUp = Math.floor(s.xp / 100) > before ? Math.floor(s.xp / 100) + 1 : 0; try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
     S.unl = unlocksOf(lk0, xb, s);                                                   // o cartão "Desbloqueado!" da tela de conclusão
     if (l.fin) { try { await new Promise(res => passFx(s, l, res)); } catch { closeOv(true); } testPass(s); return streakLater(s); }   // prova final: tela do troféu e depois o resultado
@@ -1114,6 +1157,7 @@ async function concluir() {
 }
 // Limpar: esvazia o editor e volta ao estado inicial (sem executar nada)
 function limpar() {
+  if (S.cur && S.cur.type == 'excel') { if (S.busy) return; xlClear(); const o = $('#out'); o.className = 'out'; o.innerHTML = OUT0X; setFb('idle'); return; }
   const ed = $('#ed'); if (!ed || S.busy) return; ++S.lt; ed.value = ''; ed.dispatchEvent(new Event('input')); ed.focus();
   const o = $('#out'); o.className = 'out'; o.innerHTML = OUT0; setFb('idle');
 }
@@ -1186,7 +1230,7 @@ function runPy(l, code, stale) {   // uma execução por vez no mesmo worker
   pq = job; return job;
 }
 async function peek() {
-  const l = S.cur, o = $('#out'); o.className = 'out';
+  const l = S.cur, o = $('#out'); o.className = 'out'; if (l.type == 'excel') return xlToggleF();
   try {
     if (l.type == 'sql') {
       await loadSql(); const db = new S.SQL.Database(); db.run(l.seed);
@@ -1216,12 +1260,12 @@ function result() {
   delete document.body.dataset.calm;
   if (S.cur.cp) return resultCp();
   const l = S.cur, i = S.ls.findIndex(x => x.id == l.id), nx = S.ls[i + 1] && S.ls[i + 1].track == l.track && S.ls[i + 1].lv == l.lv ? S.ls[i + 1] : null;
-  const last = !nx, fin = last ? finOf(l.track, l.lv) : null, needCp = nx && nx.lock == 'cp' ? cpBefore(nx) : null, what = l.type == 'sql' ? 'uma consulta' : 'um programa';
+  const last = !nx, fin = last ? finOf(l.track, l.lv) : null, needCp = nx && nx.lock == 'cp' ? cpBefore(nx) : null, what = l.type == 'sql' ? 'uma consulta' : l.type == 'excel' ? 'uma planilha' : 'um programa';
   const btn = last ? (fin && !fin.lock ? `<button class="btn pri block" onclick="openTest('${fin.id}')">${ic('cap', 16)} Fazer a prova final</button>` : '')
     : needCp ? `<button class="btn pri block" onclick="openTest('${needCp.id}')">${ic('flag', 16)} Fazer o checkpoint</button>`
     : `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>`;
   sfx(S.lvlUp || S.tierUp ? 'level' : 'done'); confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Mandou bem!')}<h1>Lição concluída!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${unlockCard()}
-  ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a <b>prova final</b>: ${what} com tudo o que aprendeu desde o começo. São 3 chances${l.lv < 3 ? ' e, passando, o próximo nível abre' : ' e, passando, a trilha termina e o certificado é liberado'}.</p>` : ''}
+  ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a <b>prova final</b>: ${what} com tudo o que aprendeu desde o começo. São 3 chances${l.lv < lvs(l.track).length ? ' e, passando, o próximo nível abre' : ' e, passando, você conclui o curso'}.</p>` : ''}
   ${needCp ? `<p class=gl>Checkpoint liberado! Monte ${what} com o que você aprendeu nas lições 1 a ${needCp.after} para abrir a lição ${nx.n}. São 2 chances.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>na prática</small></div></div>
   ${gemGot()}
@@ -1243,17 +1287,16 @@ function resultCp() {
 }
 
 // ============================================================ PROVAS (resultado)
-// prova final aprovada (depois da tela do troféu): libera o próximo nível ou, no 3º nível, a trilha e o certificado
+// prova final aprovada (depois da tela do troféu): libera o próximo nível ou, no último nível, conclui o curso
 function testPass(r) {
   delete document.body.dataset.calm;
-  const l = S.cur, t = l.track, lv = l.lv, next = lv < 3, fin = !!r.trackComplete;
-  confetti(); A.innerHTML = `<div class="c res">${winStage(240, fin ? 'Trilha concluída! Que orgulho!' : 'Aprovado! Que orgulho!', 'good epic', fin)}<h1>Prova final aprovada!</h1><p class=sub>${TN[t]} ${esc(l.level)}</p>${unlockCard()}
+  const l = S.cur, t = l.track, lv = l.lv, next = lv < lvs(t).length, fin = !!r.trackComplete;
+  confetti(); A.innerHTML = `<div class="c res">${winStage(240, fin ? 'Curso concluído! Que orgulho!' : 'Aprovado! Que orgulho!', 'good epic', fin)}<h1>Prova final aprovada!</h1><p class=sub>${TN[t]} ${esc(l.level)}</p>${unlockCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP bônus</small></div><div><b>${S.used || 1}/${l.chances}</b><small>tentativas</small></div><div><b>${lvDone(t, lv)}/30</b><small>lições feitas</small></div></div>
   ${gemGot()}
   ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado o bônus desta prova.</p>'}
-  ${fin ? `<p class=gl>Você concluiu toda a trilha ${TN[t]}. Seu certificado está pronto.</p>` : ''}
-  ${fin ? `<button class="btn pri block" onclick="certFlow('${t}')">${ic('award', 16)} Emitir meu certificado</button>` : ''}
+  ${fin ? `<p class=gl>Você concluiu todos os níveis do curso ${TN[t]}. Parabéns!</p>` : ''}
   <button class="btn ${fin ? 'ghost' : 'pri'} block" onclick="S.lv=${next ? lv + 1 : lv};S.scroll=true;go('home')">${next ? 'Ir para o nível ' + LV[lv] : 'Voltar ao mapa'}</button></div>`;
 }
 // as chances de uma prova acabaram: mostra quais lições voltaram a ficar pendentes
@@ -1265,20 +1308,6 @@ function testFail(s) {
   <p class=gl>Para fixar o conteúdo, você volta <b>${r.back} lições</b>: da ${r.from} à ${r.to}. O XP que você já ganhou continua seu e, quando terminar, a prova abre de novo com ${l.chances} chances novas.</p>
   <div class="panel backl"><b>Lições para refazer</b>${ls.map(x => `<div class=bk><span>${x.n}</span>${esc(x.title)}</div>`).join('')}</div>
   ${first ? `<button class="btn pri block" onclick="openL('${first.id}')">Refazer a lição ${r.from} ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="S.lv=${l.lv};S.scroll=true;go('home')">Voltar ao mapa</button></div>`;
-}
-
-// ============================================================ CERTIFICADO
-function certFlow(t) {
-  if (!trackPassed(t)) return toast(`Passe nas 3 provas finais de ${TN[t]} para receber o certificado.`, true);
-  const c = S.me.certs[t];
-  if (c) return void window.open('/certificado/' + c.code, '_blank');
-  dialog('Seu certificado', [{ id: 'nm', type: 'text', ph: 'Nome completo como deve aparecer', ac: 'name' }], 'Emitir certificado', async v => {
-    try {
-      const r = await api('certificate', { body: { track: t, name: v.nm || S.me.name } }); S.me.certs = r.certs;
-      toast('Certificado emitido!'); window.open('/certificado/' + r.code, '_blank'); render();
-    } catch (e) { fail(e); return false; }
-  });
-  setTimeout(() => { const i = $('#d_nm'); if (i) i.value = S.me.name; }, 80);
 }
 
 // Mantém o app em dia sozinho: se o dono liberar os cursos (ou publicar um aviso) enquanto a pessoa está com o app aberto, ela vê na hora,
@@ -1293,11 +1322,12 @@ async function syncAccess(force) {
     const keys = o => Object.keys((o && o.unlocked) || {}).filter(k => o.unlocked[k]).sort().join(), ann = c => (c && c.announce && c.announce.id) || 0;
     const novo = keys(me).split(',').filter(k => k && !keys(S.me).split(',').includes(k)).length > 0;
     const mudou = keys(me) != keys(S.me) || me.track != S.me.track;
-    const avisoNovo = !!(cf && S.cfg && ann(cf) != ann(S.cfg));
+    const avisoNovo = !!(cf && S.cfg && ann(cf) != ann(S.cfg)), cursosNovo = !!(cf && S.cfg && JSON.stringify(cf.courses) != JSON.stringify(S.cfg.courses));
     if (avisoNovo) S.cfg.announce = cf.announce;
-    if (mudou || avisoNovo) {
+    if (mudou || avisoNovo || cursosNovo) {
       const [ls, cps] = await Promise.all([api('lessons'), api('checkpoints')]);
       if (!$('.nav')) return;                                               // a pessoa abriu uma lição enquanto buscávamos: deixa para a próxima rodada
+      if (cursosNovo) S.cfg.courses = cf.courses;
       const y = scrollY; S.me = me; S.ls = ls; S.cps = cps; render(); scrollTo(0, y);
       if (novo) toast('Seus cursos foram liberados! Todas as lições estão abertas.');
     }

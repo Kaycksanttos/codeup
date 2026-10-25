@@ -1,15 +1,18 @@
-// Confere TODO o curso: estrutura (2 trilhas x 3 níveis x 30 lições + 2 checkpoints e 1 prova final por nível), as 4 explicações de cada atividade e a solução de cada uma.
-// SQL: roda a solução e o gabarito (sql.js). Python: roda a solução com o python3 do computador.
+// Confere TODOS os cursos: estrutura (Python e SQL com 3 níveis, Excel com o nível Básico; 30 lições + 2 checkpoints e 1 prova final por nível), as 4 explicações de cada atividade e a solução de cada uma.
+// SQL: roda a solução e o gabarito (sql.js). Python: roda a solução com o python3 do computador. Excel: calcula as fórmulas com o motor da planilha e confere com a correção.
 const test = require('node:test'), assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const initSqlJs = require('sql.js');
-const lessons = require('../lessons'), { checkpoints, finals, tests, TRACKS, CHANCES, BACK, KEYS } = lessons;
+const lessons = require('../lessons'), { checkpoints, finals, tests, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
+const xlcheck = require('../xlcheck'), checkExcel = require('../tools/check-xl');
+const PFX = { python: 'py', sql: 'sql', excel: 'xl' };
 
 const norm = (r, ordered) => { const v = (r ? r.values : []).map(x => JSON.stringify(x)); return ordered ? v : v.sort(); };
 
-test('estrutura do curso: 2 trilhas x 3 níveis x 30 lições', () => {
-  assert.deepEqual(TRACKS, ['python', 'sql']);
-  for (const t of TRACKS) for (const lv of [1, 2, 3]) {
+test('estrutura dos cursos: Python e SQL (3 níveis) e Excel (nível Básico), 30 lições por nível', () => {
+  assert.deepEqual(TRACKS, ['python', 'sql', 'excel']);
+  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, excel: 1 });
+  for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ls = lessons.filter(l => l.track === t && l.lv === lv);
     assert.equal(ls.length, 30, `${t} nível ${lv} deveria ter 30 lições`);
     assert.deepEqual(ls.map(l => l.n), Array.from({ length: 30 }, (_, i) => i + 1), 'numeração em ordem');
@@ -17,30 +20,32 @@ test('estrutura do curso: 2 trilhas x 3 níveis x 30 lições', () => {
   // as lições de cada nível precisam estar juntas e em ordem no arquivo (a ordem define a sequência)
   lessons.forEach((l, i) => { if (l.n > 1) assert.equal(lessons[i - 1].id.slice(0, -2), l.id.slice(0, -2), 'lições de um nível devem ser contíguas'); });
   assert.equal(lessons.exams, undefined, 'a antiga prova de 10 questões não existe mais');
+  for (const t of TRACKS) assert.equal(lessons.filter(l => l.track === t).length, 30 * LEVELS_OF[t], t);
+  assert.ok(lessons.filter(l => l.track === 'excel').every(l => l.type === 'excel' && l.lv === 1 && l.level === 'Básico'));
 });
 
-test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em SQL e Python', () => {
-  assert.equal(checkpoints.length, 12);
-  assert.equal(finals.length, 6);
-  assert.equal(tests.length, 18);
+test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL e Excel', () => {
+  assert.equal(checkpoints.length, 14);
+  assert.equal(finals.length, 7);
+  assert.equal(tests.length, 21);
   assert.deepEqual(CHANCES, { cp: 2, fin: 3 });
   assert.deepEqual(BACK, { cp: 5, fin: 10 });
-  for (const t of TRACKS) for (const lv of [1, 2, 3]) {
+  for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const cs = checkpoints.filter(c => c.track === t && c.lv === lv);
     assert.deepEqual(cs.map(c => c.after), [10, 20], `${t} nível ${lv}`);
     assert.deepEqual(cs.map(c => c.k), [1, 2]);
-    assert.deepEqual(cs.map(c => c.id), [`cp-${t === 'python' ? 'py' : 'sql'}-${lv}-10`, `cp-${t === 'python' ? 'py' : 'sql'}-${lv}-20`]);
+    assert.deepEqual(cs.map(c => c.id), [`cp-${PFX[t]}-${lv}-10`, `cp-${PFX[t]}-${lv}-20`]);
     for (const c of cs) {
-      for (const k of ['id', 'title', 'task', 'solution', 'need', 'starter', 'xp']) assert.ok(c[k] !== undefined, `${c.id} sem "${k}"`);
+      for (const k of t === 'excel' ? ['id', 'title', 'task', 'solution', 'need', 'xp', 'sheet', 'answer', 'targets'] : ['id', 'title', 'task', 'solution', 'need', 'starter', 'xp']) assert.ok(c[k] !== undefined, `${c.id} sem "${k}"`);
       assert.equal(c.cp, true); assert.ok(!c.fin); assert.equal(c.chances, 2); assert.equal(c.back, 5); assert.equal(c.backFrom, c.after - 4, 'volta 5 lições (6 a 10 ou 16 a 20)');
       assert.equal(c.cobre.length, 10, 'lista os temas das últimas 10 lições');
     }
     const fs = finals.filter(f => f.track === t && f.lv === lv);
     assert.equal(fs.length, 1, `${t} nível ${lv} precisa de 1 prova final`);
     const f = fs[0];
-    assert.equal(f.id, `fin-${t === 'python' ? 'py' : 'sql'}-${lv}`); assert.equal(f.after, 30); assert.equal(f.k, 3);
+    assert.equal(f.id, `fin-${PFX[t]}-${lv}`); assert.equal(f.after, 30); assert.equal(f.k, 3);
     assert.equal(f.fin, true); assert.ok(!f.cp); assert.equal(f.chances, 3); assert.equal(f.back, 10); assert.equal(f.backFrom, 21, 'volta 10 lições (21 a 30)');
-    for (const k of ['title', 'task', 'solution', 'need', 'starter']) assert.ok(f[k] !== undefined, `${f.id} sem "${k}"`);
+    for (const k of t === 'excel' ? ['title', 'task', 'solution', 'need', 'sheet', 'answer', 'targets'] : ['title', 'task', 'solution', 'need', 'starter']) assert.ok(f[k] !== undefined, `${f.id} sem "${k}"`);
   }
 });
 
@@ -61,9 +66,9 @@ test('ids únicos e campos obrigatórios', () => {
   const all = [...lessons, ...tests], ids = all.map(l => l.id);
   assert.equal(new Set(ids).size, ids.length, 'há ids repetidos');
   for (const l of all) {
-    for (const k of ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter'])
+    for (const k of l.type === 'excel' ? ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'sheet', 'answer', 'targets'] : ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter'])
       assert.ok(l[k] !== undefined, `atividade ${l.id} sem "${k}"`);
-    assert.ok(l.type === 'sql' ? l.seed && l.expectedSql : l.expectedOut !== undefined, `atividade ${l.id} sem gabarito`);
+    assert.ok(l.type === 'sql' ? l.seed && l.expectedSql : l.type === 'excel' ? l.targets.length > 0 : l.expectedOut !== undefined, `atividade ${l.id} sem gabarito`);
     if (!l.cp && !l.fin) for (const k of ['explain', 'example', 'hints']) assert.ok(l[k], `lição ${l.id} sem "${k}"`);
   }
 });
@@ -71,8 +76,11 @@ test('ids únicos e campos obrigatórios', () => {
 for (const l of [...lessons, ...tests]) {
   test(`${l.fin ? 'prova final' : l.cp ? 'checkpoint' : 'lição'} ${l.id} — ${l.title}`, async t => {
     const flat = l.solution.toLowerCase().replace(/\s+/g, ' ');
-    for (const w of l.need) assert.ok(flat.includes(w), `a solução não contém a palavra obrigatória "${w}"`);
-    if (l.type === 'sql') {
+    if (l.type !== 'excel') for (const w of l.need) assert.ok(flat.includes(w), `a solução não contém a palavra obrigatória "${w}"`);
+    if (l.type === 'excel') {
+      assert.equal(xlcheck.needMissing(l, l.answer), null, 'a resposta oficial precisa usar as funções exigidas');
+      const g = xlcheck.grade(l, JSON.stringify(l.answer)); assert.equal(g.ok, true, 'a resposta oficial deve passar na correção: ' + JSON.stringify(g));
+    } else if (l.type === 'sql') {
       const SQL = await initSqlJs();
       const a = new SQL.Database(); a.run(l.seed); const ra = a.exec(l.solution);
       const b = new SQL.Database(); b.run(l.seed); const rb = b.exec(l.expectedSql);
@@ -101,4 +109,11 @@ test('sandbox Python: todas as soluções passam e os ataques são barrados', { 
   for (const x of py) { const r = await pysandbox.run(x.prelude || '', x.solution); assert.ok(r.ok && r.out.trim() === x.expectedOut, `${x.id} divergiu no sandbox: ${r.err}`); }
   const atk = ['print(open("/etc/passwd").read())', 'open("x","w").write("a")', 'import socket', 'import subprocess', 'import os\nos.system("id")', '__import__("ctypes")', 'import os\nos.listdir("/")', 'while True: pass'];
   for (const c of atk) { const r = await pysandbox.run('', c); assert.equal(r.ok, false, 'deveria falhar: ' + c); }
+});
+
+// ---- Excel: conteúdo e correção ----
+test('Excel: todas as atividades passam na conferência de conteúdo (tools/check-xl.js)', () => {
+  const r = checkExcel();
+  assert.equal(r.n, 33, '30 lições + 2 checkpoints + 1 prova final');
+  assert.deepEqual(r.bad, []);
 });

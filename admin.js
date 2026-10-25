@@ -17,7 +17,8 @@ const crypto = require('crypto'), path = require('path'), totp = require('./totp
 
 module.exports = function mountAdmin(app, X) {
   const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
-    makeResetLink, sendVerify, settingsMain, unlockAllOn, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf } = X;
+    makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf } = X;
+  const lvs = t => Array.from({ length: (lessons.LEVELS_OF || {})[t] || 3 }, (_, i) => i + 1);   // níveis que o curso tem hoje (o Excel começa só com o Básico)
   const DAY = 864e5, TZ = -3 * 36e5;                                   // Brasil (sem horário de verão)
   const dk = ms => new Date(ms + TZ).toISOString().slice(0, 10);       // "2026-10-20" no horário de Brasília
   const msOf = iso => { const t = Date.parse(iso || ''); return Number.isFinite(t) ? t : 0; };
@@ -140,13 +141,13 @@ module.exports = function mountAdmin(app, X) {
   const row = u => ({
     id: u.id, name: u.name, email: u.email, sex: u.sex || null, guide: u.guide || null, created: u.created || null, seen: u.seen || null, last: u.last || null, track: u.track || null, xp: u.xp || 0,
     lessons: nLessons(u), cps: Object.keys(u.cpdone || {}).length, verified: u.verified !== false, google: !!u.googleId, hasPass: !!u.pass, banned: !!u.banned,
-    unlock: Object.keys(u.unlock || {}), passed: Object.keys(u.passed || {}).length, certs: Object.keys(u.certs || {}).length, streak: u.streak || 0
+    unlock: Object.keys(u.unlock || {}), passed: Object.keys(u.passed || {}).length, streak: u.streak || 0
   });
   function detail(u) {
     const byTrack = {};
     for (const t of TRACKS) byTrack[t] = {
-      name: TRACK_NAMES[t] || t, cert: u.certs && u.certs[t] || null, unlocked: !!(u.unlock && u.unlock[t]),
-      levels: [1, 2, 3].map(lv => ({
+      name: TRACK_NAMES[t] || t, unlocked: !!(u.unlock && u.unlock[t]),
+      levels: lvs(t).map(lv => ({
         lv, total: lessons.filter(l => l.track === t && l.lv === lv).length, done: lessons.filter(l => l.track === t && l.lv === lv && u.done[l.id]).length,
         cps: checkpoints.filter(c => c.track === t && c.lv === lv && u.cpdone[c.id]).length, cpTotal: checkpoints.filter(c => c.track === t && c.lv === lv).length,
         passed: u.passed[`${t}-${lv}`] || null, fails: (u.fails || {})[`${t}-${lv}`] || 0
@@ -171,7 +172,7 @@ module.exports = function mountAdmin(app, X) {
     TRACKS.forEach(t => c.tracks[t] = 0);
     const days = Array.from({ length: 30 }, (_, i) => dk(now - (29 - i) * DAY)), idx = Object.fromEntries(days.map((d, i) => [d, i]));
     const S = days.map(d => ({ d, signups: 0, active: new Set(), lessons: 0 }));
-    let lessonsDone = 0, cpsDone = 0, examsPassed = 0, examFails = 0, xp = 0, started = 0, lvl1 = 0, withCert = 0;
+    let lessonsDone = 0, cpsDone = 0, examsPassed = 0, examFails = 0, xp = 0, started = 0, lvl1 = 0;
     const act = { today: 0, d7: 0, d30: 0 }, nw = { today: 0, d7: 0, d30: 0 };
     for (const u of us) {
       if (u.verified !== false) c.verified++; else c.unverified++;
@@ -187,20 +188,18 @@ module.exports = function mountAdmin(app, X) {
       for (const e of [...Object.values(u.done || {}), ...Object.values(u.cpdone || {})]) { const d = dk(msOf(e && e.date)); if (has(idx, d)) { S[idx[d]].active.add(u.id); S[idx[d]].lessons++; } }
       const ps = Object.keys(u.passed || {}); examsPassed += ps.length; if (ps.some(k => k.endsWith('-1'))) lvl1++;
       examFails += Object.values(u.fails || {}).reduce((a, b) => a + b, 0);
-      if (u.certs && Object.keys(u.certs).length) withCert++;
     }
-    const certs = Object.values(DB.certs || {}).filter(x => !x.revoked).length;
     const v = {
       counts: c, new: nw, active: act, series: S.map(s => ({ d: s.d, signups: s.signups, active: s.active.size, lessons: s.lessons })),
-      totals: { lessonsDone, cpsDone, examsPassed, examFails, certs, xp },
-      funnel: [['Cadastros', us.length], ['E-mail confirmado', c.verified], ['Fizeram 1 lição', started], ['Passaram na prova do Básico', lvl1], ['Receberam certificado', withCert]],
+      totals: { lessonsDone, cpsDone, examsPassed, examFails, xp },
+      funnel: [['Cadastros', us.length], ['E-mail confirmado', c.verified], ['Fizeram 1 lição', started], ['Passaram na prova do Básico', lvl1]],
       top: [...us].sort((a, b) => (b.xp || 0) - (a.xp || 0)).slice(0, 8).map(row),
       recent: [...us].sort((a, b) => msOf(b.created) - msOf(a.created)).slice(0, 10).map(row),
       settings: publicSettings()
     };
     ovCache = { at: now, v }; return v;
   }
-  function publicSettings() { const s = settingsMain(), a = adsNow(); return { signupsOpen: s.signupsOpen !== false, announce: s.announce, unlockAll: { on: unlockAllOn(), until: s.unlockAll.until || null }, ads: { on: a.on, client: a.client, slot: a.slot, from: a.from, adsTxt: a.client ? BASE + '/ads.txt' : '' } }; }
+  function publicSettings() { const s = settingsMain(), a = adsNow(); return { signupsOpen: s.signupsOpen !== false, announce: s.announce, courses: TRACKS.map(t => ({ id: t, name: TRACK_NAMES[t], on: courseOn(t), levels: lvs(t), lessons: lessons.filter(l => l.track === t).length, students: Object.values(DB.users).filter(u => u.track === t).length })), unlockAll: { on: unlockAllOn(), until: s.unlockAll.until || null }, ads: { on: a.on, client: a.client, slot: a.slot, from: a.from, adsTxt: a.client ? BASE + '/ads.txt' : '' } }; }
   app.get('/api/admin/overview', ...guard, (req, res) => res.json(overview()));
 
   // ---------- lista de usuários ----------
@@ -213,7 +212,7 @@ module.exports = function mountAdmin(app, X) {
     const F = {
       verified: u => u.verified !== false, unverified: u => u.verified === false, banned: u => !!u.banned, google: u => !!u.googleId,
       unlocked: u => !!(u.unlock && Object.keys(u.unlock).length), active7: u => now - seenMs(u) < 7 * DAY, inactive7: u => now - seenMs(u) >= 7 * DAY,
-      started: u => nLessons(u) > 0, never: u => nLessons(u) === 0, cert: u => !!(u.certs && Object.keys(u.certs).length)
+      started: u => nLessons(u) > 0, never: u => nLessons(u) === 0
     };
     if (F[status]) rows = rows.filter(F[status]);
     const sk = has(SORTS, qs.sort) ? qs.sort : 'created', dir = qs.dir === 'asc' ? 1 : -1, f = SORTS[sk];
@@ -228,8 +227,8 @@ module.exports = function mountAdmin(app, X) {
   // CSV (abre direto no Excel em português: separador ";" e acentos corretos)
   const cell = v => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   app.get('/api/admin/users.csv', ...guard, (req, res) => {
-    const head = ['Nome', 'E-mail', 'Cadastro', 'Último acesso', 'Trilha atual', 'XP', 'Lições concluídas', 'Checkpoints', 'Provas aprovadas', 'Certificados', 'E-mail confirmado', 'Entra com Google', 'Suspenso', 'Cursos liberados', 'Gênero', 'Personagem'];
-    const lines = filterUsers(req.query).map(u => { const r = row(u); return [r.name, r.email, r.created, r.seen || r.last || '', r.track ? TRACK_NAMES[r.track] : '', r.xp, r.lessons, r.cps, r.passed, r.certs, r.verified ? 'sim' : 'não', r.google ? 'sim' : 'não', r.banned ? 'sim' : 'não', r.unlock.map(t => TRACK_NAMES[t] || t).join(' + '), r.sex === 'f' ? 'feminino' : r.sex === 'm' ? 'masculino' : '', r.guide === 'tay' ? 'Tay' : r.guide === 'cut' ? 'Cut' : ''].map(cell).join(';'); });
+    const head = ['Nome', 'E-mail', 'Cadastro', 'Último acesso', 'Curso atual', 'XP', 'Lições concluídas', 'Checkpoints', 'Provas aprovadas', 'E-mail confirmado', 'Entra com Google', 'Suspenso', 'Cursos liberados', 'Gênero', 'Personagem'];
+    const lines = filterUsers(req.query).map(u => { const r = row(u); return [r.name, r.email, r.created, r.seen || r.last || '', r.track ? TRACK_NAMES[r.track] : '', r.xp, r.lessons, r.cps, r.passed, r.verified ? 'sim' : 'não', r.google ? 'sim' : 'não', r.banned ? 'sim' : 'não', r.unlock.map(t => TRACK_NAMES[t] || t).join(' + '), r.sex === 'f' ? 'feminino' : r.sex === 'm' ? 'masculino' : '', r.guide === 'tay' ? 'Tay' : r.guide === 'cut' ? 'Cut' : ''].map(cell).join(';'); });
     audit(req, 'exportou-csv', '', lines.length + ' usuários');
     res.type('text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="usuarios-codeup-${dk(Date.now())}.csv"`).send('﻿' + [head.map(cell).join(';'), ...lines].join('\r\n'));
   });
@@ -239,9 +238,9 @@ module.exports = function mountAdmin(app, X) {
     const u = getUser(req, res); if (!u) return;
     const b = req.body || {}, a = String(b.action || ''), who = `${u.name} <${u.email}>`, out = {};
     switch (a) {
-      case 'unlock': {                                                  // libera (ou tira a liberação de) trilhas inteiras: sem bloqueio de nível, sequência ou checkpoint
+      case 'unlock': {                                                  // libera (ou tira a liberação de) cursos inteiros: sem bloqueio de nível, sequência ou checkpoint
         const ts = b.tracks === 'all' ? TRACKS : (Array.isArray(b.tracks) ? b.tracks : []).filter(t => TRACKS.includes(t));
-        if (!ts.length) return res.status(400).json({ error: 'Escolha uma trilha.' });
+        if (!ts.length) return res.status(400).json({ error: 'Escolha um curso.' });
         u.unlock ??= {};
         for (const t of ts) { if (b.on === false) delete u.unlock[t]; else u.unlock[t] = new Date().toISOString(); }
         audit(req, b.on === false ? 'tirou-liberacao' : 'liberou-curso', who, ts.join(', ')); break;
@@ -258,10 +257,10 @@ module.exports = function mountAdmin(app, X) {
         const before = u.xp || 0; u.xp = Math.min(1e6, Math.max(0, b.mode === 'set' ? v : before + v)); audit(req, 'ajustou-xp', who, `${before} → ${u.xp}`); break;
       }
       case 'note': u.note = String(b.text || '').slice(0, 500); audit(req, 'nota', who, ''); break;
-      case 'reset-level': {                                             // suporte: devolve um nível (ou a trilha toda) ao começo. O XP já ganho fica.
+      case 'reset-level': {                                             // suporte: devolve um nível (ou o curso todo) ao começo. O XP já ganho fica.
         const t = String(b.track || ''), all = b.level === 'all', lv = +b.level;
-        if (!TRACKS.includes(t) || (!all && ![1, 2, 3].includes(lv))) return res.status(400).json({ error: 'Trilha ou nível inválido.' });
-        for (const L of all ? [1, 2, 3] : [lv]) {
+        if (!TRACKS.includes(t) || (!all && !lvs(t).includes(lv))) return res.status(400).json({ error: 'Curso ou nível inválido.' });
+        for (const L of all ? lvs(t) : [lv]) {
           lessons.filter(l => l.track === t && l.lv === L).forEach(l => { delete u.done[l.id]; delete u.attempts[l.id]; });
           [...checkpoints, ...finals].filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; delete u.cptry[c.id]; });
           delete u.passed[`${t}-${L}`]; delete u.exams[`${t}-${L}`];
@@ -270,7 +269,6 @@ module.exports = function mountAdmin(app, X) {
       }
       case 'delete': {
         if (String(b.confirm || '').trim().toLowerCase() !== String(u.email).toLowerCase()) return res.status(400).json({ error: 'Digite o e-mail do usuário para confirmar.' });
-        for (const c in DB.certs) if (DB.certs[c].uid === u.id) delete DB.certs[c];
         dropSessions(u.id); for (const k in DB.resets) if (DB.resets[k].id === u.id) delete DB.resets[k]; for (const k in DB.verifies) if (DB.verifies[k].id === u.id) delete DB.verifies[k];
         delete DB.users[u.id]; audit(req, 'excluiu-conta', who, ''); save(); ovCache = null; return res.json({ ok: true, deleted: true });
       }
@@ -282,7 +280,7 @@ module.exports = function mountAdmin(app, X) {
   // ---------- aprendizado: onde os alunos travam e como vão as provas ----------
   app.get('/api/admin/learning', ...guard, (req, res) => {
     const st = new Map(); [...lessons, ...checkpoints, ...finals].forEach(l => st.set(l.id, { started: 0, done: 0, tries: 0, stuck: 0, track: l.track, lv: l.lv }));
-    const ex = {}; TRACKS.forEach(t => [1, 2, 3].forEach(lv => ex[`${t}-${lv}`] = { track: t, lv, passed: 0, fails: 0, tries: 0 }));
+    const ex = {}; TRACKS.forEach(t => lvs(t).forEach(lv => ex[`${t}-${lv}`] = { track: t, lv, passed: 0, fails: 0, tries: 0 }));
     for (const u of Object.values(DB.users)) {
       // "travado" = este aluno já tentou a lição e ainda não concluiu (não conta quem foi reprovado na prova do nível: aí as lições voltam por regra)
       for (const [id, n] of Object.entries(u.attempts || {})) { const s = st.get(id); if (s && n > 0) { s.started++; s.tries += n; if (!(u.done || {})[id] && !(u.cpdone || {})[id] && !(u.fails || {})[`${s.track}-${s.lv}`]) s.stuck++; } }
@@ -301,26 +299,17 @@ module.exports = function mountAdmin(app, X) {
     });
   });
 
-  // ---------- certificados ----------
-  app.get('/api/admin/certs', ...guard, (req, res) => {
-    const q = String(req.query.q || '').trim().toLowerCase().slice(0, 60);
-    let rows = Object.entries(DB.certs || {}).map(([code, c]) => { const u = has(DB.users, c.uid) ? DB.users[c.uid] : null; return { code, track: c.track, name: c.name, date: c.date, email: u ? u.email : '(conta excluída)', revoked: c.revoked || null }; });
-    if (q) rows = rows.filter(r => r.code.toLowerCase().includes(q) || String(r.name || '').toLowerCase().includes(q) || r.email.includes(q));
-    rows.sort((a, b) => msOf(b.date) - msOf(a.date)); res.json({ total: rows.length, rows: rows.slice(0, 200), url: BASE + '/certificado/' });
-  });
-  app.post('/api/admin/certs/:code', ...guard, (req, res) => {
-    const code = String(req.params.code || '').toUpperCase().slice(0, 40); if (!has(DB.certs, code)) return res.status(404).json({ error: 'Certificado não encontrado.' });
-    const c = DB.certs[code];
-    if (req.body.revoke === false) { delete c.revoked; audit(req, 'restaurou-certificado', code, c.name); }
-    else { c.revoked = { at: new Date().toISOString(), reason: String(req.body.reason || '').slice(0, 200) }; audit(req, 'revogou-certificado', code, c.name + ' — ' + c.revoked.reason); }
-    save(); ovCache = null; res.json({ ok: true, revoked: c.revoked || null });
-  });
-
   // ---------- ajustes: cadastros, comunicado, modo livre e anúncios (AdSense) ----------
   app.get('/api/admin/settings', ...guard, (req, res) => res.json(publicSettings()));
   app.post('/api/admin/settings', ...guard, (req, res) => {
     const s = settingsMain(), b = req.body || {}, did = [];
     if (typeof b.signupsOpen === 'boolean') { s.signupsOpen = b.signupsOpen; did.push('cadastros ' + (b.signupsOpen ? 'abertos' : 'fechados')); }
+    if (b.courses && typeof b.courses === 'object' && !Array.isArray(b.courses)) {                       // quais cursos ficam ativos no aplicativo
+      const ks = Object.keys(b.courses); if (!ks.length || ks.some(k => !TRACKS.includes(k) || typeof b.courses[k] !== 'boolean')) return res.status(400).json({ error: 'Curso inválido.' });
+      const next = { ...coursesCfg(), ...b.courses }; if (!TRACKS.some(t => next[t])) return res.status(400).json({ error: 'Deixe pelo menos um curso ativo, senão o aplicativo fica sem nada para estudar.' });
+      for (const k of ks) if (courseOn(k) !== b.courses[k]) { s.courses[k] = b.courses[k]; did.push(`curso ${TRACK_NAMES[k]} ${b.courses[k] ? 'ativado' : 'desativado'}`); }
+      if (!did.length) did.push('cursos: nada mudou');
+    }
     if (b.announce && typeof b.announce === 'object') {
       const text = String(b.announce.text || '').trim().slice(0, 280), kind = ['info', 'warn', 'ok'].includes(b.announce.kind) ? b.announce.kind : 'info', on = b.announce.on === true && !!text;
       if (b.announce.on === true && !text) return res.status(400).json({ error: 'Escreva o texto do comunicado.' });
@@ -352,7 +341,7 @@ module.exports = function mountAdmin(app, X) {
     const m = process.memoryUsage();
     res.json({
       db: store.kind, node: process.version, uptime: Math.round(process.uptime()), memMB: Math.round(m.rss / 1048576), prod: PROD, base: BASE,
-      users: Object.keys(DB.users).length, sessions: Object.keys(DB.sessions).length, certs: Object.keys(DB.certs || {}).length, audit: Object.keys(DB.audit || {}).length,
+      users: Object.keys(DB.users).length, sessions: Object.keys(DB.sessions).length, audit: Object.keys(DB.audit || {}).length,
       keyFromEnv: !!(process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD), emailFromEnv: !!adminEmail(), twofa: !!tf(), twofaKey: tf() ? tf().needKey !== false : null, twofaStored: !!(DB.meta && DB.meta.admin && DB.meta.admin.totp && DB.meta.admin.totp.on), twofaEnvOff: !!process.env.ADMIN_2FA_OFF, adminHost: adminHost || '', now: new Date().toISOString(), ...info()
     });
   });

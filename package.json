@@ -10,8 +10,9 @@
     "start": "node server.js",
     "teste": "node tools/teste.js",
     "teste:demo": "node tools/teste.js --demo",
-    "test": "node --test --test-concurrency=1 test/lessons.test.js test/api.test.js test/store.test.js",
-    "build:content": "node tools/build-content.js"
+    "test": "node --test --test-concurrency=1 test/lessons.test.js test/xl.test.js test/api.test.js test/store.test.js",
+    "build:content": "node tools/build-content.js",
+    "check:excel": "node tools/check-xl.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
