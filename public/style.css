@@ -1121,3 +1121,36 @@ body.neo .wdc.lk .wdp img{filter:brightness(0) opacity(.18)}
 b.gr{color:#22c55e}
 .acts .btn.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 16%,transparent)}
 @media(max-width:380px){.xk{min-width:36px;padding:0 9px}.xnm{min-width:42px}}
+
+/* ===== Duas atividades por lição: bolinhas no círculo do mapa e tela de "ler o código" (prefixo rdr-) ===== */
+/* anel de progresso da lição: 2 arcos em volta do círculo (1ª atividade = arco da direita, 2ª = arco da esquerda) */
+.rdr-ring{--rt:rgba(255,255,255,.17);--r1:var(--rt);--r2:var(--rt);position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:0;
+  background:conic-gradient(from 0deg,transparent 0 9deg,var(--r1) 9deg 171deg,transparent 171deg 189deg,var(--r2) 189deg 351deg,transparent 351deg 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));transition:filter .3s}
+.rdr-ring.r1ok{--r1:var(--ok,#34d399)}.rdr-ring.r2ok{--r2:var(--ok,#34d399)}
+.rdr-ring.r1cur{--r1:color-mix(in srgb,var(--acc) 62%,#fff)}.rdr-ring.r2cur{--r2:color-mix(in srgb,var(--acc) 62%,#fff)}
+.rdr-ring.r1ok.r2ok{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--ok,#34d399) 55%,transparent))}
+.tl .ti.lk .rdr-ring{opacity:.7}
+body.neo .rdr-ring{--rt:rgba(80,92,170,.18)}
+body.neo .tl .ti.cur .rail span.nd:before{display:none}   /* o anel de progresso já marca a lição atual */
+.steps.st3{gap:6px}.steps.st3 span{padding:5px 10px}
+.rdr-tb{margin:12px 0 0}.rdr-tb>small{display:block;color:var(--mute);font-weight:800;margin:0 0 6px;font-size:12.5px}.rdr-tb b{color:var(--text)}
+.rdr-opts{display:flex;flex-direction:column;gap:10px;margin:14px 0 6px}
+.rdr-o{display:flex;align-items:flex-start;gap:12px;width:100%;margin:0;padding:13px 14px;text-align:left;border-radius:16px;border:2px solid var(--line);border-bottom-width:4px;background:var(--panel);color:var(--text);font:600 15px/1.35 ui-monospace,Menlo,Consolas,monospace;cursor:pointer;white-space:pre-wrap;word-break:break-word;transition:border-color .12s,transform .08s}
+.rdr-o span{flex:1;min-width:0;white-space:pre-wrap}
+.rdr-o:active{transform:translateY(2px)}
+.rdr-k{flex:none;width:26px;height:26px;border-radius:9px;display:grid;place-items:center;background:var(--panel2);color:var(--mute);font:900 13px Inter,system-ui,sans-serif;font-style:normal}
+.rdr-o.sel{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,var(--panel))}.rdr-o.sel .rdr-k{background:var(--acc);color:#04101c}
+.rdr-o.bad{border-color:#ef4444;background:color-mix(in srgb,#ef4444 12%,var(--panel));opacity:.75;text-decoration:line-through;cursor:not-allowed}.rdr-o.bad .rdr-k{background:#ef4444;color:#fff}
+.rdr-o.good{border-color:var(--ok,#34d399);background:color-mix(in srgb,var(--ok,#34d399) 16%,var(--panel))}.rdr-o.good .rdr-k{background:var(--ok,#34d399);color:#04200f}
+.rdr-o:disabled:not(.bad):not(.good){opacity:.6}
+.rdr-lb{display:block;font-weight:800;color:var(--mute);margin:16px 0 6px;font-size:13px}
+.rdr-in{width:100%;margin:0;padding:12px 14px;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--text);font:600 15px/1.4 ui-monospace,Menlo,Consolas,monospace;resize:vertical;min-height:84px;outline:0}
+.rdr-in:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 25%,transparent)}
+.rdr-why{margin:14px 0 4px;padding:14px 15px;border-radius:16px;background:color-mix(in srgb,var(--ok,#34d399) 12%,var(--panel));border:2px solid color-mix(in srgb,var(--ok,#34d399) 55%,var(--line))}
+.rdr-wh{display:flex;align-items:center;gap:8px;margin:0 0 6px;color:var(--ok,#34d399)}.rdr-wh b{font-size:16px}.rdr-wh span{margin-left:auto;font-weight:900;font-size:13px;color:var(--acc2,#fbbf24)}
+.rdr-why p{margin:6px 0 0;font-size:14.5px;line-height:1.5;color:var(--text)}
+.rdr-why code{font:700 13px ui-monospace,Menlo,Consolas,monospace;background:rgba(127,127,127,.18);padding:1px 6px;border-radius:6px}
+.rdr-next{display:flex;gap:12px;align-items:flex-start;text-align:left;margin:14px 0;padding:14px;border-radius:18px;background:color-mix(in srgb,var(--acc) 12%,var(--panel));border:2px solid color-mix(in srgb,var(--acc) 45%,var(--line))}
+.rdr-next b{display:block;font-size:16px;margin:0 0 3px}.rdr-next small{display:block;color:var(--mute);font-size:13.5px;line-height:1.45}
+.rdr-ni{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--acc);color:#04101c}

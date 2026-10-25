@@ -33,6 +33,19 @@ for (const tr of TRACKS) FILES[tr].forEach(f => {
 const KEYS = ['oque', 'serve', 'como', 'retorno'];
 lessons.forEach(x => { const a = INFO[x.id]; if (a) x.info = Object.fromEntries(KEYS.map((k, i) => [k, a[i]])); });
 
+// 2ª ATIVIDADE DE CADA LIÇÃO: "ler o código". A lição tem duas atividades: 1) executar (teoria + prática: o aluno escreve e roda) e
+// 2) ler (o aluno vê um código pronto e diz o que ele faz). Os itens ficam em content/rd-*.js (um por lição, pelo id) e são conferidos
+// por `npm run check:ler`, que executa cada código e prova que a resposta certa é mesmo o que o código faz.
+//   { k: 'mc' | 'type', code, q, ok, no: [3 erradas] (só no mc), why, hint?, v? (como o validador confere), seed? (SQL), sheet/ask (Excel) }
+const RD = {};
+for (const tr of TRACKS) FILES[tr].forEach(f => {
+  try { Object.assign(RD, require('./content/rd-' + f)); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND' || !/rd-/.test(e.message)) throw e; }
+});
+let seedTables = {};                     // tabelas de cada banco de treino (para o aluno ver os dados enquanto lê o SQL): gerado por `npm run check:ler`
+try { seedTables = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'seed-tables.json'), 'utf8')); } catch { }
+const seedKey = s => require('crypto').createHash('sha1').update(String(s || '')).digest('hex').slice(0, 10);
+lessons.forEach(x => { const r = RD[x.id]; if (r) { x.read = r; if (x.type === 'sql') x.read.seedKey = seedKey(r.seed || x.seed); } });
+
 // provas de checkpoint e prova final: ficam fora de `lessons` para não mudar a contagem das 30 lições do nível
 const tests = [...require('./content/checkpoints'), ...require('./content/cp-xl')].map(fill);
 for (const t of tests) {
@@ -43,4 +56,4 @@ for (const t of tests) {
 const checkpoints = tests.filter(t => t.cp), finals = tests.filter(t => t.fin);
 
 module.exports = lessons;
-Object.assign(module.exports, { checkpoints, finals, tests, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS });
+Object.assign(module.exports, { checkpoints, finals, tests, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, seedTables, seedKey });

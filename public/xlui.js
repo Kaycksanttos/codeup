@@ -1,7 +1,7 @@
 // Planilha de EXCEL da prática: grade com células, barra de fórmulas, símbolos rápidos, "Preencher" para baixo/direita e toque nas células para apontar.
 // O navegador calcula as fórmulas com o motor xl.js só para MOSTRAR o resultado na célula; quem corrige é o servidor (xlcheck.js), que nunca
 // envia a resposta oficial antes da hora. O que vai para a correção é um JSON com o que o aluno digitou nas células pedidas: {"D2":"=B2*C2", ...}.
-// Funções globais (usadas pelo app.js e pelos botões da tela): xlBox, xlInit, xlCode, xlEmpty, xlCommit, xlStatic, xlPreview, xlDiag, xlMark, xlClear, xlTap, xlIns, xlFill, xlToggleF.
+// Funções globais (usadas pelo app.js e pelos botões da tela): xlBox, xlInit, xlCode, xlEmpty, xlCommit, xlStatic, xlPreview, xlRead, xlDiag, xlMark, xlClear, xlTap, xlIns, xlFill, xlToggleF.
 
 const XQ = ['=', '(', ')', ';', ':', '$', '"', '+', '-', '*', '/', '^', '%', '&', '<', '>', ',', '<>'];   // teclas que faltam no teclado do celular
 const XDEF_W = 56, XRH_W = 28;
@@ -176,6 +176,8 @@ function xlClear() { const x = S.xl; x.edits = {}; x.afmt = {}; x.res = null; x.
 
 // ---------------------------------------------------------------- planilha só para ver (lição concluída e prévia na teoria)
 function xlStatic() { const x = S.xl; if (!x) return ''; const y = { ...x, sel: null, res: null, showF: false }; return `<div class="xs xro"><div class=xg>${xlGridHtml(y, false)}</div></div>`; }
+// atividade de ler: a planilha com as fórmulas à mostra e a célula da pergunta destacada
+function xlRead(r) { const l = { id: 'rd', sheet: r.sheet, targets: r.ask ? [r.ask] : [] }, x = xlState(l, {}); x.showF = true; x.sel = null; return `<div class="xs xro"><div class=xg>${xlGridHtml(x, false)}</div></div>`; }
 function xlPreview(l) { const x = xlState(l, {}); x.showF = false; return `<div class="xs xro"><div class=xg>${xlGridHtml(x, false)}</div></div>`; }
 
 // ---------------------------------------------------------------- correção: marcas nas células e explicação do que ajustar

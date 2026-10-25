@@ -127,18 +127,41 @@ const cosState = u => ({ xp: u.xp, days: daysOf(u), own: u.own, gems: u.gems || 
 const cosOwned = u => R.ownedCostumes(cosState(u)).filter(k => R.costume(k).guide === u.guide);   // as de outro personagem ficam guardadas, mas não valem
 const cosWorn = u => { const c = R.costume(u.cost); return c && c.guide === u.guide && R.costumeState(c, cosState(u)) === 'own' ? c.key : null; };
 const pub = u => ({
-  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, days: daysOf(u), own: cosOwned(u), cos: cosWorn(u), hasPassword: !!u.pass, google: !!u.googleId,
+  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, ex: u.ex || {}, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, days: daysOf(u), own: cosOwned(u), cos: cosWorn(u), hasPassword: !!u.pass, google: !!u.googleId,
   track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true])),
   away: u.away ? { days: Math.max(1, Math.floor((Date.now() - Date.parse(u.away.from)) / 864e5)) } : null          // dias sem entrar (só enquanto a tela "dormindo" não foi vista)
 });
+// ---------- as DUAS atividades de cada lição: 1) executar (teoria + prática) e 2) ler o código ----------
+// `u.ex[id]` = atividade 1 feita · `u.done[id]` = lição concluída (as duas feitas; é o que libera a próxima lição). Quem já tinha a lição concluída antes
+// da atividade de ler existir continua concluído (e já tinha ganhado todo o XP). O XP da lição se divide: metade (arredondada para cima) na 1 e o resto na 2.
+const hasRead = l => !!(l && l.read && !l.cp && !l.fin);
+const exDone = (u, l) => !!((u.ex || {})[l.id] || u.done[l.id]);
+const xpParts = l => { const a = Math.ceil(l.xp / 2); return [a, l.xp - a]; };
+const GEMS2 = [2, 3];                                                                   // diamantes: 5 por lição, divididos entre as duas atividades
+function tickStreak(u) {                                                                // a sequência de dias vale uma vez por dia, na 1ª atividade certa do dia
+  const today = day(new Date()), yest = day(new Date(Date.now() - 864e5)); let streakUp = 0, gemBonus = 0;
+  if (u.last !== today) {
+    const d0 = daysOf(u); u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; streakUp = u.streak; u.days = d0 + 1;     // mais um dia de estudo
+    const sb = R.STREAK_GEMS[u.streak];                                               // marco da sequência (3, 7, 14, 30, 60, 100 dias): diamantes de bônus, uma vez só
+    if (sb && !u.xpd['sg' + u.streak]) { u.xpd['sg' + u.streak] = 1; u.gems = (u.gems || 0) + sb; gemBonus = sb; }
+  }
+  return { streakUp, gemBonus };
+}
+const norm = s => String(s ?? '').replace(/\r/g, '').split('\n').map(x => x.trim().replace(/\s+/g, ' ')).join('\n').trim();
+const shuffled = (arr, seed) => { const a = [...arr]; let h = parseInt(sha(seed).slice(0, 8), 16) || 1; const rnd = () => (h = (Math.imul(h, 1664525) + 1013904223) >>> 0) / 4294967296; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const readMeta = l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, level: l.level, xp: l.xp });
+function readPub(u, l) {                                                                // o que o navegador recebe: sem a resposta certa; as opções vêm numa ordem fixa por aluno e lição
+  const r = l.read, code = r.code || '', names = l.type === 'sql' ? (lessons.seedTables[r.seedKey] || []).filter(t => new RegExp('\\b' + t.name + '\\b', 'i').test(code)) : [];
+  return { ...readMeta(l), k: r.k, q: r.q, code: r.code, sheet: r.sheet, ask: r.ask, tables: names.length ? names : undefined, opts: r.k === 'mc' ? shuffled([r.ok, ...r.no], u.id + l.id) : undefined, done: !!u.done[l.id] };
+}
 const idx = id => lessons.findIndex(l => l.id === String(id));
 const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                       // lições + checkpoints + provas finais
 const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
-const strip = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, ...rest }) => rest;   // o gabarito nunca vai para o navegador
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, solution, hints, explain, example, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
-const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
+const strip = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, read, ...rest }) => rest;   // o gabarito nunca vai para o navegador
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, solution, hints, explain, example, read, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
 const key = (track, lv) => `${track}-${lv}`;
@@ -530,7 +553,7 @@ app.post('/api/track', auth, (req, res) => {
 });
 
 app.get('/api/lessons', auth, (req, res) =>
-  res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, lock: lockOf(req.u, l) }))));
+  res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, rd: hasRead(l) ? 1 : 0, lock: lockOf(req.u, l) }))));
 
 // provas: os 2 checkpoints de cada nível (depois das lições 10 e 20) e a prova final (depois da 30), com as chances que ainda restam
 app.get('/api/checkpoints', auth, (req, res) =>
@@ -632,37 +655,70 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
   let gained = 0, streakUp = 0, rewind = null, gemBonus = 0; const gems0 = u.gems || 0, own0 = new Set(cosOwned(u));     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
+  const two = !test && hasRead(l);                                                       // lição com 2 atividades: aqui é a 1 (executar); a lição só conclui na 2 (ler)
   if (ok) {
-    const today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
-    if (u.last !== today) {
-      const d0 = daysOf(u); u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; streakUp = u.streak; u.days = d0 + 1;     // mais um dia de estudo
-      const sb = R.STREAK_GEMS[u.streak];                                               // marco da sequência (3, 7, 14, 30, 60, 100 dias): diamantes de bônus, uma vez só
-      if (sb && !u.xpd['sg' + u.streak]) { u.xpd['sg' + u.streak] = 1; u.gems = (u.gems || 0) + sb; gemBonus = sb; }
-    }
+    ({ streakUp, gemBonus } = tickStreak(u));
     if (l.fin) {                                                                       // prova final aprovada: libera o próximo nível e dá o bônus (uma vez só)
       u.passed[lk] ||= new Date().toISOString();
       if (!u.xpd['exam-' + lk]) { u.xpd['exam-' + lk] = 1; gained = 50 * l.lv; gainXp(u, gained); u.gems = (u.gems || 0) + 20; }
     } else {
-      (l.cp ? u.cpdone : u.done)[k] = { code, date: new Date().toISOString() };
-      if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
+      const date = new Date().toISOString();
+      if (two) {
+        (u.ex ??= {})[k] = { code, date }; if (u.done[k]) u.done[k] = { code, date };                // lição já concluída (treino): só atualiza o código
+        if (!u.xpd[k] && !u.xpd[k + ':x']) { u.xpd[k + ':x'] = 1; gained = xpParts(l)[0]; gainXp(u, gained); u.gems = (u.gems || 0) + GEMS2[0]; }   // metade do XP, só na 1ª vez
+      } else {
+        (l.cp ? u.cpdone : u.done)[k] = { code, date };
+        if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
+      }
     }
     if (test) delete u.cptry[k];
   } else if (test && !already) {
     if (l.fin) { u.tries = u.tries || {}; u.tries[lk] = (u.tries[lk] || 0) + 1; }
     u.cptry[k] = (u.cptry[k] || 0) + 1;
     if (u.cptry[k] >= l.chances) {                                                     // acabaram as chances: volta `back` lições para relembrar (o XP já ganho fica)
-      levelLessons(l.track, l.lv).filter(x => x.n >= l.backFrom && x.n <= l.after).forEach(x => { delete u.done[x.id]; });
+      levelLessons(l.track, l.lv).filter(x => x.n >= l.backFrom && x.n <= l.after).forEach(x => { delete u.done[x.id]; delete (u.ex || {})[x.id]; });
       delete u.cptry[k]; u.fails[l.fin ? lk : k] = (u.fails[l.fin ? lk : k] || 0) + 1;
       rewind = { from: l.backFrom, to: l.after, back: l.back };
     }
   }
   save();
-  const lvDone = ok && !test && levelDone(u, l.track, l.lv);
+  const lvDone = ok && !test && !(two && !u.done[k]) && levelDone(u, l.track, l.lv);
   res.json({
     ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
     view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
-    levelComplete: lvDone || undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
+    levelComplete: lvDone || undefined, next: ok && two && !u.done[k] ? 'read' : undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
     trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(k => !own0.has(k)), ...pub(u)
+  });
+});
+
+// ---------- 2ª atividade da lição: LER o código ----------
+// O aluno vê um código pronto e responde o que ele faz (escolher ou digitar). Só abre depois da atividade 1 (executar). Acertou = a lição conclui e libera a próxima.
+// A resposta certa nunca vai para o navegador; as erradas não gastam nada (é treino de leitura), então dá para tentar de novo.
+function readLesson(req, res) {
+  const l = actOf(req.params.id || req.body.id);
+  if (!l || !hasRead(l)) { res.sendStatus(404); return null; }
+  const lock = lockOf(req.u, l);
+  if (lock) { res.status(409).json({ error: lockMsg(lock, l), lock }); return null; }
+  if (!exDone(req.u, l)) { res.status(409).json({ error: 'Faça primeiro a atividade 1 (executar) desta lição para abrir a atividade de ler.', lock: 'ex' }); return null; }
+  return l;
+}
+app.get('/api/lessons/:id/read', auth, (req, res) => { const l = readLesson(req, res); if (l) res.json(readPub(req.u, l)); });
+app.post('/api/read', auth, limit(240 * RELAX, 60e3), (req, res) => {
+  const l = readLesson(req, res); if (!l) return;
+  const u = req.u, k = l.id, r = l.read, a = String(req.body.a ?? '').slice(0, 2000);
+  const okAns = r.k === 'mc' ? a === r.ok : (Array.isArray(r.ok) ? r.ok : [r.ok]).some(x => norm(x) === norm(a));
+  u.rtries ??= {}; u.rtries[k] = (u.rtries[k] || 0) + 1;
+  if (!okAns) { save(); return res.json({ ok: false, tries: u.rtries[k], hint: r.hint || undefined }); }
+  const gems0 = u.gems || 0, own0 = new Set(cosOwned(u)), first = !u.done[k]; let gained = 0;
+  const { streakUp, gemBonus } = tickStreak(u);
+  if (first) {
+    u.done[k] = { code: ((u.ex || {})[k] || {}).code || '', date: new Date().toISOString() };
+    if (!u.xpd[k] && !u.xpd[k + ':r']) { u.xpd[k + ':r'] = 1; gained = xpParts(l)[1]; gainXp(u, gained); u.gems = (u.gems || 0) + GEMS2[1]; }
+  }
+  save();
+  res.json({
+    ok: true, gained, tries: u.rtries[k], why: r.why, streakUp: streakUp || undefined, levelComplete: levelDone(u, l.track, l.lv) || undefined,
+    gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(x => !own0.has(x)), ...pub(u)
   });
 });
 

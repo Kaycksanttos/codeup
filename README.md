@@ -1,7 +1,7 @@
 # CodeUp — aprenda SQL, Python e Análise de Dados na prática
 
 App web instalável no celular (PWA). Escreve código de verdade no navegador, corrige no servidor,
-tem contas, 3 cursos (Python e SQL com 3 níveis de 30 lições cada; Excel com o nível Básico de 30 lições e 3 provas), 2 checkpoints e uma prova final por nível, XP/vidas/sequência. O dono escolhe pelo painel quais cursos ficam ativos no aplicativo. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
+tem contas, 3 cursos (Python e SQL com 3 níveis de 30 lições cada; Excel com o nível Básico de 30 lições e 3 provas), 2 checkpoints e uma prova final por nível, XP/vidas/sequência. **Cada lição tem duas atividades: 1) executar (escrever o código) e 2) ler (entender o que um código pronto faz).** O dono escolhe pelo painel quais cursos ficam ativos no aplicativo. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
 
 ## Testar tudo do começo (modo teste)
 
@@ -14,7 +14,7 @@ codeup/
 ├─ sqlcheck.js        correção de SQL isolada (tempo e memória limitados)
 ├─ xlcheck.js         correção das planilhas do Excel (compara o resultado de cada célula com o gabarito e confere se a fórmula não é número digitado à mão)
 ├─ lessons.js         monta o curso a partir de content/ (lições + as 4 explicações de cada uma + as provas; chances e "voltar lições" ficam nas constantes CHANCES e BACK)
-├─ content/           py1-3.js e sql1-3.js: as 180 lições · info-py1-3.js e info-sql1-3.js: as 4 explicações de cada lição, em linguagem de criança de 10 anos (o que é, para que serve, como você vai usar aqui, o que vai aparecer na tela)
+├─ content/           py1-3.js e sql1-3.js: as 180 lições · rd-py1-3.js, rd-sql1-3.js e rd-xl1.js: a 2ª atividade (ler o código) das 210 lições, rdh.js (montador dessas atividades) e seed-tables.json (tabelas do SQL, gerado) · info-py1-3.js e info-sql1-3.js: as 4 explicações de cada lição, em linguagem de criança de 10 anos (o que é, para que serve, como você vai usar aqui, o que vai aparecer na tela)
 │                     checkpoints.js: as 18 provas (por nível: checkpoint depois da lição 10, checkpoint depois da 20 e prova final depois da 30; cada uma é UMA tarefa completa com o que se aprendeu)
 ├─ admin.js           painel do dono: API /api/admin/* (cadastros, liberar cursos, suspender, ajustes, auditoria)
 ├─ legal/             Termos de Uso e Política de Privacidade (modelos)
@@ -29,7 +29,7 @@ codeup/
 │                     img/tay*.webp e img/cut*.webp: os personagens (Tay = feminino, rosa · Cut = masculino, azul), versão inteira e versão rosto; as variações de cor (tay-verde.webp, cut-rosa-face.webp…) são geradas das originais trocando só o matiz da roupa
 │                     Cadastro em 3 passos: "Você é feminino ou masculino?" (u.sex = f|m), "Quem vai te guiar?" (u.guide = tay|cut, escolha independente do gênero) e "Que nome você quer dar ao guia?" (u.gname, 2 a 14 caracteres, só o aluno vê); seguem junto no POST /api/register e no login Google. Contas antigas respondem uma vez ao entrar (POST /api/guide aceita sex e/ou guide). Dá para trocar em Perfil > Eu sou / Personagem; o painel mostra os dois (visão geral, ficha, CSV)
 │                     Estilos: Azul (floresta azul), Rosa, Azul escuro e Claro (Perfil > Ajustes > Aparência); escolher a Tay já liga o Rosa
-├─ tools/             check-xl.js (confere as 33 atividades do Excel: `npm run check:excel`), teste.js (modo teste)
+├─ tools/             check-xl.js (confere as 33 atividades do Excel: `npm run check:excel`), check-ler.js (prova a resposta das 210 atividades de ler rodando o código de verdade: `npm run check:ler`), teste.js (modo teste)
 ├─ test/              testes automáticos (cada lição/prova + API + curso/prova + motor de fórmulas do Excel + liga/desliga de cursos + Google/recuperação)
 ├─ Dockerfile, render.yaml, .env.example, package.json, package-lock.json
 ```
@@ -40,6 +40,14 @@ codeup/
 - **Correção** (`xlcheck.js`): compara o resultado de cada célula pedida com o gabarito e confere se a fórmula foi usada (não vale digitar o número pronto: o servidor troca os números da planilha e confere se o resultado acompanha). Quando erra, a tela mostra célula a célula o que faltou (vazia, erro de sintaxe, valor diferente, número fixo).
 - **Limites honestos:** em casos raros o motor pode diferir do Excel de verdade (arredondamentos, formatos de data); PROCX só existe no Excel 365/2021; o Excel Intermediário/Avançado, o Power BI e DAX e a Análise de Dados aparecem como “Em breve”.
 - Conferir o conteúdo: `npm run check:excel` (valida as 33 atividades com as respostas oficiais).
+
+## Duas atividades por lição (executar + ler)
+- **No mapa** cada círculo de lição tem um **anel de duas metades**: a 1ª metade acende quando o aluno **executa** (escreve o código) e a 2ª quando **lê** (entende o que um código pronto faz). Só com as duas metades completas o anel fecha, a lição conta como concluída e a próxima abre.
+- **Ordem fixa:** 1º executar, 2º ler. A atividade de ler só abre depois de executar (o servidor devolve 409 `lock:'ex'` se tentar antes). Errar na leitura não gasta vida nem pontos: aparece uma dica e dá para tentar de novo.
+- **XP e diamantes:** o XP da lição é dividido entre as duas (metade na 1ª, metade na 2ª; `xpParts` em `server.js`), cada metade paga só uma vez; diamantes: +2 ao executar e +3 ao ler (total +5, como antes).
+- **Formatos da atividade de ler** (misturados): escolher a alternativa certa (o que o código mostra, em que ordem, qual é o erro…), **digitar** a resposta curta, e no SQL ver as tabelas do exemplo; no Excel, uma planilha pronta com a pergunta. O gabarito **nunca** vai ao navegador (só as opções, embaralhadas por aluno); a correção é no servidor.
+- **Quem já tinha concluído lições antes** continua com elas concluídas (as duas atividades contam como feitas, sem pagar XP de novo). Recomeçar um nível apaga as duas atividades.
+- **Conteúdo:** `content/rd-*.js` (uma entrada por lição, escrita com os helpers de `content/rdh.js`: `mc`, `ty`, `mo`, `to`, `me`). `npm run check:ler` roda cada código (Python no `python3`, SQL no sql.js, Excel no motor `public/xl.js`) e confere que a resposta marcada é a que o código realmente produz; os 5 itens de "conceito" (sem saída para executar) não têm essa prova automática. Ao mexer em SQL, rode o comando inteiro: ele regrava `content/seed-tables.json`.
 
 ## 1) Rodar no seu computador (VS Code)
 1. Instale o Node.js 18 ou superior (nodejs.org).
