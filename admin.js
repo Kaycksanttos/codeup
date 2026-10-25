@@ -103,7 +103,8 @@ module.exports = function mountAdmin(app, X) {
     let p = A().pending; const now = Date.now();
     if (!p || now - msOf(p.at) > 15 * 60e3) { p = A().pending = { secret: totp.newSecret(), at: new Date().toISOString() }; save(); }   // mesmo segredo por 15 min: dá para errar o código sem refazer o QR
     const uri = totp.uri(p.secret, label(req), 'CodeUp');
-    res.json({ secret: p.secret, pretty: totp.pretty(p.secret), uri, svg: qr.svg(uri, { label: 'QR Code para o aplicativo autenticador' }) });
+    let wa = String(process.env.ADMIN_WHATSAPP || '').replace(/\D/g, ''); if (wa.length === 10 || wa.length === 11) wa = '55' + wa;   // número do dono (variável do servidor, nunca no código): o botão "Enviar pelo WhatsApp" abre a conversa com ele
+    res.json({ secret: p.secret, pretty: totp.pretty(p.secret), uri, wa: /^\d{12,15}$/.test(wa) ? wa : null, svg: qr.svg(uri, { label: 'QR Code para o aplicativo autenticador' }) });
   });
   app.post('/api/admin/2fa/enable', limit(20, 15 * 60e3), ...guard, tokenOnly, (req, res) => {
     const p = A().pending; if (A().totp && A().totp.on) return res.status(409).json({ error: 'O autenticador já está ligado.' });

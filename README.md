@@ -100,7 +100,7 @@ Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/adm
 
 **Autenticador (código de 6 dígitos no celular) — recomendado.** Em vez de depender só da chave, o painel pode pedir o código do aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy, 1Password…), que muda a cada 30 segundos.
 1. Entre no painel com a chave → aba **Sistema** → **Ligar o autenticador**.
-2. No celular abra o aplicativo, toque em **+** e **escaneie o QR Code** (sem câmera, digite a chave que aparece embaixo do QR).
+2. No celular abra o aplicativo, toque em **+** e **escaneie o QR Code**. Se estiver abrindo o painel **no próprio celular** (não dá para escanear a própria tela) ou sem câmera, use os botões da janela: **Abrir no app autenticador** (abre o aplicativo já com a conta pronta), **Copiar chave** (depois: **+** → *Inserir chave de configuração* → colar) ou **Enviar pelo WhatsApp** (abre o WhatsApp com a chave pronta para mandar; escolha a conversa com você mesmo). Depois de ligar, **apague a mensagem** do WhatsApp: quem tiver a chave gera os seus códigos. Para o botão já abrir direto a sua conversa, defina no servidor `ADMIN_WHATSAPP` com o seu número (ex.: `11999990000`; o 55 é acrescentado sozinho). O número fica só na variável do servidor, nunca no código, e só aparece para quem já está dentro do painel.
 3. Digite o código de 6 dígitos que o app mostrar, escolha como quer entrar e toque em **Ligar**:
    - **Chave + código** (mais seguro, recomendado): o painel pede a `ADMIN_KEY` **e** o código. Deixe a chave salva no gerenciador de senhas do navegador e digite só o código.
    - **Só o código** (mais prático): a chave deixa de ser pedida. Por segurança, **5 códigos errados seguidos travam o painel por 15 minutos**.

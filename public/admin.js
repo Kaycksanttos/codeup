@@ -332,8 +332,18 @@ const H = {
   'ad-reset': async () => { if (!await ask({ title: 'Voltar ao padrão do servidor?', text: 'Apaga o que foi salvo aqui. Os anúncios passam a seguir as variáveis ADSENSE_CLIENT e ADSENSE_SLOT do servidor (se não existirem, ficam desligados).', ok: 'Voltar ao padrão' })) return; try { await api('settings', { body: { ads: { reset: true } } }); toast('Voltou ao padrão do servidor.'); go('settings'); } catch (e) { fail(e); } },
   '2fa-on': async () => {
     let s; try { s = await api('2fa/start', { body: {} }); } catch (e) { return fail(e); }
-    const html = `<div class="qrbox">${s.svg}</div><p class="qrtx"><b>1.</b> No celular, abra o aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy…).<br><b>2.</b> Toque em <b>+</b> e escaneie o QR Code acima.<br><b>3.</b> Digite aqui o código de 6 dígitos que aparecer no app.<br><span class="qrsm">Sem câmera? Digite esta chave no app: <span class="mono">${esc(s.pretty)}</span></span></p>`;
-    const v = await ask({ title: 'Ligar o autenticador', html, fields: [{ id: 'code', label: 'Código de 6 dígitos', ph: '000 000' }, { id: 'mode', label: 'Como entrar no painel', type: 'select', value: '1', options: [['1', 'Chave + código (mais seguro, recomendado)'], ['0', 'Só o código (mais prático)']] }], ok: 'Ligar' });
+    const html = `<div class="qrbox">${s.svg}</div><p class="qrtx"><b>1.</b> No celular, abra o aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy…).<br><b>2.</b> Toque em <b>+</b> e escaneie o QR Code acima.<br><b>3.</b> Digite aqui o código de 6 dígitos que aparecer no app.<br><span class="qrsm">Sem câmera, ou abrindo o painel no próprio celular? Use os botões abaixo ou digite esta chave no app: <span class="mono">${esc(s.pretty)}</span></span></p>
+      <div class="qrbt"><a class="btn ghost" href="${esc(s.uri)}">Abrir no app autenticador</a><button type="button" class="btn ghost" data-q="copy">Copiar chave</button><a class="btn ghost" target="_blank" rel="noopener" href="https://wa.me/${s.wa || ''}?text=${encodeURIComponent('Chave do autenticador do painel CodeUp (apague esta mensagem depois de colar no app):\n' + s.secret)}">Enviar pelo WhatsApp</a></div>
+      <p class="qrsm">No app: <b>+</b> → <b>Inserir chave de configuração</b> → cole a chave (tipo: baseado em tempo). Depois de ligar, <b>apague a mensagem</b> do WhatsApp: quem tiver essa chave gera os seus códigos.</p>`;
+    const pr = ask({ title: 'Ligar o autenticador', html, fields: [{ id: 'code', label: 'Código de 6 dígitos', ph: '000 000' }, { id: 'mode', label: 'Como entrar no painel', type: 'select', value: '1', options: [['1', 'Chave + código (mais seguro, recomendado)'], ['0', 'Só o código (mais prático)']] }], ok: 'Ligar' });
+    const md = [...document.querySelectorAll('.md')].pop();
+    if (md) md.addEventListener('click', async e => {
+      if (!e.target.closest('[data-q="copy"]')) return;
+      const okc = () => toast('Chave copiada. Cole no app autenticador.');
+      try { await navigator.clipboard.writeText(s.secret); okc(); }
+      catch { const t = document.createElement('textarea'); t.value = s.secret; document.body.appendChild(t); t.select(); try { document.execCommand('copy') ? okc() : toast('Não consegui copiar: digite a chave mostrada acima.', true); } catch { toast('Não consegui copiar: digite a chave mostrada acima.', true); } t.remove(); }
+    });
+    const v = await pr;
     if (!v) return;
     try { await api('2fa/enable', { body: { code: v.code, needKey: v.mode === '1' } }); toast('Autenticador ligado. Guarde o app: sem ele você só entra com a variável ADMIN_2FA_OFF (veja o README).'); go('system'); } catch (e) { fail(e); }
   },

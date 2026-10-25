@@ -137,3 +137,5 @@ td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .lg .in.code{text-align:center;letter-spacing:6px;font-size:22px;font-weight:800}.lg .hint{margin-top:6px;font-size:12.5px;color:var(--mute)}
 .qrbox{width:min(220px,70%);margin:4px auto 10px;background:#fff;border-radius:12px;padding:6px;box-shadow:0 4px 18px #0006}.qrbox svg{display:block;width:100%;height:auto}
 .qrtx{font-size:13.5px;line-height:1.55;color:var(--text);margin:6px 0 10px}.qrtx .qrsm{display:block;margin-top:6px;color:var(--mute);font-size:12.5px;word-break:break-all}
+.qrbt{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}.qrbt .btn{flex:1 1 150px;display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 10px;font-size:13px;text-align:center;text-decoration:none;line-height:1.25}
+.qrtx .qrsm .mono{display:block;margin-top:5px;word-break:normal;font-size:14px;color:var(--text);letter-spacing:.02em}

@@ -1454,7 +1454,7 @@ test('admin: autenticador (código de 6 dígitos) — TOTP, QR Code, uma vez só
   const j = async (pth, body, tok, hd) => { const x = await fetch(base + pth, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.77.' + (++IP % 200) + '.1', ...(tok ? { 'x-admin-token': tok } : {}), ...hd }, body: body ? JSON.stringify(body) : undefined }); return { status: x.status, j: await x.json().catch(() => ({})) }; };
   let IP = 0;
   const at = k => totp.code(SEC, Date.now() + k * 30e3);                         // código do passo de agora + k
-  let SEC = '', p = await boot();
+  let SEC = '', p = await boot({ ADMIN_WHATSAPP: '(11) 99999-0000' });
   try {
     // 1) sem autenticador: só a chave (como sempre) e a tela sabe disso
     assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: false, needKey: true });
@@ -1464,6 +1464,7 @@ test('admin: autenticador (código de 6 dígitos) — TOTP, QR Code, uma vez só
     assert.equal((await j('/api/admin/stats', null, null, { 'x-admin-key': KEY })).status, 200, 'scripts com a chave seguem valendo enquanto o autenticador está desligado');
     // 2) ligar: QR + chave em texto; código errado não liga
     const st = (await j('/api/admin/2fa/start', {}, t1)).j; assert.match(st.secret, /^[A-Z2-7]{32}$/); assert.match(st.svg, /^<svg /); assert.match(st.uri, /^otpauth:\/\/totp\/CodeUp:admin%40localhost\?secret=/); assert.equal(st.pretty.replace(/ /g, ''), st.secret);
+    assert.equal(st.wa, '5511999990000', 'ADMIN_WHATSAPP vira o número do botão "Enviar pelo WhatsApp" (só para quem está no painel; (11) 99999-0000 → 55 + DDD + número)');
     assert.equal((await j('/api/admin/2fa/start', {}, t1)).j.secret, st.secret, 'o mesmo QR vale por uns minutos (dá para errar o código sem refazer)');
     SEC = st.secret; assert.equal((await j('/api/admin/2fa/enable', { code: '000000', needKey: true }, t1)).status, 400);
     assert.equal((await j('/api/admin/2fa/enable', { code: at(-1), needKey: true }, t1)).status, 200);
@@ -1508,8 +1509,9 @@ test('admin: autenticador (código de 6 dígitos) — TOTP, QR Code, uma vez só
   } finally { p.kill(); await sleep(300); }
   // a tela do painel
   const adm = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.js'), 'utf8'), acss = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.css'), 'utf8');
-  for (const k of ["fetch('/api/admin/login-info'", 'autocomplete="one-time-code"', 'inputmode="numeric"', "'2fa-on'", "'2fa-off'", "api('2fa/start'", "api('2fa/enable'", "api('2fa/disable'", 'class="qrbox"', 'Chave + código (mais seguro, recomendado)', 'Só o código (mais prático)', 'Autenticador (código de 6 dígitos)', 'ADMIN_2FA_OFF']) assert.ok(adm.includes(k), 'admin.js: ' + k);
-  assert.ok(acss.includes('.qrbox{') && acss.includes('.lg .in.code{'));
+  for (const k of ["fetch('/api/admin/login-info'", 'autocomplete="one-time-code"', 'inputmode="numeric"', "'2fa-on'", "'2fa-off'", "api('2fa/start'", "api('2fa/enable'", "api('2fa/disable'", 'class="qrbox"', 'data-q="copy"', 'Abrir no app autenticador', 'Enviar pelo WhatsApp', 'https://wa.me/', 'navigator.clipboard.writeText(s.secret)', 'apague a mensagem', 'Chave + código (mais seguro, recomendado)', 'Só o código (mais prático)', 'Autenticador (código de 6 dígitos)', 'ADMIN_2FA_OFF']) assert.ok(adm.includes(k), 'admin.js: ' + k);
+  assert.ok(acss.includes('.qrbox{') && acss.includes('.lg .in.code{') && acss.includes('.qrbt{'));
+  assert.ok(!/\b55\d{10,11}\b/.test(adm) && !fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8').match(/\b55\d{10,11}\b/), 'nenhum número de telefone fixo no código (o repositório é público)');
 });
 
 test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias de estudo', async () => {
