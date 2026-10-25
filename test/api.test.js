@@ -1516,29 +1516,31 @@ test('admin: autenticador (código de 6 dígitos) — TOTP, QR Code, uma vez só
 
 test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias de estudo', async () => {
   const pubd = path.join(__dirname, '..', 'public'), C = Rw.COSTUMES;
-  // tabela: 20 fantasias da Tay, 7 de conquista (título + dias de estudo) e 13 da loja (título + diamantes), cada uma com as 3 imagens
-  assert.equal(C.length, 20); assert.equal(new Set(C.map(c => c.key)).size, 20, 'chaves únicas');
+  // tabela: Tay (7 de conquista + 13 na loja) e Cut (7 + 12). Conquista = título + dias de estudo; loja = título + diamantes. Cada uma com as 3 imagens
+  assert.equal(C.length, 39); assert.equal(new Set(C.map(c => c.key)).size, 39, 'chaves únicas entre os dois personagens');
   for (const c of C) {
-    assert.match(c.key, /^[a-z]+$/); assert.ok(c.name && c.guide === 'tay'); assert.ok(Number.isInteger(c.tier) && c.tier >= 1 && c.tier < Rw.TIERS.length, c.key + ': título válido');
+    assert.match(c.key, /^[a-z]+$/); assert.ok(c.name && (c.guide === 'tay' || c.guide === 'cut')); assert.ok(Number.isInteger(c.tier) && c.tier >= 1 && c.tier < Rw.TIERS.length, c.key + ': título válido');
     assert.ok(!!c.days !== !!c.price, c.key + ': ou é conquista (dias) ou é da loja (preço), nunca os dois');
     for (const f of ['', '-t', '-face']) assert.ok(fs.existsSync(path.join(pubd, 'img', 'fan', c.key + f + '.webp')), 'falta a imagem ' + c.key + f);
   }
-  const gifts = C.filter(c => c.days), shop = C.filter(c => c.price);
-  assert.equal(gifts.length, 7); assert.equal(shop.length, 13);
-  assert.deepEqual(gifts.map(c => c.tier).sort(), [1, 2, 3, 4, 5, 6, 7], 'uma conquista para cada título, de Aprendiz a Lenda');
-  const gs = [...gifts].sort((a, b) => a.tier - b.tier); for (let i = 1; i < gs.length; i++) assert.ok(gs[i].days > gs[i - 1].days, 'quanto mais alto o título, mais dias de estudo');
-  for (const a of shop) for (const b of shop) if (a.tier < b.tier) assert.ok(a.price <= b.price, `${a.key} (título menor) não pode custar mais que ${b.key}`);
-  assert.ok(Math.min(...shop.map(c => c.price)) <= 60, 'a primeira fantasia sai com poucas lições (5 diamantes cada)');
-  assert.deepEqual(Object.keys(Rw.STREAK_GEMS).map(Number), [3, 7, 14, 30, 60, 100]);
-  // quanto de diamante o curso inteiro dá: o aluno completo de uma trilha compra boa parte da loja, mas não tudo sem estudar mais
   const oneTrack = lessons.filter(l => l.track === 'python').length * 5 + lessons.checkpoints.filter(c => c.track === 'python').length * 5 + lessons.finals.filter(f => f.track === 'python').length * 20;
-  assert.ok(oneTrack >= 450 && oneTrack < shop.reduce((s, c) => s + c.price, 0), 'diamantes de uma trilha: ' + oneTrack);
+  for (const [g, nGift, nShop] of [['tay', 7, 13], ['cut', 7, 12]]) {
+    const mine = Rw.costumesOf(g), gifts = mine.filter(c => c.days), shop = mine.filter(c => c.price);
+    assert.equal(gifts.length, nGift, g); assert.equal(shop.length, nShop, g);
+    assert.deepEqual(gifts.map(c => c.tier).sort(), [1, 2, 3, 4, 5, 6, 7], g + ': uma conquista para cada título, de Aprendiz a Lenda');
+    const gs = [...gifts].sort((a, b) => a.tier - b.tier); for (let i = 1; i < gs.length; i++) assert.ok(gs[i].days > gs[i - 1].days, g + ': quanto mais alto o título, mais dias de estudo');
+    for (const a of shop) for (const b of shop) if (a.tier < b.tier) assert.ok(a.price <= b.price, `${g}: ${a.key} (título menor) não pode custar mais que ${b.key}`);
+    assert.ok(Math.min(...shop.map(c => c.price)) <= 60, g + ': a primeira fantasia sai com poucas lições (5 diamantes cada)');
+    // quanto de diamante o curso inteiro dá: uma trilha compra boa parte da loja, mas não tudo
+    assert.ok(oneTrack >= 450 && oneTrack < shop.reduce((s, c) => s + c.price, 0), g + ': diamantes de uma trilha: ' + oneTrack);
+  }
+  assert.deepEqual(Object.keys(Rw.STREAK_GEMS).map(Number), [3, 7, 14, 30, 60, 100]);
   // estados (mesma regra no navegador e no servidor)
   const P = (xp, days, gems, own) => ({ xp, days, gems, own: own || null }), st = (k, p) => Rw.costumeState(Rw.costume(k), p);
   assert.equal(st('gatinha', P(99, 99, 0)), 'tier'); assert.equal(st('gatinha', P(100, 2, 0)), 'days'); assert.equal(st('gatinha', P(100, 3, 0)), 'own'); assert.equal(st('gatinha', P(9999, 2, 0)), 'days', 'XP sozinho não basta: precisa da frequência');
   assert.equal(st('unicornio', P(99, 0, 999)), 'tier', 'diamantes sozinhos não compram: precisa do título'); assert.equal(st('unicornio', P(100, 0, 59)), 'poor'); assert.equal(st('unicornio', P(100, 0, 60)), 'buy'); assert.equal(st('unicornio', P(0, 0, 0, { unicornio: 'x' })), 'own', 'o que foi comprado fica');
   assert.equal(Rw.costume('toString'), null, 'chave inventada não existe'); assert.equal(Rw.costume('__proto__'), null);
-  assert.deepEqual(Rw.ownedCostumes(P(300, 6, 0)), ['gatinha', 'dino']);
+  const mine = g => Rw.ownedCostumes(P(300, 6, 0)).filter(k => Rw.costume(k).guide === g); assert.deepEqual(mine('tay'), ['gatinha', 'dino']); assert.deepEqual(mine('cut'), ['gatinho', 'dinossauro'], 'as conquistas valem igual para os dois personagens');
 
   // servidor: a Tay compra, veste e o ranking mostra
   const em = 'gr1@teste.com', tk = await regP(em, 'Gabi Roupa', { sex: 'f', guide: 'tay', gname: 'Nina' }), me = async () => (await call('/api/me', { token: tk })).j;
@@ -1564,6 +1566,18 @@ test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias d
   r = await call('/api/guide', { token: tk, body: { guide: 'cut' } }); assert.deepEqual([r.j.cos, r.j.own], [null, []]);
   r = await buy('panda'); assert.equal(r.status, 400); assert.match(r.j.error, /não existe para o seu personagem/);
   r = await call('/api/guide', { token: tk, body: { guide: 'tay' } }); assert.deepEqual([r.j.cos, r.j.own], ['unicornio', ['unicornio']]);
+  // o Cut tem as dele: mesmas regras, outras fantasias; a da Tay não vale para ele e vice-versa
+  const tc = await regP('gr3@teste.com', 'Caio Roupa', { sex: 'm', guide: 'cut', gname: 'Beto' }), cbuy = (k, t = tc) => call('/api/costume/buy', { token: t, body: { key: k } });
+  await call('/api/track', { token: tc, body: { track: 'python' } });
+  for (const l of L1.slice(0, 10)) assert.equal((await doLesson(tc, l)).j.ok, true);
+  assert.equal((await doTest(tc, cp10)).j.ok, true); for (const l of L1.slice(10, 12)) assert.equal((await doLesson(tc, l)).j.ok, true);
+  m = (await call('/api/me', { token: tc })).j; assert.deepEqual([m.guide, m.gems, m.own, m.cos], ['cut', 65, [], null]);
+  r = await cbuy('unicornio', tc); assert.equal(r.status, 400); assert.match(r.j.error, /não existe para o seu personagem/, 'fantasia da Tay não vale para o Cut');
+  r = await cbuy('gatinho'); assert.equal(r.status, 400, 'conquista não se compra'); r = await cbuy('ursinho'); assert.equal(r.status, 403, 'precisa do título Praticante');
+  r = await cbuy('tubarao'); assert.equal(r.status, 200); assert.deepEqual([r.j.gems, r.j.own, r.j.cos], [5, ['tubarao'], 'tubarao']);
+  assert.equal((await rk(tc)).mine.cos, 'tubarao'); r = await call('/api/costume/wear', { token: tc, body: { key: 'unicornio' } }); assert.equal(r.status, 400);
+  r = await call('/api/guide', { token: tc, body: { guide: 'tay' } }); assert.deepEqual([r.j.cos, r.j.own], [null, []], 'trocar de personagem guarda as fantasias do outro');
+  r = await call('/api/guide', { token: tc, body: { guide: 'cut' } }); assert.deepEqual([r.j.cos, r.j.own], ['tubarao', ['tubarao']]);
 
   // dias de estudo, bônus de sequência e conquista de fantasia: servidor à parte, com a data de "ontem" ajustada no arquivo
   const port = PORT + 870, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gr-')), 'data.json');

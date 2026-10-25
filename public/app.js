@@ -70,7 +70,7 @@ const EXPR = {
   cut: [['tchau', 'Oi/Tchau!'], ['piscada', 'Piscadinha'], ['pulo', 'Dançando'], ['pensando', 'Pensativo'], ['ideia', 'Ideia!'], ['apontando', 'Apontando'], ['estiloso', 'Estiloso'], ['ops', 'Ops!'], ['joinha', 'Joinha'], ['codando', 'Codando'], ['apaixonado', 'Curtindo'], ['explica', 'De boa'], ['vitoria', 'Vitória!'], ['coracao', 'Coração'], ['bravo', 'Bravo'], ['dormindo', 'Dormindo'], ['serio', 'Marrento'], ['celular', 'No celular'], ['tedio', 'Entediado'], ['deitado', 'Deitado'], ['dab', 'Dab!'], ['correndo', 'Correndo'], ['chorando', 'Chorando']]
 };
 // fantasia que a pessoa está vestindo (só a Tay tem hoje); o servidor já manda `me.cos` conferido. Com fantasia o personagem é uma imagem (sem o corpo animado em WebGL).
-const COS = () => S.me && S.me.cos && gid() == 'tay' ? S.me.cos : null;
+const COS = () => S.me && S.me.cos ? S.me.cos : null;                       // o servidor só devolve a fantasia que combina com o personagem atual
 const cosPic = (k, v = '') => `/img/fan/${k}${v ? '-' + v : ''}.webp`;
 const cosName = k => (CR.costume(k) || {}).name || '';
 const IMG = () => { const k = COS(); if (k) return { face: cosPic(k, 'face'), full: cosPic(k) }; const g = gid(), c = S.me && S.me.color; return { face: CR.colorFile(g, c, true), full: CR.colorFile(g, c, false) }; };   // cor escolhida (ou a de fábrica)
@@ -739,7 +739,7 @@ function czView() {
   const outs = chip('outfit', 'auto', !m.outfit, `<i class=sw style="background:${outBg('liso', hue)}"></i>`, 'Liso') + CR.OUTFITS.filter(o => o.id).map(o => chip('outfit', o.key, m.outfit == o.key, `<i class=sw style="background:${outBg(o.key, hue)}"></i>`, o.name, o)).join('');
   const pbg = bgCss(m.bg, m.color && m.color != CR.BASE[g] ? m.color : '');
   const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS, CR.OUTFITS.filter(o => o.id)].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length + CR.OUTFITS.length - 1;
-  const CZG = [['fan', 'Fantasias'], ['ex', 'Expressões'], ['color', 'Cor'], ['outfit', 'Estilo'], ['sticker', 'Adesivo'], ['bg', 'Fundo']], gt = CZG.some(x => x[0] == S.czt) ? S.czt : g == 'tay' ? 'fan' : 'ex';
+  const CZG = [['fan', 'Fantasias'], ['ex', 'Expressões'], ['color', 'Cor'], ['outfit', 'Estilo'], ['sticker', 'Adesivo'], ['bg', 'Fundo']], gt = CZG.some(x => x[0] == S.czt) ? S.czt : 'fan';
   const dressed = COS() && ['ex', 'color', 'outfit'].includes(gt) ? `<div class="panel wdn"><div class=bd><b>Você está de fantasia: ${esc(cosName(COS()))}</b><small>Cor, estilo e expressões são do visual normal. Tire a fantasia para usá-los.</small></div><button class="btn ghost" onclick="cosWear('nenhuma')">Tirar fantasia</button></div>` : '';
   return `<div class=sec>Personalizar personagem</div>
     <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190, S.pop ? 'pop' : '', '', '#ffd43b')}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
@@ -759,7 +759,7 @@ const gemGot = () => S.gemsGot ? `<p class=gemgot>${ic('gem', 15)} <b>+${S.gemsG
 const cosP = () => ({ xp: S.me.xp, days: S.me.days || 0, own: Object.fromEntries((S.me.own || []).map(k => [k, 1])), gems: S.me.gems || 0 });
 function wardrobe() {
   const m = S.me, g = gid(), list = CR.costumesOf(g), P = cosP(), worn = COS();
-  if (!list.length) return `<div class="panel rkem"><b>As fantasias de ${esc(GUIDES[g].name)} estão chegando</b><small>Por enquanto, só a Tay tem guarda-roupa. Enquanto isso, use as cores, estilos, adesivos e fundos.</small></div>`;
+  if (!list.length) return `<div class="panel rkem"><b>As fantasias de ${esc(GUIDES[g].name)} estão chegando</b><small>Enquanto isso, use as cores, estilos, adesivos e fundos.</small></div>`;
   const have = list.filter(c => CR.costumeState(c, P) == 'own').length;
   const st = c => CR.costumeState(c, P);
   const sub = c => { const s = st(c), T = CR.TIERS[c.tier];

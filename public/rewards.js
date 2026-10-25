@@ -57,7 +57,7 @@
   const hueShift = (guide, color) => { const g = guide === 'tay' ? 'tay' : 'cut', c = item(COLORS, color), b = item(COLORS, BASE[g]); return c && b && c.key !== b.key ? ((c.hue - b.hue) % 360 + 540) % 360 - 180 : 0; };
 
   // ---- Guarda-roupa: fantasias do personagem (imagens em /img/fan/<chave>.webp, -t.webp miniatura e -face.webp rostinho).
-  // Hoje só a Tay tem fantasias (guide: 'tay'); quando o Cut ganhar as dele, basta somar à lista com guide: 'cut'.
+  // Cada personagem tem as suas (guide: 'tay' ou 'cut'): as da Tay têm 7 conquistas + 13 na loja, as do Cut 7 conquistas + 12 na loja. As chaves são únicas entre os dois.
   // Dois jeitos de ter uma fantasia, sempre exigindo um TÍTULO (tier = posição em TIERS):
   //   • conquista (campo days): é dada de graça quando a pessoa chega ao título E já estudou `days` dias diferentes (a frequência conta, não só o XP);
   //   • loja (campo price): depois do título, compra-se com diamantes (que só vêm de estudar: lição, checkpoint, prova final e sequência de dias).
@@ -81,7 +81,27 @@
     { key: 'exploradora', name: 'Exploradora',  guide: 'tay', tier: 4, price: 150 },
     { key: 'vaqueira',    name: 'Vaqueira',     guide: 'tay', tier: 5, price: 180 },
     { key: 'pirata',      name: 'Pirata',       guide: 'tay', tier: 5, price: 180 },
-    { key: 'diabinha',    name: 'Diabinha',     guide: 'tay', tier: 6, price: 220 }
+    { key: 'diabinha',    name: 'Diabinha',     guide: 'tay', tier: 6, price: 220 },
+    // ---- Cut
+    { key: 'gatinho',     name: 'Gatinho',      guide: 'cut', tier: 1, days: 3 },
+    { key: 'dinossauro',  name: 'Dino',         guide: 'cut', tier: 2, days: 6 },
+    { key: 'doutor',      name: 'Doutor',       guide: 'cut', tier: 3, days: 12 },
+    { key: 'cosmonauta',  name: 'Astronauta',   guide: 'cut', tier: 4, days: 21 },
+    { key: 'mago',        name: 'Mago',         guide: 'cut', tier: 5, days: 30 },
+    { key: 'rei',         name: 'Rei',          guide: 'cut', tier: 6, days: 45 },
+    { key: 'anjinho',     name: 'Anjinho',      guide: 'cut', tier: 7, days: 60 },
+    { key: 'tubarao',     name: 'Tubarão',      guide: 'cut', tier: 1, price: 60 },
+    { key: 'pandinho',    name: 'Panda',        guide: 'cut', tier: 1, price: 60 },
+    { key: 'ursinho',     name: 'Ursinho',      guide: 'cut', tier: 2, price: 80 },
+    { key: 'craque',      name: 'Craque',       guide: 'cut', tier: 2, price: 90 },
+    { key: 'basqueteiro', name: 'Basquete',     guide: 'cut', tier: 2, price: 90 },
+    { key: 'chef',        name: 'Chef',         guide: 'cut', tier: 3, price: 120 },
+    { key: 'ninja',       name: 'Ninja',        guide: 'cut', tier: 3, price: 120 },
+    { key: 'guarda',      name: 'Policial',     guide: 'cut', tier: 4, price: 150 },
+    { key: 'fotografo',   name: 'Fotógrafo',    guide: 'cut', tier: 4, price: 150 },
+    { key: 'samurai',     name: 'Samurai',      guide: 'cut', tier: 5, price: 180 },
+    { key: 'heroi',       name: 'Super-herói',  guide: 'cut', tier: 5, price: 180 },
+    { key: 'diabinho',    name: 'Diabinho',     guide: 'cut', tier: 6, price: 220 }
   ];
   // diamantes de bônus quando a sequência de dias chega a estes números (uma vez só para cada marco)
   const STREAK_GEMS = { 3: 5, 7: 10, 14: 20, 30: 40, 60: 80, 100: 120 };
