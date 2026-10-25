@@ -1,6 +1,6 @@
 // ============================================================================
-// CURSOS DO CODEUP: Python e SQL (3 níveis x 30 lições cada) e Excel (por enquanto só o nível Básico, 30 lições).
-// O conteúdo fica em ./content (py1..py3, sql1..sql3, xl1). O gabarito dos Python (expectedOut) é
+// CURSOS DO CODEUP: Python e SQL (3 níveis x 30 lições cada), Excel e Power BI e DAX (os níveis que já existem, 30 lições cada).
+// O conteúdo fica em ./content (py1..py3, sql1..sql3, xl1, pbi1...). O gabarito dos Python (expectedOut) é
 // gerado por `npm run build:content`, que roda cada solução no python3 e grava content/expected.json.
 // Para editar uma lição: mude o arquivo em ./content, rode `npm run build:content` e `npm test`.
 //
@@ -16,9 +16,9 @@ try { expected = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'exp
 let expectedSql = {};   // linhas esperadas de cada atividade SQL (reserva para quando o servidor não roda o sql.js)
 try { expectedSql = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'expected-sql.json'), 'utf8')); } catch { }
 
-const FILES = { python: ['py1', 'py2', 'py3'], sql: ['sql1', 'sql2', 'sql3'], excel: ['xl1'] };
-const TRACKS = ['python', 'sql', 'excel'];
-const LEVELS_OF = { python: 3, sql: 3, excel: 1 };      // quantos níveis cada curso tem hoje (o Excel começa só com o Básico; Intermediário e Avançado entram depois)
+const FILES = { python: ['py1', 'py2', 'py3'], sql: ['sql1', 'sql2', 'sql3'], excel: ['xl1'], powerbi: ['pbi1'] };
+const TRACKS = ['python', 'sql', 'excel', 'powerbi'];
+const LEVELS_OF = { python: 3, sql: 3, excel: 1, powerbi: 1 };      // quantos níveis cada curso tem hoje (o Excel e o Power BI começam só com o Básico; os outros níveis entram depois)
 const LEVEL_NAMES = ['Básico', 'Intermediário', 'Avançado'];
 const CHANCES = { cp: 2, fin: 3 };       // chances em cada tipo de prova
 const BACK = { cp: 5, fin: 10 };         // quantas lições voltam quando as chances acabam
@@ -54,10 +54,10 @@ const EX = {};
 for (const tr of TRACKS) FILES[tr].forEach(f => {
   try { Object.assign(EX, require('./content/ex-' + f)); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND' || !/ex-/.test(e.message)) throw e; }
 });
-lessons.forEach(x => { const r = EX[x.id]; if (r && x.read && x.lv >= 2 && x.type !== 'excel') { x.expl = EXPLAIN.compile(r); if (x.type === 'sql') x.expl.seedKey = seedKey(r.seed || x.seed); } });
+lessons.forEach(x => { const r = EX[x.id]; if (r && x.read && x.lv >= 2 && (x.type === 'python' || x.type === 'sql')) { x.expl = EXPLAIN.compile(r); if (x.type === 'sql') x.expl.seedKey = seedKey(r.seed || x.seed); } });
 
 // provas de checkpoint e prova final: ficam fora de `lessons` para não mudar a contagem das 30 lições do nível
-const tests = [...require('./content/checkpoints'), ...require('./content/cp-xl')].map(fill);
+const tests = [...require('./content/checkpoints'), ...require('./content/cp-xl'), ...require('./content/cp-pbi')].map(fill);
 for (const t of tests) {
   const kind = t.fin ? 'fin' : 'cp';
   t.chances = CHANCES[kind]; t.back = BACK[kind]; t.backFrom = t.after - t.back + 1;

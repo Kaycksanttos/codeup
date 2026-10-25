@@ -18,7 +18,8 @@ function pyRun(code) { const r = spawnSync('python3', ['-I', '-c', code], { enco
 async function main() {
   let initSqlJs; try { initSqlJs = require('../vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
   const SQL = await initSqlJs(), tables = {}, stat = { items: 0, proved: 0, concept: 0 };
-  const acts = lessons.filter(l => !only || l.id.startsWith(only));
+  // as lições de Power BI e DAX (dax/quiz) têm a conferência própria em tools/check-pbi.js (npm run check:pbi)
+  const acts = lessons.filter(l => (!only || l.id.startsWith(only)) && l.type !== 'dax' && l.type !== 'quiz');
   // sobras: itens que não pertencem a nenhuma lição
   const ids = new Set(lessons.map(l => l.id)); for (const id of Object.keys(lessons.RD)) if (!ids.has(id)) bad.push(`${id}: atividade de ler sem lição correspondente`);
 

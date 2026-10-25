@@ -6,8 +6,9 @@ const lessons = require('./lessons');
 const EXPLAIN = require('./explain');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
 const { checkpoints, finals, tests, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
-const TRACK_NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel' };
+const TRACK_NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
 const xlcheck = require('./xlcheck');   // correção das atividades de Excel (compara os resultados das fórmulas)
+const daxcheck = require('./daxcheck'), quizcheck = require('./quizcheck');   // Power BI e DAX: medidas DAX (compara os resultados nos visuais) e quizzes (escolher, ordenar, ligar, número, montar visual, escrever)
 
 const PORT = process.env.PORT || 3000;
 const BASE = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
@@ -181,14 +182,14 @@ const shuffled = (arr, seed) => { const a = [...arr]; let h = parseInt(sha(seed)
 const readMeta = l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, level: l.level, xp: l.xp });
 function readPub(u, l) {                                                                // o que o navegador recebe: sem a resposta certa; as opções vêm numa ordem fixa por aluno e lição
   const r = l.read, code = r.code || '', names = l.type === 'sql' ? (lessons.seedTables[r.seedKey] || []).filter(t => new RegExp('\\b' + t.name + '\\b', 'i').test(code)) : [];
-  return { ...readMeta(l), k: r.k, q: r.q, code: r.code, sheet: r.sheet, ask: r.ask, tables: names.length ? names : undefined, opts: r.k === 'mc' ? shuffled([r.ok, ...r.no], u.id + l.id) : undefined, done: !!u.done[l.id] };
+  return { ...readMeta(l), k: r.k, q: r.q, code: r.code, sheet: r.sheet, ask: r.ask, table: r.table, chart: r.chart, text: r.text, diagram: r.diagram, data: r.data, lang: r.lang, model: r.model, unit: r.unit, tables: names.length ? names : undefined, opts: r.k === 'mc' ? shuffled([r.ok, ...r.no], u.id + l.id) : undefined, done: !!u.done[l.id] };
 }
 const idx = id => lessons.findIndex(l => l.id === String(id));
 const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                       // lições + checkpoints + provas finais
 const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
-const strip = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, solution, hints, explain, example, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
 const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
@@ -592,8 +593,9 @@ app.get('/api/lessons/:id', auth, (req, res) => {
   if (!l) return res.sendStatus(404);
   const lock = lockOf(req.u, l);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
-  if (isTest(l)) return res.json({ ...stripExam(l), left: chancesLeft(req.u, l) });    // prova: sem solução, sem dica e sem teoria
-  res.json(strip(l));
+  const qz = l.type === 'quiz' ? { qz: quizcheck.pub(l, req.u.id) } : {};              // quiz: as perguntas sem gabarito (opções embaralhadas do mesmo jeito para a mesma pessoa)
+  if (isTest(l)) return res.json({ ...stripExam(l), ...qz, left: chancesLeft(req.u, l) });    // prova: sem solução, sem dica e sem teoria
+  res.json({ ...strip(l), ...qz });
 });
 
 // Correção feita NO SERVIDOR. SQL é reexecutado aqui, num worker isolado com limite de tempo/memória.
@@ -630,6 +632,8 @@ const pysandbox = require('./pysandbox'), PY_SERVER = pysandbox.available();
 console.log(PY_SERVER ? 'Correção de Python no servidor: ATIVA (código do aluno roda em ambiente restrito)' : '⚠ Correção de Python no servidor: DESATIVADA (sem python3). O resultado do Python virá do navegador do aluno e pode ser forjado.');
 // authoritative = true (envio final e provas): no Python, o servidor roda o código; o "out" enviado pelo navegador é ignorado
 async function grade(l, code, out, authoritative) {
+  if (l.type === 'dax') return daxcheck.grade(l, code);                   // DAX: calcula as medidas do aluno e as da resposta oficial em cada visual (e com outros números) e compara
+  if (l.type === 'quiz') { let a; try { a = JSON.parse(code); } catch { a = []; } return quizcheck.grade(l, a, isTest(l)); }   // quiz: as respostas vão em JSON
   if (l.type === 'excel') return xlcheck.grade(l, code);                  // Excel: compara o resultado das fórmulas (com os números da planilha e com outros)
   const flat = code.toLowerCase().replace(/\s+/g, ' ');
   const missing = (l.need || []).find(t => !flat.includes(t));
@@ -656,7 +660,7 @@ function sqlRowsFallback(l, out) {
   const k = rows.map(r => JSON.stringify(r)), a = e.ordered ? k : [...k].sort(), b = e.ordered ? e.rows : [...e.rows].sort();
   return JSON.stringify(a) === JSON.stringify(b);
 }
-const cleanCode = (c, l) => String(c || '').slice(0, l && l.type === 'excel' ? 20000 : 5000);   // Excel: as fórmulas de várias células vão juntas, em JSON
+const cleanCode = (c, l) => String(c || '').slice(0, l && (l.type === 'excel' || l.type === 'quiz') ? 20000 : 5000);   // Excel: as fórmulas de várias células vão juntas, em JSON
 const ENGINE_MSG = 'O corretor de SQL do servidor não está funcionando agora (no seu computador, rode "npm install" na pasta do projeto e reinicie com "npm start"). Sua resposta não foi marcada como errada.';
 
 // Conferência ao vivo enquanto o aluno digita: corrige igual ao /api/submit, mas NÃO grava nada (sem XP, sem tentativa).
@@ -666,9 +670,9 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
   const lock = lockOf(req.u, l);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
   if (isTest(l)) return res.status(403).json({ error: 'Nas provas a conferência só acontece quando você entrega a resposta.' });   // sem conferência livre: cada entrega gasta uma chance
-  const { ok, missing, engine, xl } = await grade(l, cleanCode(req.body.code, l), req.body.out);
+  const { ok, missing, engine, xl, dx, quiz } = await grade(l, cleanCode(req.body.code, l), req.body.out);
   if (engine) return res.status(503).json({ error: ENGINE_MSG, engine: true });
-  res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, expected: !ok && l.type === 'python' ? l.expectedOut : undefined });
+  res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && l.type === 'python' ? l.expectedOut : undefined });
 });
 
 app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
@@ -680,7 +684,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (before) return res.status(409).json({ error: ordMsg(before), lock: 'ord', need: before });
   const already = test && (l.fin ? !!u.passed[lk] : !!u.cpdone[k]);                    // prova já vencida: pode refazer só para treinar, sem perder chance nem voltar lições
   u.attempts[k] = (u.attempts[k] || 0) + 1;
-  const code = cleanCode(req.body.code, l), { ok, missing, busy, engine, xl } = await grade(l, code, req.body.out, true);
+  const code = cleanCode(req.body.code, l), { ok, missing, busy, engine, xl, dx, quiz } = await grade(l, code, req.body.out, true);
   if (engine) { u.attempts[k]--; return res.status(503).json({ error: ENGINE_MSG, engine: true }); }
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
@@ -714,7 +718,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   save();
   const lvDone = ok && !test && !!u.done[k] && levelDone(u, l.track, l.lv);
   res.json({
-    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
+    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
     view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
     levelComplete: lvDone || undefined, next: ok && two ? nextAct(u, l) || undefined : undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
     trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(k => !own0.has(k)), ...pub(u)
@@ -748,7 +752,7 @@ app.get('/api/lessons/:id/read', auth, (req, res) => { const l = actLesson(req, 
 app.post('/api/read', auth, limit(240 * RELAX, 60e3), (req, res) => {
   const l = actLesson(req, res, 'r'); if (!l) return;
   const u = req.u, k = l.id, r = l.read, a = String(req.body.a ?? '').slice(0, 2000);
-  const okAns = r.k === 'mc' ? a === r.ok : (Array.isArray(r.ok) ? r.ok : [r.ok]).some(x => norm(x) === norm(a));
+  const okAns = r.k === 'mc' ? a === r.ok : r.k === 'num' ? quizcheck.gradeItem({ t: 'num', ok: r.ok, tol: r.tol }, a) === true : (Array.isArray(r.ok) ? r.ok : [r.ok]).some(x => norm(x) === norm(a));
   u.rtries ??= {}; u.rtries[k] = (u.rtries[k] || 0) + 1;
   if (!okAns) { save(); return res.json({ ok: false, tries: u.rtries[k], hint: r.hint || undefined }); }
   res.json({ ...actDoneRes(req, l, 'r'), tries: u.rtries[k], why: r.why });

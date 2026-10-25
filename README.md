@@ -1,7 +1,7 @@
 # CodeUp — aprenda SQL, Python e Análise de Dados na prática
 
 App web instalável no celular (PWA). Escreve código de verdade no navegador, corrige no servidor,
-tem contas, 3 cursos (Python e SQL com 3 níveis de 30 lições cada; Excel com o nível Básico de 30 lições e 3 provas), 2 checkpoints e uma prova final por nível, XP/vidas/sequência. **Cada lição tem duas atividades (executar e ler o código), e no Intermediário e no Avançado de Python e SQL, três (a 3ª é explicar o código com as próprias palavras). A ordem delas é sorteada por aluno e lição.** O dono escolhe pelo painel quais cursos ficam ativos no aplicativo. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
+tem contas, 4 cursos (Python e SQL com 3 níveis de 30 lições cada; Excel e Power BI e DAX com o nível Básico de 30 lições e 3 provas cada), 2 checkpoints e uma prova final por nível, XP/vidas/sequência. **Cada lição tem duas atividades (executar e ler o código), e no Intermediário e no Avançado de Python e SQL, três (a 3ª é explicar o código com as próprias palavras). A ordem delas é sorteada por aluno e lição.** O dono escolhe pelo painel quais cursos ficam ativos no aplicativo. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
 
 ## Testar tudo do começo (modo teste)
 
@@ -13,6 +13,8 @@ codeup/
 ├─ server.js          backend (contas, correção, anúncios, e-mail, LGPD)
 ├─ sqlcheck.js        correção de SQL isolada (tempo e memória limitados)
 ├─ xlcheck.js         correção das planilhas do Excel (compara o resultado de cada célula com o gabarito e confere se a fórmula não é número digitado à mão)
+├─ daxcheck.js        correção das lições de DAX (o aluno escreve medidas, colunas calculadas ou tabelas; compara os RESULTADOS em cada visual da lição, com os dados normais e com dados alternativos, e confere `need`/`forbid`)
+├─ quizcheck.js       correção e montagem dos quizzes (escolher, marcar, ordenar, ligar, número, montar um visual, escrever); as perguntas vão ao navegador sem gabarito, embaralhadas por aluno
 ├─ explain.js         corretor da atividade de explicar (confere ideias, não letras; o mesmo arquivo roda no servidor e em `npm run check:explicar`)
 ├─ lessons.js         monta o curso a partir de content/ (lições + as 4 explicações de cada uma + as provas; chances e "voltar lições" ficam nas constantes CHANCES e BACK)
 ├─ content/           py1-3.js e sql1-3.js: as 180 lições · rd-py1-3.js, rd-sql1-3.js e rd-xl1.js: a 2ª atividade (ler o código) das 210 lições, rdh.js (montador dessas atividades) e seed-tables.json (tabelas do SQL, gerado) · ex-py2.js, ex-py3.js, ex-sql2.js e ex-sql3.js: a 3ª atividade (explicar o código) das 120 lições de Python e SQL do Intermediário e do Avançado, exh.js (montador) · info-py1-3.js e info-sql1-3.js: as 4 explicações de cada lição, em linguagem de criança de 10 anos (o que é, para que serve, como você vai usar aqui, o que vai aparecer na tela)
@@ -23,6 +25,8 @@ codeup/
 │                     admin.html, admin.js, admin.css: a tela do painel do dono (abre em /admin)
 │                     xl.js: motor de fórmulas do Excel em português (SOMA, SE, PROCV…; separador `;`, vírgula decimal), roda no navegador e no servidor, sem eval
 │                     xlui.js: tela de prática do Excel (planilha, barra de fórmulas, botão Preencher, toque para inserir referência)
+│                     dax.js, daxlib.js, daxdata.js: motor de DAX próprio (medidas, colunas calculadas, CALCULATE, filtros, relacionamentos, datas) e os modelos de dados do curso (`loja`, `rh`); roda no navegador e no servidor, sem eval
+│                     charts.js, pbui.js: gráficos, tabelas e diagramas desenhados na tela e as telas do Power BI (editor de DAX, quiz, montar visual)
 │                     rewards.js: tabela de títulos/molduras por XP (8 níveis; um só arquivo usado pelo navegador e pelo servidor)
 │                     scene.js: cenários dos visuais "Azul" (floresta azul, padrão) e "Rosa"
 │                     mapscene.js: cenário do mapa de lições (floresta ao longo da trilha, lago, coruja, placa com a logo, lampião, vaga-lumes), só no visual Azul/Rosa
@@ -30,7 +34,7 @@ codeup/
 │                     img/tay*.webp e img/cut*.webp: os personagens (Tay = feminino, rosa · Cut = masculino, azul), versão inteira e versão rosto; as variações de cor (tay-verde.webp, cut-rosa-face.webp…) são geradas das originais trocando só o matiz da roupa
 │                     Cadastro em 3 passos: "Você é feminino ou masculino?" (u.sex = f|m), "Quem vai te guiar?" (u.guide = tay|cut, escolha independente do gênero) e "Que nome você quer dar ao guia?" (u.gname, 2 a 14 caracteres, só o aluno vê); seguem junto no POST /api/register e no login Google. Contas antigas respondem uma vez ao entrar (POST /api/guide aceita sex e/ou guide). Dá para trocar em Perfil > Eu sou / Personagem; o painel mostra os dois (visão geral, ficha, CSV)
 │                     Estilos: Azul (floresta azul), Rosa, Azul escuro e Claro (Perfil > Ajustes > Aparência); escolher a Tay já liga o Rosa
-├─ tools/             check-xl.js (confere as 33 atividades do Excel: `npm run check:excel`), check-ler.js (prova a resposta das 210 atividades de ler rodando o código de verdade: `npm run check:ler`), check-explicar.js (confere as 120 atividades de explicar: `npm run check:explicar`), teste.js (modo teste)
+├─ tools/             check-xl.js (confere as 33 atividades do Excel: `npm run check:excel`), check-ler.js (prova a resposta das 210 atividades de ler rodando o código de verdade: `npm run check:ler`), check-explicar.js (confere as 120 atividades de explicar: `npm run check:explicar`), teste.js (modo teste), check-pbi.js (confere as 33 atividades do Power BI e DAX: `npm run check:pbi`)
 ├─ test/              testes automáticos (cada lição/prova + API + curso/prova + motor de fórmulas do Excel + liga/desliga de cursos + Google/recuperação)
 ├─ Dockerfile, render.yaml, .env.example, package.json, package-lock.json
 ```
@@ -39,8 +43,15 @@ codeup/
 - **Excel Básico:** 30 lições + checkpoints (depois da 10 e da 20) + prova final, tudo em planilha de verdade na tela: o aluno digita fórmulas (`=SOMA(B2:B6)`, `=SE(A1>10;"ok";"não")`, `=PROCV(...)`), preenche para baixo, usa referências absolutas `$`, e vê o resultado na hora.
 - **Em português do Brasil:** nomes de função em português, separador `;`, vírgula como decimal (aceita sem acento: `SE`, `SOMASE`, `MEDIA`…). O motor é próprio (`public/xl.js`), sem `eval`.
 - **Correção** (`xlcheck.js`): compara o resultado de cada célula pedida com o gabarito e confere se a fórmula foi usada (não vale digitar o número pronto: o servidor troca os números da planilha e confere se o resultado acompanha). Quando erra, a tela mostra célula a célula o que faltou (vazia, erro de sintaxe, valor diferente, número fixo).
-- **Limites honestos:** em casos raros o motor pode diferir do Excel de verdade (arredondamentos, formatos de data); PROCX só existe no Excel 365/2021; o Excel Intermediário/Avançado, o Power BI e DAX e a Análise de Dados aparecem como “Em breve”.
+- **Limites honestos:** em casos raros o motor pode diferir do Excel de verdade (arredondamentos, formatos de data); PROCX só existe no Excel 365/2021; o Excel Intermediário/Avançado e a Análise de Dados aparecem como “Em breve”.
 - Conferir o conteúdo: `npm run check:excel` (valida as 33 atividades com as respostas oficiais).
+
+## Curso de Power BI e DAX (novo)
+- **Power BI e DAX — Básico:** 30 lições + checkpoints (depois da 10 e da 20) + prova final. **1–10** (quiz): o que é o Power BI, do dado ao relatório, tabelas e tipos, relacionamentos, fato e dimensão, montar visuais (colunas, cartão, tabela, segmentação), medida × coluna. **11–20** (DAX): SUM, COUNTROWS, AVERAGE/MAX/MIN, DISTINCTCOUNT, contas dentro da medida, medidas que usam medidas, DIVIDE, CALCULATE com um e com mais filtros. **21–30**: colunas calculadas (IF, SWITCH, RELATED, texto, datas) e quizzes sobre contexto de filtro, total × soma das linhas, tabela Calendário e revisão.
+- **Dois tipos de lição:** `dax` (o aluno ESCREVE medidas, colunas ou tabelas num editor; o servidor calcula as fórmulas dele e as oficiais em cada visual da lição e compara os resultados, em dados normais e alternativos, então qualquer fórmula certa vale e número digitado à mão não passa) e `quiz` (várias perguntas numa tela: escolher, marcar vários, ordenar, ligar, digitar número, **montar um visual** escolhendo eixo/legenda/valores, escrever com as palavras). Nas provas de quiz o servidor devolve só quantas acertou.
+- **Motor de DAX próprio** (`public/dax.js`, `daxlib.js`, `daxdata.js`): um subconjunto fiel do DAX, sem eval, que roda no navegador (prévia dos visuais) e no servidor (correção). Aceita o jeito brasileiro (`;` entre argumentos e vírgula decimal) e o internacional. Modelos de dados fixos: `loja` (lanchonete: Vendas, Produtos, Clientes, Calendario 2023–2024) e `rh`.
+- **Limites honestos:** é um subconjunto do DAX, não o Power BI de verdade; vazio (BLANK) não é igual a zero na correção; funções de inteligência de tempo limpam o filtro da tabela de datas; o Intermediário/Avançado do Power BI e a Análise de Dados e Storytelling aparecem como “Em breve”.
+- Conferir o conteúdo: `npm run check:pbi` (resposta oficial passa nos dados normais e alternativos, respostas vazias/“= 0”/digitadas à mão não passam, gráficos montam, gabaritos conferem com o motor).
 
 ## Atividades de cada lição (executar, ler e, no Intermediário e no Avançado, explicar)
 - **Quantas:** toda lição tem **executar** (escrever o código; `/api/submit`) e **ler** (entender o que um código pronto faz; `/api/read`). Nas lições de **Python e SQL do Intermediário e do Avançado** (120 lições) tem também **explicar** (escrever com as próprias palavras o que um código faz ou o que ele traz; `/api/explain`). **Básico e Excel ficam com 2 atividades.** As provas (checkpoints e prova final) continuam sendo uma tarefa só.

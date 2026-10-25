@@ -130,6 +130,15 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Use **Preencher ↓** para copiar a fórmula para as linhas de baixo e conclua: acertou = tela de resultado com sua planilha; errou = diagnóstico célula a célula (vazia, erro de sintaxe, valor diferente, número digitado em vez de fórmula).
 - [ ] Digitar o número pronto (ex.: `25` em vez de `=B2*C2`) **não** deve passar.
 
+**5c. Curso de Power BI e DAX**
+- [ ] Na aba **Cursos**, abra **Power BI e DAX**: as lições 1 a 10 são quizzes (escolher, ligar, ordenar, marcar vários, digitar número e **montar um visual** escolhendo eixo e valores). Errar mostra a explicação só nas perguntas erradas; acertar tudo conclui a atividade.
+- [ ] Na lição 7 (primeiro visual) escolha o tipo, o eixo e a medida e veja o gráfico aparecer **antes** de tocar em Concluído.
+- [ ] Lição 11 (DAX): escreva `Total Vendas = SUM(Vendas[Valor])` e conclua. Teste: `Total Vendas = 747` (número digitado) **não** passa; `Total Vendas = SUM(Vendas[Qtd])` mostra uma tabela com o que veio e o que era esperado; um erro de parêntese mostra a linha do erro.
+- [ ] Lição 15: aceita `* 0.05` e também `* 0,05`. Lição 17: sem o terceiro argumento do DIVIDE o produto sem venda online some da tabela de comparação.
+- [ ] Lições 21 a 26 (colunas calculadas): uma coluna errada mostra as linhas em que o valor não bate.
+- [ ] Checkpoint depois da 10 (quiz), depois da 20 (5 medidas) e prova final (6 colunas): 2 e 3 chances; as provas não têm Dica, Solução nem Teoria.
+- [ ] O Intermediário/Avançado e a Análise de Dados e Storytelling continuam como “Em breve”.
+
 **6. Painel do dono**
 - [ ] **Ajustes → Cursos do aplicativo:** desative o **Excel** (o painel pede confirmação). No app do aluno o Excel some da aba Cursos, da escolha do primeiro curso e dos Desafios, e as lições dele ficam bloqueadas. Reative e volte tudo ao normal. Tente desativar o último curso ativo: o painel recusa.
 - [ ] Visão geral: quadro "Quem é quem" com quantas pessoas são feminino/masculino e quantas escolheram Tay/Cut. Na ficha da pessoa e no CSV aparecem **Gênero** e **Personagem**.

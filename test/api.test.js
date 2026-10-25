@@ -123,7 +123,7 @@ test('cadastro: validações, duplicidade e login', async () => {
 test('gabarito não vaza, ordem das lições e correção no servidor', async () => {
   const tk = await reg('bia@t.com');
   const list = (await call('/api/lessons', { token: tk })).j;
-  assert.equal(list.length, lessons.length); assert.equal(list.length, 210);
+  assert.equal(list.length, lessons.length); assert.equal(list.length, 240);
   const py1 = list.filter(l => l.track === 'python' && l.lv === 1).slice(0, 8).map(l => l.lock);
   assert.deepEqual(py1, [null, 'seq', 'seq', 'seq', 'seq', 'seq', 'seq', 'seq'], 'tudo gratuito; só a sequência das lições bloqueia');
   assert.equal((await call('/api/lessons/py-1-02', { token: tk })).status, 409, 'não pode pular lição');
@@ -175,11 +175,12 @@ test('Sem cobrança: tudo gratuito, só a ordem bloqueia; proteção contra SQL 
 // ---------------- Curso: lições -> prova -> próximo nível -> curso concluído ----------------
 const lessonsOf = (track, lv) => lessons.filter(l => l.track === track && l.lv === lv);
 const premiumUser = (email, name) => reg(email, name);
-const codeOf = l => l.type === 'excel' ? JSON.stringify(l.answer) : l.solution;           // no Excel a resposta é o JSON das fórmulas das células
+const quizcheck = require('../quizcheck');
+const codeOf = l => l.type === 'excel' ? JSON.stringify(l.answer) : l.type === 'quiz' ? JSON.stringify(quizcheck.solution(l)) : l.solution;           // no Excel a resposta é o JSON das fórmulas das células; no quiz, o JSON das respostas
 // Cada lição tem 2 atividades (3 no Intermediário e Avançado de Python/SQL): executar (/api/submit), ler (/api/read) e explicar (/api/explain). A ORDEM é sorteada por aluno e lição
 // (vem em `ord` de /api/lessons). doLesson faz as que faltam, na ordem, e devolve o resultado somado (gained = XP de todas, ok = a lição ficou concluída).
 // Quem quiser testar uma atividade só usa doExec / doRead / doExpl.
-const readAnswer = l => { const o = l.read && l.read.ok; return Array.isArray(o) ? o[0] : o; };
+const readAnswer = l => { const o = l.read && l.read.ok; return Array.isArray(o) ? o[0] : typeof o === 'number' ? String(o) : o; };
 const doExec = (tk, l) => call('/api/submit', { token: tk, body: { id: l.id, code: codeOf(l), out: l.expectedOut } });
 const doRead = (tk, l, a = readAnswer(l)) => call('/api/read', { token: tk, body: { id: l.id, a } });
 const doExpl = (tk, l, a = l.expl && l.expl.model) => call('/api/explain', { token: tk, body: { id: l.id, a } });
@@ -198,7 +199,7 @@ const doLesson = async (tk, l) => {
 const cpBefore = l => lessons.checkpoints.find(c => c.track === l.track && c.lv === l.lv && c.after === l.n - 1);   // só existe antes das lições 11 e 21
 const finOf = (track, lv) => lessons.finals.find(f => f.track === track && f.lv === lv);
 const doTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: codeOf(t), out: t.expectedOut } });
-const missTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: t.type === 'sql' ? 'SELECT 1' : 'print("errado")', out: 'x' } });
+const missTest = (tk, t) => call('/api/submit', { token: tk, body: { id: t.id, code: t.type === 'sql' ? 'SELECT 1' : t.type === 'quiz' ? '[]' : t.type === 'dax' ? 'Errado = 1' : 'print("errado")', out: 'x' } });
 const doCp = doTest, doFinal = (tk, track, lv) => doTest(tk, finOf(track, lv));
 const LEAK = ['solution', 'expectedSql', 'expectedOut', 'expectedRows', 'need', 'hints', 'explain', 'example', 'answer', 'altSet', 'keep', 'noAlt'];   // nada disso pode chegar ao navegador numa prova
 const doneOf = async (tk, prefix) => Object.keys((await call('/api/me', { token: tk })).j.done).filter(k => k.startsWith(prefix)).sort();
@@ -252,7 +253,7 @@ test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10
 
 test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; errou as 2 volta 5 lições; XP só na 1ª vez', async () => {
   const tk = await reg('cp@teste.com'), C10 = lessons.checkpoints.find(c => c.id === 'cp-py-1-10'), C20 = lessons.checkpoints.find(c => c.id === 'cp-py-1-20'), L1 = lessonsOf('python', 1);
-  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 21, '14 checkpoints + 7 provas finais');
+  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 24, '16 checkpoints + 8 provas finais');
   assert.ok(list.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
   const c1 = list.find(c => c.id === 'cp-py-1-10'); assert.equal(c1.after, 10); assert.equal(c1.chances, 2); assert.equal(c1.left, 2); assert.equal(c1.back, 5); assert.equal(c1.backFrom, 6); assert.equal(c1.lock, 'seq'); assert.equal(c1.fin, false);
   assert.deepEqual(list.filter(c => c.track === 'python' && c.lv === 1).map(c => c.after), [10, 20, 30]);
@@ -298,7 +299,7 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(r.cps, ['cp-py-1-10', 'cp-py-1-20']);
   assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'checkpoint 2 feito: a lição 21 abre');
   assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
-  assert.equal((await call('/api/lessons', { token: tk })).j.length, 210);
+  assert.equal((await call('/api/lessons', { token: tk })).j.length, 240);
 });
 
 test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a solução) e a mesma regra de chances vale', async () => {
@@ -485,7 +486,7 @@ test('SQL: resposta certa é aprovada (inclusive várias de uma vez) e o autotes
 
 test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de marcar como errado', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nosql-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'explain.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -516,7 +517,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
 
 test('SQL: com a cópia vendor/sql do projeto, corrige mesmo sem o pacote sql.js instalado (caso do "npm install" não rodado)', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vend-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'explain.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools', 'vendor']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -663,7 +664,7 @@ test('admin: liberar curso tira os bloqueios daquele curso (inclusive a prova), 
   assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 200, 'prova final sem ter feito as 30 lições');
   assert.equal((await call('/api/lessons/cp-py-1-20', { token: tk })).status, 200, 'checkpoint também abre');
   assert.equal((await call('/api/me', { token: tk })).j.passed['python-1'], undefined, 'liberar não aprova a prova final');
-  r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['excel', 'python', 'sql']);
+  r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['excel', 'powerbi', 'python', 'sql']);
   assert.equal((await call('/api/lessons/sql-1-12', { token: tk })).status, 200, 'agora SQL também');
   assert.equal((await A('users?status=unlocked&q=liberar')).j.total, 1);
   r = (await act(id, { action: 'unlock', tracks: 'all', on: false })).j; assert.deepEqual(r.user.unlock, []);
@@ -743,7 +744,7 @@ test('admin: cadastros fechados (e-mail e Google), comunicado do dono e modo liv
   s = await setSettings({ unlockAll: { on: true, days: 7 } }); assert.equal(s.unlockAll.on, true); assert.ok(Date.parse(s.unlockAll.until) - Date.now() > 6.9 * 864e5);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 200, 'modo livre abre para todos'); assert.equal((await call('/api/lessons/sql-3-30', { token: tk })).status, 200);
   assert.equal((await call('/api/lessons/fin-sql-1', { token: tk })).status, 200);
-  const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['excel', 'python', 'sql']);
+  const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['excel', 'powerbi', 'python', 'sql']);
   assert.equal((await A('overview')).j.settings.unlockAll.on, true);
   s = await setSettings({ unlockAll: { on: false } }); assert.equal(s.unlockAll.on, false);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 409, 'desligou: bloqueios voltam');
@@ -753,21 +754,21 @@ test('admin: cadastros fechados (e-mail e Google), comunicado do dono e modo liv
 
 test('admin: cursos ativos no aplicativo: desligar esconde e bloqueia o curso (mesmo com tudo liberado), religar volta ao normal e o último curso não desliga', async () => {
   const tk = await reg('cursos-onoff@t.com', 'Cris Cursos');
-  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true }, 'começa tudo ativo');
-  const painel = (await A('settings')).j.courses; assert.deepEqual(painel.map(c => c.id), ['python', 'sql', 'excel']);
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true, powerbi: true }, 'começa tudo ativo');
+  const painel = (await A('settings')).j.courses; assert.deepEqual(painel.map(c => c.id), ['python', 'sql', 'excel', 'powerbi']);
   assert.ok(painel.every(c => c.on === true && c.lessons > 0 && typeof c.students === 'number' && c.name), 'o painel lista nome, lições e alunos de cada curso');
   assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 200);
   assert.equal((await call('/api/lessons/xl-1-01', { token: tk })).status, 200, 'Excel aberto');
 
   // validações
   for (const bad of [{ courses: { java: false } }, { courses: { excel: 'nao' } }, { courses: {} }, { courses: [] }, { courses: 'excel' }]) assert.equal((await A('settings', bad)).status, 400, JSON.stringify(bad));
-  const all = await A('settings', { courses: { python: false, sql: false, excel: false } }); assert.equal(all.status, 400); assert.match(all.j.error, /pelo menos um curso/);
+  const all = await A('settings', { courses: { python: false, sql: false, excel: false, powerbi: false } }); assert.equal(all.status, 400); assert.match(all.j.error, /pelo menos um curso/);
   assert.equal((await call('/api/config')).j.courses.excel, true, 'pedido inválido não muda nada');
 
   // desliga o Excel
   let s = await setSettings({ courses: { excel: false } });
   assert.equal(s.courses.find(c => c.id === 'excel').on, false); assert.equal(s.courses.find(c => c.id === 'python').on, true);
-  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: false });
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: false, powerbi: true });
   const r = await call('/api/lessons/xl-1-01', { token: tk }); assert.equal(r.status, 409); assert.equal(r.j.lock, 'off');
   assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 409, 'ninguém escolhe curso desligado');
   assert.equal((await call('/api/lessons/py-1-01', { token: tk })).status, 200, 'os outros cursos seguem normais');
@@ -783,13 +784,13 @@ test('admin: cursos ativos no aplicativo: desligar esconde e bloqueia o curso (m
   assert.ok((await A('audit')).j.rows.some(x => /curso Excel desativado/.test(JSON.stringify(x))), 'a mudança fica no registro de ações do painel');
 
   // não deixa desligar o último ativo
-  await setSettings({ courses: { sql: false } });
+  await setSettings({ courses: { sql: false, powerbi: false } });
   const last = await A('settings', { courses: { python: false } }); assert.equal(last.status, 400);
   assert.equal((await call('/api/lessons/py-1-01', { token: tk })).status, 200);
 
   // religa
-  s = await setSettings({ courses: { excel: true, sql: true } }); assert.ok(s.courses.every(c => c.on));
-  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true });
+  s = await setSettings({ courses: { excel: true, sql: true, powerbi: true } }); assert.ok(s.courses.every(c => c.on));
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true, powerbi: true });
   assert.equal((await call('/api/lessons/xl-1-30', { token: tk })).status, 200, 'liberação individual volta a valer ao religar');
   assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 200);
 });
@@ -872,7 +873,7 @@ test('admin: aprendizado, sistema e auditoria (registra quem fez o quê, sem gua
   const tk = await reg('trava@t.com', 'Tito Trava');
   await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'x' } });
   const l = (await A('learning')).j; assert.ok(l.stuck.some(r => r.id === 'py-1-01' && r.stuck >= 1), 'lição com tentativa sem conclusão aparece como "travada"');
-  assert.equal(l.exams.length, 7); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
+  assert.equal(l.exams.length, 8); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
   const sy = (await A('system')).j; assert.equal(sy.db, 'arquivo'); assert.equal(typeof sy.pyServer, 'boolean'); assert.equal(sy.keyFromEnv, true); assert.ok(sy.users >= 1 && sy.memMB > 0 && sy.uptime >= 0);
   assert.ok(!JSON.stringify(sy).includes('chave-admin'), 'a chave nunca aparece no painel');
   const au = (await A('audit?limit=300')).j.rows, acts = new Set(au.map(r => r.action));
@@ -1381,12 +1382,12 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
   // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
   for (const k of ['O que é', 'Para que serve', 'Como você vai usar aqui', 'O que vai aparecer na tela']) assert.ok(ui.includes(`'${k}'`), k);
-  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{codeBox\(l\.example, l\.type, 'Exemplo'\)\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
+  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.example \? codeBox\(l\.example, lang\(l\), 'Exemplo'\) : ''\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
   assert.ok(!/class=infod/.test(ui), 'a prática não tem o bloco "como fazer e o que esperar"');
   // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada
   for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
-  assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=sol\(\)>\$\{ic\('key', 20\)\}<span>Solução<\/span><\/button>/, 'prova não tem Solução nem Teoria');
+  assert.match(ui, /\$\{T \? '' : `\$\{Q \? '' : `<button class="btn ghost" onclick=sol\(\)>\$\{ic\('key', 20\)\}<span>Solução<\/span><\/button>`\}<button class="btn ghost" onclick=lesson\(\)>/, 'prova não tem Solução nem Teoria');
   assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
   // prova reprovada: o personagem chorando (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
   assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\$\{failImg\(\)\}"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
@@ -1404,7 +1405,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span']) assert.ok(css.includes(c), 'css ' + c);
   assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
   // quem acerta vê o resultado (tabela do SQL ou saída do Python) na tela de conclusão: lição, checkpoint e prova final
-  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 4, 'as 4 telas de acerto (lição inteira, 1ª atividade, checkpoint e prova final) mostram o resultado'); assert.ok(css.includes('.resbox'));
+  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : Q \? qzStatic\(\) : DX \? daxStatic\(l, code\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 4, 'as 4 telas de acerto (lição inteira, 1ª atividade, checkpoint e prova final) mostram o resultado'); assert.ok(css.includes('.resbox'));
   // ao conquistar algo a tela mostra o que foi desbloqueado: lição, checkpoint, prova final, nível, certificado e (por XP) título, moldura e itens de personalização
   assert.match(ui, /function unlocksOf\(lk0, xb, s\)/); assert.match(ui, /S\.unl = unlocksOf\(lk0, xb, s\)/); assert.match(ui, /Desbloqueado!/);
   assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
@@ -1451,11 +1452,11 @@ test('acabamento: abertura com a marca, falha de carregamento, sessão expirada,
 test('cursos: logos de Python, SQL e Excel e a tela Cursos em lista (busca, categorias, XP e progresso)', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js');
   // as logos (fundo transparente) valem em todas as telas no lugar do "py" e do ícone de banco; a do Excel é um desenho original
-  for (const f of ['logo-python.webp', 'logo-sql.webp', 'logo-excel.webp']) {
+  for (const f of ['logo-python.webp', 'logo-sql.webp', 'logo-excel.webp', 'logo-powerbi.webp', 'logo-dados.webp']) {
     const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 8000 && b.length < 80000, `${f} tem tamanho razoável (${b.length})`);
     assert.equal((await fetch(`${U}/img/${f}`)).status, 200, f + ' é servida'); assert.ok(sw.includes(`/img/${f}`), f + ' fica no cache offline');
   }
-  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{t == 'python' \|\| t == 'excel' \? t : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
+  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{\['python', 'excel', 'powerbi', 'dados'\]\.includes\(t\) \? t : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
   assert.ok(!/\.tg\.py|\.tg\.sq/.test(css), 'sem o CSS antigo do "py" e do ícone de banco');
   // tela Cursos: cabeçalho com mascote e balão, busca, categorias e a lista (um cartão por curso + os que estão "em breve")
   for (const k of ['class=crh', 'class=crm', 'class=bub', 'class=crs', 'id=cq', 'oninput="cfilter()"', 'class=crc', "onclick=\"ccat('${c}')\"", 'class=crl id=crl', 'class=crx', 'class=crbar', 'class=crgo', "onclick=\"studyTrack('${t}')\"", 'class=sbadge', 'Em breve']) assert.ok(ui.includes(k), 'Cursos: ' + k);
@@ -1804,8 +1805,9 @@ test('ler o código: toda lição tem a sua atividade e a resposta certa é prov
   const lerCheck = require('../tools/check-ler'), st = await lerCheck.main();
   assert.deepEqual(lerCheck.bad, [], 'atividades de ler com problema:\n' + lerCheck.bad.join('\n'));
   assert.equal(st.items, 210); assert.ok(st.proved >= 200, 'quase todas precisam de prova por execução: ' + st.proved);
-  assert.equal(lessons.filter(l => !l.read).length, 0, 'toda lição (Python, SQL e Excel) tem a 2ª atividade');
+  assert.equal(lessons.filter(l => !l.read).length, 0, 'toda lição (Python, SQL, Excel e Power BI) tem a 2ª atividade');
   assert.equal(lessons.filter(l => l.type === 'python').length, 90); assert.equal(lessons.filter(l => l.type === 'sql').length, 90); assert.equal(lessons.filter(l => l.type === 'excel').length, 30);
+  assert.equal(lessons.filter(l => l.track === 'powerbi').length, 30, 'o Power BI e DAX tem 30 lições (dax ou quiz), conferidas em npm run check:pbi');
   const kinds = {}; for (const l of lessons) kinds[l.read.k] = (kinds[l.read.k] || 0) + 1; assert.ok(kinds.mc > 100 && kinds.type >= 10, 'mistura de escolher e digitar: ' + JSON.stringify(kinds));
   // as provas (checkpoints e prova final) continuam com uma atividade só
   for (const t of [...lessons.checkpoints, ...lessons.finals]) assert.ok(!t.read, t.id + ': prova não tem atividade de ler');
@@ -2069,5 +2071,74 @@ test('ordem sorteada: a variável de teste que fixa a ordem é ignorada em produ
   const srvSrc = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(srvSrc, /const FIXED_ORDER = process\.env\.FIXED_ACT_ORDER === '1' && !PROD;/, 'só vale fora de produção');
   assert.match(srvSrc, /ordOf = \(u, ?l\) => \{ const a = actsOf\(l\); return a\.length > 1 && !FIXED_ORDER \? shuffled\(a, u\.id \+ ':ord:' \+ l\.id\) : a; \}/, 'a ordem sorteada depende só do aluno e da lição (não muda sozinha)');
-  const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /codeup-v58/, 'a versão do cache subiu para o app novo chegar ao celular');
+  const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /codeup-v(59|[6-9]\d)/, 'a versão do cache subiu para o app novo chegar ao celular');
+});
+
+
+// ---------------- Power BI e DAX: lições de DAX (o aluno escreve medidas e colunas) e de quiz (várias perguntas numa tela) ----------------
+test('Power BI e DAX: o servidor entrega as lições sem gabarito, mostra a comparação do que errou e corrige qualquer fórmula certa', async () => {
+  const tk = await reg('pbi1@t.com', 'Pri');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'powerbi' } })).j.track, 'powerbi');
+  const list = (await call('/api/lessons', { token: tk })).j, pb = list.filter(l => l.track === 'powerbi');
+  assert.equal(pb.length, 30); assert.deepEqual(pb.map(l => l.n), Array.from({ length: 30 }, (_, i) => i + 1)); assert.ok(pb.every(l => l.lv === 1 && (l.type === 'quiz' || l.type === 'dax')));
+  assert.equal(pb.filter(l => l.type === 'quiz').length, 15); assert.equal(pb.filter(l => l.type === 'dax').length, 15);
+  assert.deepEqual(pb.slice(0, 3).map(l => l.lock), [null, 'seq', 'seq']);
+  assert.equal((await call('/api/lessons/pbi-1-02', { token: tk })).status, 409, 'não pula lição');
+  assert.equal((await call('/api/lessons/pbi-2-01', { token: tk })).status, 404, 'o Power BI Intermediário ainda não existe');
+  // quiz: as perguntas chegam sem a resposta certa e sem explicação
+  const q1 = (await call('/api/lessons/pbi-1-01', { token: tk })).j; assert.equal(q1.type, 'quiz'); assert.ok(Array.isArray(q1.qz) && q1.qz.length >= 4);
+  for (const k of ['quiz', 'answer', 'need']) assert.ok(!(k in q1), `o gabarito (${k}) não pode chegar ao navegador`);
+  const pubTxt = JSON.stringify(q1.qz); assert.ok(!/"ok"|"why"|"no"|"pairs"|"steps"/.test(pubTxt), 'perguntas sem gabarito nem explicação');
+  // quiz: errado devolve a conferência pergunta a pergunta; vazio não passa; certo passa (qualquer ordem das opções)
+  let r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-01', code: '[]' } })).j; assert.equal(r.ok, false);
+  const ql = lessons.find(x => x.id === 'pbi-1-01'), sol = quizcheck.solution(ql), wrong = sol.map((a, i) => i === 0 ? 'qualquer coisa' : a);
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-01', code: JSON.stringify(wrong) } })).j; assert.equal(r.ok, false); assert.equal(r.quiz.right, ql.quiz.length - 1); assert.equal(r.quiz.items[0].ok, false); assert.ok(r.quiz.items[0].why, 'a explicação aparece nas erradas'); assert.ok(r.quiz.items.slice(1).every(x => x.ok === true));
+  assert.equal((await call('/api/me', { token: tk })).j.xp, 0, 'errar não dá XP');
+  r = (await doLesson(tk, ql)).j; assert.equal(r.ok, true); assert.ok(r.gained > 0);
+  // DAX: faz as lições 2 a 10 e abre a 11
+  for (const l of lessonsOf('powerbi', 1).slice(1, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  assert.equal((await call('/api/lessons/pbi-1-11', { token: tk })).status, 409, 'o checkpoint (lição 10) vem antes da 11');
+  assert.equal((await doCp(tk, lessons.checkpoints.find(c => c.id === 'cp-pbi-1-10'))).j.ok, true);
+  const d = (await call('/api/lessons/pbi-1-11', { token: tk })).j; assert.equal(d.type, 'dax'); assert.equal(d.model, 'loja'); assert.ok(d.starter && d.views.length);
+  for (const k of ['answer', 'need', 'forbid', 'noAlt']) assert.ok(!(k in d), `o gabarito (${k}) não pode chegar ao navegador`);
+  // erro de sintaxe: volta a linha e o trecho, não é falha do servidor
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-11', code: 'Total Vendas = SUM(Vendas[Valor]' } })).j; assert.equal(r.ok, false); assert.ok(r.dx.err && r.dx.err.msg && r.dx.err.line === 1);
+  // medida errada: a comparação mostra o que veio e o que era esperado em cada linha do visual
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-11', code: 'Total Vendas = SUM(Vendas[Qtd])' } })).j; assert.equal(r.ok, false); assert.equal(r.dx.defs[0].ok, false); assert.ok(r.dx.defs[0].rows.some(x => x.got && x.want && x.got[0] !== x.want[0]));
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-11', code: 'Total Vendas = 747' } })).j; assert.equal(r.ok, false, 'valor digitado à mão não passa');
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-11', code: 'Total Vendas = 1' } })).j; assert.equal(r.ok, false);
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-11', code: '-- só um comentário' } })).j; assert.equal(r.ok, false);
+  // fórmula diferente mas certa passa (SUMX faz a mesma conta), com nome de medida sem acento ou maiúsculas diferentes
+  const d11 = lessons.find(x => x.id === 'pbi-1-11');
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-11', code: 'total vendas = SUMX(Vendas, Vendas[Valor])' } })).j; assert.equal(r.ok, false, 'a lição exige SUM (need)'); assert.equal(r.dx.need, 'SUM');
+  r = (await doExec(tk, d11)).j; assert.equal(r.ok, true);
+  // a conferência ao vivo não dá XP
+  const before = (await call('/api/me', { token: tk })).j.xp; await call('/api/check', { token: tk, body: { id: 'pbi-1-12', code: 'x = 1' } }); assert.equal((await call('/api/me', { token: tk })).j.xp, before);
+});
+
+test('Power BI e DAX: ler a fórmula aceita número com vírgula e ponto, e coluna calculada é corrigida linha a linha', async () => {
+  const tk = await reg('pbi2@t.com', 'Priscila');
+  await call('/api/track', { token: tk, body: { track: 'powerbi' } });
+  const L = lessonsOf('powerbi', 1);
+  for (const l of L.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  assert.equal((await doCp(tk, lessons.checkpoints.find(c => c.id === 'cp-pbi-1-10'))).j.ok, true);
+  for (const l of L.slice(10, 14)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  // lição de ler com resposta numérica (pbi-1-15: 17,5): "17,5" e "17.5" valem, 17 não vale
+  const l15 = lessons.find(x => x.id === 'pbi-1-15'); assert.equal(l15.read.ok, 17.5);
+  assert.equal((await doExec(tk, l15)).j.ok, true);
+  const r0 = (await call('/api/lessons/pbi-1-15/read', { token: tk })).j; assert.equal(r0.k, 'num'); assert.ok(!('ok' in r0) && !('why' in r0), 'a leitura chega sem resposta');
+  let r = (await call('/api/read', { token: tk, body: { id: 'pbi-1-15', a: '17' } })).j; assert.equal(r.ok, false);
+  r = (await call('/api/read', { token: tk, body: { id: 'pbi-1-15', a: '17,5' } })).j; assert.equal(r.ok, true);
+  for (const l of L.slice(15, 20)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  // checkpoint de DAX: faltando medidas perde uma chance e mostra o que falta; sem gabarito na prova aberta
+  const c20 = lessons.checkpoints.find(c => c.id === 'cp-pbi-1-20');
+  const c = (await call('/api/lessons/cp-pbi-1-20', { token: tk })).j; assert.equal(c.type, 'dax'); assert.equal(c.left, 2); assert.ok(!LEAK.some(k => k in c), 'a prova aberta não tem gabarito nem solução');
+  r = (await call('/api/submit', { token: tk, body: { id: 'cp-pbi-1-20', code: 'Total Vendas = SUM(Vendas[Valor])' } })).j; assert.equal(r.ok, false); assert.equal(r.left, 1); assert.ok(r.dx.need, 'mostra a função que faltou');
+  assert.equal((await doCp(tk, c20)).j.ok, true);
+  // lições 21 a 30 (colunas calculadas): coluna errada mostra as linhas que não batem
+  assert.equal((await call('/api/lessons/pbi-1-21', { token: tk })).status, 200);
+  r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-21', code: 'Vendas[Valor Unitário] = Vendas[Valor]' } })).j; assert.equal(r.ok, false); assert.ok(r.dx.col && r.dx.col.rows.length && r.dx.col.bad > 0);
+  for (const l of L.slice(20, 30)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  assert.equal((await call('/api/lessons/fin-pbi-1', { token: tk })).status, 200);
+  const fin = (await doFinal(tk, 'powerbi', 1)).j; assert.equal(fin.ok, true); assert.equal(fin.test, 'fin'); assert.equal(fin.trackComplete, true, 'o Power BI tem só o nível Básico por enquanto: passar nele conclui o curso');
 });
