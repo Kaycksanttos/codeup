@@ -1033,7 +1033,7 @@ test('ranking: mostra só nome + inicial, ordena por XP e desempata por quem che
   assert.equal(a.mine.xp, 5000); assert.equal(a.mine.tier, 7); assert.equal(a.mine.frame, 7); assert.equal(a.mine.guide, 'tay'); assert.equal(p.mine.tier, 7);
   assert.equal(a.j.me.xp, 5000); assert.equal(a.j.me.hidden, false); assert.equal(a.j.me.pos, a.mine.pos);
   assert.ok(a.j.top.length <= 20 && a.j.total >= 3 && a.j.period === 'geral'); assert.equal(a.j.resets, null, 'o geral nunca zera');
-  for (const x of a.j.top) { assert.deepEqual(Object.keys(x).sort(), ['bg', 'color', 'frame', 'guide', 'me', 'name', 'pos', 'sticker', 'tier', 'xp']); assert.ok(x.xp > 0); }
+  for (const x of a.j.top) { assert.deepEqual(Object.keys(x).sort(), ['bg', 'color', 'cos', 'frame', 'guide', 'me', 'name', 'pos', 'sticker', 'tier', 'xp']); assert.ok(x.xp > 0); }
   for (let i = 1; i < a.j.top.length; i++) assert.ok(a.j.top[i].xp <= a.j.top[i - 1].xp && a.j.top[i].pos === a.j.top[i - 1].pos + 1, 'lista em ordem e posições seguidas');
   assert.equal(a.j.top.filter(x => x.me).length, 1, 'só uma linha é "você"');
   const txt = JSON.stringify([a.j, p.j, z.j]);
@@ -1355,7 +1355,7 @@ test('Perfil em abas e Ranking com pódio: telas, estilos e regras de privacidad
   assert.match(ui, /\['res', 'Resumo'\], \['per', 'Personagem'\], \['aju', 'Ajustes'\]/, 'as 3 abas do Perfil');
   for (const a of ['editName()', 'editGname()', "setSex('", "setGuide('", "setFrame('", 'rkVis(${k})', 'setSfx(${k})', "setSkin('", 'changePw()', 'exportData()', 'logout()', 'delAccount()', "studyTrack('"]) assert.ok(ui.includes(a), 'o Perfil continua com ' + a);
   assert.match(ui, /Eu sou/); assert.match(ui, /Zona de perigo/); assert.match(ui, /class="czg ex"/, 'as expressões continuam no Perfil'); assert.match(ui, /playMove\('p:\$\{k\}'\)/);
-  assert.match(ui, /CZG = \[\['ex', 'Expressões'\], \['color', 'Cor'\], \['outfit', 'Estilo'\], \['sticker', 'Adesivo'\], \['bg', 'Fundo'\]\]/, 'personalizar em grupos');
+  assert.match(ui, /CZG = \[\['fan', 'Fantasias'\], \['ex', 'Expressões'\], \['color', 'Cor'\], \['outfit', 'Estilo'\], \['sticker', 'Adesivo'\], \['bg', 'Fundo'\]\]/, 'personalizar em grupos');
   // Ranking: pódio, linhas, "sua posição" e privacidade
   for (const f of ['function rankView(', 'class=podium', 'class="panel rkme"', 'class="panel rkpv"', 'class=rbar', 'Faltam ${nf(d)} XP para o']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\[top\[1\], top\[0\], top\[2\]\]\.filter\(Boolean\)/, 'pódio com 2º, 1º e 3º (funciona com menos de 3)');
@@ -1510,4 +1510,94 @@ test('admin: autenticador (código de 6 dígitos) — TOTP, QR Code, uma vez só
   const adm = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.js'), 'utf8'), acss = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.css'), 'utf8');
   for (const k of ["fetch('/api/admin/login-info'", 'autocomplete="one-time-code"', 'inputmode="numeric"', "'2fa-on'", "'2fa-off'", "api('2fa/start'", "api('2fa/enable'", "api('2fa/disable'", 'class="qrbox"', 'Chave + código (mais seguro, recomendado)', 'Só o código (mais prático)', 'Autenticador (código de 6 dígitos)', 'ADMIN_2FA_OFF']) assert.ok(adm.includes(k), 'admin.js: ' + k);
   assert.ok(acss.includes('.qrbox{') && acss.includes('.lg .in.code{'));
+});
+
+test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias de estudo', async () => {
+  const pubd = path.join(__dirname, '..', 'public'), C = Rw.COSTUMES;
+  // tabela: 20 fantasias da Tay, 7 de conquista (título + dias de estudo) e 13 da loja (título + diamantes), cada uma com as 3 imagens
+  assert.equal(C.length, 20); assert.equal(new Set(C.map(c => c.key)).size, 20, 'chaves únicas');
+  for (const c of C) {
+    assert.match(c.key, /^[a-z]+$/); assert.ok(c.name && c.guide === 'tay'); assert.ok(Number.isInteger(c.tier) && c.tier >= 1 && c.tier < Rw.TIERS.length, c.key + ': título válido');
+    assert.ok(!!c.days !== !!c.price, c.key + ': ou é conquista (dias) ou é da loja (preço), nunca os dois');
+    for (const f of ['', '-t', '-face']) assert.ok(fs.existsSync(path.join(pubd, 'img', 'fan', c.key + f + '.webp')), 'falta a imagem ' + c.key + f);
+  }
+  const gifts = C.filter(c => c.days), shop = C.filter(c => c.price);
+  assert.equal(gifts.length, 7); assert.equal(shop.length, 13);
+  assert.deepEqual(gifts.map(c => c.tier).sort(), [1, 2, 3, 4, 5, 6, 7], 'uma conquista para cada título, de Aprendiz a Lenda');
+  const gs = [...gifts].sort((a, b) => a.tier - b.tier); for (let i = 1; i < gs.length; i++) assert.ok(gs[i].days > gs[i - 1].days, 'quanto mais alto o título, mais dias de estudo');
+  for (const a of shop) for (const b of shop) if (a.tier < b.tier) assert.ok(a.price <= b.price, `${a.key} (título menor) não pode custar mais que ${b.key}`);
+  assert.ok(Math.min(...shop.map(c => c.price)) <= 60, 'a primeira fantasia sai com poucas lições (5 diamantes cada)');
+  assert.deepEqual(Object.keys(Rw.STREAK_GEMS).map(Number), [3, 7, 14, 30, 60, 100]);
+  // quanto de diamante o curso inteiro dá: o aluno completo de uma trilha compra boa parte da loja, mas não tudo sem estudar mais
+  const oneTrack = lessons.filter(l => l.track === 'python').length * 5 + lessons.checkpoints.filter(c => c.track === 'python').length * 5 + lessons.finals.filter(f => f.track === 'python').length * 20;
+  assert.ok(oneTrack >= 450 && oneTrack < shop.reduce((s, c) => s + c.price, 0), 'diamantes de uma trilha: ' + oneTrack);
+  // estados (mesma regra no navegador e no servidor)
+  const P = (xp, days, gems, own) => ({ xp, days, gems, own: own || null }), st = (k, p) => Rw.costumeState(Rw.costume(k), p);
+  assert.equal(st('gatinha', P(99, 99, 0)), 'tier'); assert.equal(st('gatinha', P(100, 2, 0)), 'days'); assert.equal(st('gatinha', P(100, 3, 0)), 'own'); assert.equal(st('gatinha', P(9999, 2, 0)), 'days', 'XP sozinho não basta: precisa da frequência');
+  assert.equal(st('unicornio', P(99, 0, 999)), 'tier', 'diamantes sozinhos não compram: precisa do título'); assert.equal(st('unicornio', P(100, 0, 59)), 'poor'); assert.equal(st('unicornio', P(100, 0, 60)), 'buy'); assert.equal(st('unicornio', P(0, 0, 0, { unicornio: 'x' })), 'own', 'o que foi comprado fica');
+  assert.equal(Rw.costume('toString'), null, 'chave inventada não existe'); assert.equal(Rw.costume('__proto__'), null);
+  assert.deepEqual(Rw.ownedCostumes(P(300, 6, 0)), ['gatinha', 'dino']);
+
+  // servidor: a Tay compra, veste e o ranking mostra
+  const em = 'gr1@teste.com', tk = await regP(em, 'Gabi Roupa', { sex: 'f', guide: 'tay', gname: 'Nina' }), me = async () => (await call('/api/me', { token: tk })).j;
+  const buy = k => call('/api/costume/buy', { token: tk, body: { key: k } }), wear = k => call('/api/costume/wear', { token: tk, body: { key: k } });
+  await call('/api/track', { token: tk, body: { track: 'python' } });
+  let m = await me(); assert.deepEqual([m.gems, m.days, m.own, m.cos], [0, 0, [], null]);
+  assert.equal((await call('/api/costume/buy', { body: { key: 'unicornio' } })).status, 401);
+  let r = await buy('unicornio'); assert.equal(r.status, 403); assert.match(r.j.error, /Libera com o título Aprendiz/);
+  const L1 = lessonsOf('python', 1), cp10 = lessons.checkpoints.find(c => c.track === 'python' && c.lv === 1 && c.after === 10);
+  for (const l of L1.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  r = await doTest(tk, cp10); assert.equal(r.j.ok, true); assert.equal(r.j.gemsGot, 5, 'checkpoint dá 5 diamantes');
+  for (const l of L1.slice(10, 12)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  m = await me(); assert.equal(m.gems, 65); assert.equal(m.days, 1, 'vários acertos no mesmo dia contam um dia só'); assert.equal(m.streak, 1);
+  r = await buy('gatinha'); assert.equal(r.status, 400); assert.match(r.j.error, /dias de estudo/, 'conquista não se compra');
+  r = await wear('gatinha'); assert.equal(r.status, 400); assert.match(r.j.error, /ainda não tem/);
+  r = await buy('vaquinha'); assert.equal(r.status, 403, 'precisa do título Praticante'); assert.equal((await buy('naoexiste')).status, 400); assert.equal((await buy('__proto__')).status, 400); assert.equal((await buy(7)).status, 400); assert.equal((await buy('')).status, 400);
+  r = await buy('unicornio'); assert.equal(r.status, 200); assert.deepEqual([r.j.gems, r.j.own, r.j.cos], [5, ['unicornio'], 'unicornio'], 'pagou 60 e já saiu vestindo');
+  r = await buy('unicornio'); assert.equal(r.status, 400); assert.match(r.j.error, /já tem/); assert.equal((await me()).gems, 5, 'comprar de novo não cobra');
+  r = await buy('panda'); assert.equal(r.status, 400); assert.match(r.j.error, /Faltam 55 diamantes/); assert.equal((await me()).gems, 5, 'sem saldo não tira nada');
+  const rkr = (await rk(tk)).mine; assert.equal(rkr.cos, 'unicornio', 'o ranking mostra o rostinho de fantasia');
+  assert.equal((await wear('nenhuma')).j.cos, null); assert.equal((await wear('dino')).status, 400); assert.equal((await wear('unicornio')).j.cos, 'unicornio'); assert.equal((await wear('')).status, 400);
+  // a fantasia é da Tay: com o Cut ela fica guardada e não vale; ao voltar para a Tay, volta
+  r = await call('/api/guide', { token: tk, body: { guide: 'cut' } }); assert.deepEqual([r.j.cos, r.j.own], [null, []]);
+  r = await buy('panda'); assert.equal(r.status, 400); assert.match(r.j.error, /não existe para o seu personagem/);
+  r = await call('/api/guide', { token: tk, body: { guide: 'tay' } }); assert.deepEqual([r.j.cos, r.j.own], ['unicornio', ['unicornio']]);
+
+  // dias de estudo, bônus de sequência e conquista de fantasia: servidor à parte, com a data de "ontem" ajustada no arquivo
+  const port = PORT + 870, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gr-')), 'data.json');
+  const boot = async () => { let lg = ''; const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, RELAX_SUBMIT_LIMIT: '1', DEV_SHOW_RESET_LINK: '1', DATABASE_URL: '' } }); p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x); for (let i = 0; i < 450 && !/rodando/.test(lg); i++) await new Promise(z => setTimeout(z, 100)); assert.match(lg, /rodando/, lg); return p; };
+  let ip = 0; const j = async (pth, body, t) => { const x = await fetch(base + pth, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.88.' + (++ip % 200) + '.1', ...(t ? { 'x-token': t } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: x.status, j: await x.json().catch(() => null) }; };
+  const ydIso = () => new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const setUser = fn => { const D = JSON.parse(fs.readFileSync(d, 'utf8')), u = Object.values(D.users).find(x => x.email === 'gr2@teste.com'); fn(u); fs.writeFileSync(d, JSON.stringify(D)); };
+  let p = await boot(), t2;
+  try {
+    const rg = await j('/api/register', { name: 'Dani Dias', email: 'gr2@teste.com', password: 'segredo1', accept: true, sex: 'f', guide: 'tay' }); t2 = rg.j.token; await j('/api/track', { track: 'python' }, t2);
+    const sub = l => j('/api/submit', { id: l.id, code: l.solution, out: l.expectedOut }, t2);
+    for (const l of L1.slice(0, 10)) assert.equal((await sub(l)).j.ok, true);
+    let x = (await sub(cp10)).j; assert.equal(x.ok, true); assert.deepEqual([x.days, x.streak, x.gemBonus, x.newCos], [1, 1, undefined, []]); assert.equal(x.gems, 55);
+    p.kill(); await new Promise(z => setTimeout(z, 400));
+    setUser(u => { u.last = ydIso(); u.streak = 2; u.days = 2; });             // estudou ontem e anteontem: hoje fecha 3 dias seguidos
+    p = await boot();
+    x = (await sub(L1[10])).j; assert.equal(x.ok, true); assert.deepEqual([x.days, x.streak, x.gemBonus, x.newCos, x.gemsGot], [3, 3, 5, ['gatinha'], 10], 'dia 3: +5 de bônus, +5 da lição e a fantasia Gatinha (título Aprendiz + 3 dias)');
+    assert.deepEqual([x.own, x.gems], [['gatinha'], 65]); assert.equal(x.cos, null, 'ganhar não veste sozinha');
+    x = (await sub(L1[11])).j; assert.deepEqual([x.days, x.newCos, x.gemBonus, x.gemsGot], [3, [], undefined, 5], 'mais uma lição no mesmo dia não conta outro dia nem repete o bônus');
+    assert.equal((await j('/api/costume/wear', { key: 'gatinha' }, t2)).j.cos, 'gatinha');
+    p.kill(); await new Promise(z => setTimeout(z, 400));
+    setUser(u => { u.last = ydIso(); u.streak = 6; u.days = 3; });           // sequência de 6 → hoje vira 7 (+10 de bônus, só uma vez); dias nunca ficam abaixo da sequência
+    p = await boot(); x = (await sub(L1[11])).j; assert.deepEqual([x.streak, x.days, x.gemBonus], [7, 7, 10], 'dias = max(dias, sequência) + 1');
+    p.kill(); await new Promise(z => setTimeout(z, 400));
+    setUser(u => { u.last = ydIso(); u.streak = 6; });                         // quebrou e chegou de novo ao 7: o bônus daquele marco não se repete
+    p = await boot(); x = (await sub(L1[11])).j; assert.deepEqual([x.streak, x.gemBonus], [7, undefined]);
+    // conta antiga (sem o contador de dias): parte da sequência que já tinha
+    p.kill(); await new Promise(z => setTimeout(z, 400));
+    setUser(u => { delete u.days; u.last = ydIso(); u.streak = 9; u.xp = 700; });
+    p = await boot(); const mm = (await j('/api/me', null, t2)).j; assert.equal(mm.days, 9, 'sem contador: vale a sequência'); assert.ok(mm.own.includes('dino'), 'Praticante com 9 dias já ganha o Dino (6 dias)'); assert.ok(!mm.own.includes('doutora'), 'Doutora pede Destaque e 12 dias');
+  } finally { p.kill(); }
+
+  // o app: aba Fantasias, compra/vestir, contador de diamantes, imagens no lugar do corpo animado e cache offline novo
+  const app = fs.readFileSync(path.join(pubd, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubd, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubd, 'sw.js'), 'utf8');
+  for (const s of ['function wardrobe()', 'function cosOpen(', "api('costume/buy'", "api('costume/wear'", 'function openWardrobe()', 'const COS = ', 'data-k=gems', "['fan', 'Fantasias']", 'gem: ']) assert.ok(app.includes(s), 'app.js sem ' + s);
+  assert.match(app, /const body = \([^)]*\) => COS\(\) \?/); assert.match(app, /const walker = \(\) => COS\(\) \?/); assert.match(app, /const ovHero = \([^)]*\) => COS\(\) \?/, 'com fantasia o personagem é a imagem (sem WebGL)');
+  for (const s of ['.wdg{', '.wdc{', '.pill.gem', '.wsh .wpv', '@keyframes cjump']) assert.ok(css.includes(s), 'style.css sem ' + s);
+  assert.match(sw, /codeup-v(5[2-9]|[6-9]\d)/, 'o cache offline foi trocado');
 });

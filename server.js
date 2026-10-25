@@ -113,8 +113,14 @@ const settingsMain = () => { DB.settings ??= {}; const m = DB.settings.main ??= 
 const unlockAllOn = () => { const a = settingsMain().unlockAll; return !!(a.on && (!a.until || Date.parse(a.until) > Date.now())); };
 // curso liberado: o dono liberou a trilha para esta pessoa (ou para todo mundo, no modo livre). Sem bloqueio de nível, sequência ou checkpoint.
 const unlocked = (u, track) => unlockAllOn() || !!(u.unlock && u.unlock[track]);
+// ---------- guarda-roupa: dias de estudo, fantasias que a pessoa tem e a que está vestindo ----------
+// "dias de estudo" = dias diferentes em que ela acertou algo (contas antigas, sem o contador, partem da sequência atual)
+const daysOf = u => Math.max(u.days || 0, u.streak || 0);
+const cosState = u => ({ xp: u.xp, days: daysOf(u), own: u.own, gems: u.gems || 0 });
+const cosOwned = u => R.ownedCostumes(cosState(u)).filter(k => R.costume(k).guide === u.guide);   // as de outro personagem ficam guardadas, mas não valem
+const cosWorn = u => { const c = R.costume(u.cost); return c && c.guide === u.guide && R.costumeState(c, cosState(u)) === 'own' ? c.key : null; };
 const pub = u => ({
-  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, hasPassword: !!u.pass, google: !!u.googleId,
+  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, days: daysOf(u), own: cosOwned(u), cos: cosWorn(u), hasPassword: !!u.pass, google: !!u.googleId,
   track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, certs: u.certs || {}, fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true])),
   away: u.away ? { days: Math.max(1, Math.floor((Date.now() - Date.parse(u.away.from)) / 864e5)) } : null          // dias sem entrar (só enquanto a tela "dormindo" não foi vista)
@@ -441,6 +447,29 @@ app.post('/api/guide', auth, (req, res) => {
   RANK.at = 0; save(); res.json(pub(req.u));
 });
 
+// ---------- guarda-roupa ----------
+// Comprar: só fantasia à venda (tem preço), do personagem da pessoa, com o título já conquistado e diamantes suficientes. O servidor confere tudo: o navegador só pede.
+// Vestir: só uma que a pessoa tem ('nenhuma' volta ao visual normal, que aceita cor, estilo e expressões).
+const CMSG = { tier: c => `Libera com o título ${R.TIERS[c.tier].title} (${R.TIERS[c.tier].xp.toLocaleString('pt-BR')} XP).`, days: c => `Libera com o título ${R.TIERS[c.tier].title} e ${c.days} dias de estudo.` };
+app.post('/api/costume/buy', auth, limit(30 * RELAX, 60e3), (req, res) => {
+  const u = req.u, c = R.costume(String((req.body || {}).key || ''));
+  if (!c || c.guide !== u.guide) return res.status(400).json({ error: 'Essa fantasia não existe para o seu personagem.' });
+  const st = R.costumeState(c, cosState(u));
+  if (st === 'own') return res.status(400).json({ error: 'Você já tem essa fantasia.' });
+  if (!c.price) return res.status(400).json({ error: CMSG[st] ? CMSG[st](c) : 'Essa fantasia não está à venda.' });
+  if (st === 'tier') return res.status(403).json({ error: CMSG.tier(c) });
+  if ((u.gems || 0) < c.price) return res.status(400).json({ error: `Faltam ${c.price - (u.gems || 0)} diamantes para comprar a fantasia ${c.name}.` });
+  u.gems -= c.price; (u.own ??= {})[c.key] = new Date().toISOString(); u.cost = c.key;     // comprou: já sai vestindo
+  RANK.at = 0; save(); res.json(pub(u));
+});
+app.post('/api/costume/wear', auth, limit(60 * RELAX, 60e3), (req, res) => {
+  const u = req.u, k = String((req.body || {}).key || '');
+  if (k === 'nenhuma') { delete u.cost; RANK.at = 0; save(); return res.json(pub(u)); }
+  const c = R.costume(k);
+  if (!c || c.guide !== u.guide || R.costumeState(c, cosState(u)) !== 'own') return res.status(400).json({ error: 'Você ainda não tem essa fantasia.' });
+  u.cost = c.key; RANK.at = 0; save(); res.json(pub(u));
+});
+
 // ---------- ranking de alunos ----------
 // Mostra só o primeiro nome + a inicial do sobrenome, o personagem, o título e o XP (nunca e-mail). Quem não quer aparecer sai em Perfil.
 // Só entram contas ativas, com e-mail confirmado (quando a confirmação está ligada) e com XP no período.
@@ -452,12 +481,12 @@ function rankRows(period) {
   const score = u => period === 'semana' ? (u.wk && u.wk.w === w ? u.wk.xp : 0) : (u.xp || 0), at = u => u.xpAt || Date.parse(u.created) || 0;
   const rows = Object.values(DB.users).filter(u => !u.banned && u.verified !== false && !u.rankOff && score(u) > 0)
     .sort((a, b) => score(b) - score(a) || at(a) - at(b) || (a.id < b.id ? -1 : 1))
-    .map((u, i) => ({ id: u.id, pos: i + 1, name: shortName(u.name), guide: GUIDES.includes(u.guide) ? u.guide : 'cut', xp: score(u), tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame), color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg) }));
+    .map((u, i) => ({ id: u.id, pos: i + 1, name: shortName(u.name), guide: GUIDES.includes(u.guide) ? u.guide : 'cut', xp: score(u), tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame), color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), cos: cosWorn(u) }));
   c = { rows, by: new Map(rows.map(r => [r.id, r])) }; RANK.m.set(period, c); return c;
 }
 app.get('/api/ranking', auth, limit(60 * RELAX, 60e3), (req, res) => {
   const period = req.query.p === 'geral' ? 'geral' : 'semana', u = req.u, { rows, by } = rankRows(period), mine = by.get(u.id) || null;
-  const out = r => ({ pos: r.pos, name: r.name, guide: r.guide, xp: r.xp, tier: r.tier, frame: r.frame, color: r.color, sticker: r.sticker, bg: r.bg, me: r.id === u.id });
+  const out = r => ({ pos: r.pos, name: r.name, guide: r.guide, xp: r.xp, tier: r.tier, frame: r.frame, color: r.color, sticker: r.sticker, bg: r.bg, cos: r.cos, me: r.id === u.id });
   res.json({
     period, total: rows.length, top: rows.slice(0, 20).map(out),
     me: { pos: mine ? mine.pos : null, hidden: !!u.rankOff, xp: period === 'semana' ? (u.wk && u.wk.w === weekId() ? u.wk.xp : 0) : (u.xp || 0), row: mine && mine.pos > 20 ? out(mine) : null },
@@ -593,10 +622,14 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (engine) { u.attempts[k]--; return res.status(503).json({ error: ENGINE_MSG, engine: true }); }
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
-  let gained = 0, streakUp = 0, rewind = null;     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
+  let gained = 0, streakUp = 0, rewind = null, gemBonus = 0; const gems0 = u.gems || 0, own0 = new Set(cosOwned(u));     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
   if (ok) {
     const today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
-    if (u.last !== today) { u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; streakUp = u.streak; }
+    if (u.last !== today) {
+      const d0 = daysOf(u); u.streak = u.last === yest ? (u.streak || 0) + 1 : 1; u.last = today; streakUp = u.streak; u.days = d0 + 1;     // mais um dia de estudo
+      const sb = R.STREAK_GEMS[u.streak];                                               // marco da sequência (3, 7, 14, 30, 60, 100 dias): diamantes de bônus, uma vez só
+      if (sb && !u.xpd['sg' + u.streak]) { u.xpd['sg' + u.streak] = 1; u.gems = (u.gems || 0) + sb; gemBonus = sb; }
+    }
     if (l.fin) {                                                                       // prova final aprovada: libera o próximo nível e dá o bônus (uma vez só)
       u.passed[lk] ||= new Date().toISOString();
       if (!u.xpd['exam-' + lk]) { u.xpd['exam-' + lk] = 1; gained = 50 * l.lv; gainXp(u, gained); u.gems = (u.gems || 0) + 20; }
@@ -620,7 +653,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
     ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
     view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
     levelComplete: lvDone || undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
-    trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, ...pub(u)
+    trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(k => !own0.has(k)), ...pub(u)
   });
 });
 

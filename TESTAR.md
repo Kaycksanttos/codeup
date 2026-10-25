@@ -78,6 +78,15 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Para testar sem ganhar XP à mão: painel do dono (`/admin`) → Usuários → pessoa → **XP** → defina 350 (libera até Vermelho), 4600 (libera tudo). Se o dono baixar o XP depois, o que deixou de ser liberado volta ao padrão.
 - [ ] No Ranking, a linha de cada aluno mostra o rostinho na cor escolhida, com o fundo e o adesivo no canto.
 
+**4c-2. Fantasias e diamantes** (com a **Tay**; dica: no painel do dono ajuste o XP da pessoa; os dias de estudo só sobem estudando em dias diferentes — para pular essa espera, pare o servidor, edite `"days"` (e `"streak"`) da pessoa no `data.json` de teste e ligue de novo)
+- [ ] No topo do app aparece o contador de **diamantes** 💎 ao lado da sequência e do XP. Em celular pequeno (320–360 px) os contadores descem para uma segunda linha em vez de estourar a tela.
+- [ ] Fazer uma lição pela primeira vez soma **+5 💎** (aparece "+5 💎" na tela de resultado); repetir a mesma lição **não** soma de novo; checkpoint dá +5 e prova final +20.
+- [ ] **Perfil → Personagem → Personalizar → Fantasias** mostra a grade das 20 fantasias: as que você tem, as da loja com o preço e as bloqueadas como **silhueta** com cadeado. Tocar abre a ficha com o que falta ("Falta o título Praticante", "Faltam 3 dias de estudo", "Faltam 40 diamantes").
+- [ ] **Comprar** uma fantasia da loja (precisa do título e dos diamantes): o saldo desce, ela já sai vestida e aparece no topo do Perfil, no mapa, no ranking e na tela de resultado. Comprar a mesma de novo não cobra.
+- [ ] **Conquista:** com o título Aprendiz e o 3º dia de estudo, a **Gatinha** aparece no cartão **"Desbloqueado!"** ("Nova fantasia: Gatinha") com o link **Ver o guarda-roupa**; ela **não** se veste sozinha. Só XP alto, sem os dias, **não** libera.
+- [ ] No 3º, 7º, 14º, 30º, 60º e 100º dia seguidos aparece o bônus de diamantes da sequência, uma vez só por marco.
+- [ ] **Sem fantasia** volta ao personagem animado normal. Trocar para o **Cut** guarda as fantasias (a aba mostra "em breve"); voltar para a Tay traz tudo de volta.
+
 **4d. Personagem animado e estilo da roupa**
 - [ ] **Tela de entrada** (login e cadastro): só a marca **CodeUp** e a frase, **sem personagem**.
 - [ ] O personagem de corpo inteiro (tela de resultado da lição/prova, escolha de trilha e a prévia do Perfil) **se mexe sozinho**: respira, balança de leve, inclina a cabeça e **pisca**. A Tay mexe o cabelo; o Cut balança o joinha.

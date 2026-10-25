@@ -8,6 +8,7 @@ const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 // ============================================================ ÍCONES, MASCOTE E DESTAQUE DE CÓDIGO
 const IC = {
+  gem: '<path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
   home: '<path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9"/><path d="M10 20v-6h4v6"/>',
   map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a3 3 0 0 0 4 3M16 6h4v2a3 3 0 0 1-4 3"/><path d="M12 13v4M8 20h8M10 17h4"/>',
@@ -68,11 +69,15 @@ const EXPR = {
   tay: [['oi', 'Estudando'], ['piscada', 'Piscadinha'], ['pulo', 'Pulo'], ['apaixonado', 'Apaixonada'], ['pensando', 'Pensativa'], ['ideia', 'Ideia!'], ['codando', 'Codando'], ['vitoria', 'Vitória!'], ['coracao', 'Coração'], ['apontando', 'Rindo'], ['estiloso', 'Estilosa'], ['bravo', 'Brava'], ['ops', 'Ops!'], ['dormindo', 'Dormindo'], ['tchau', 'Oi/Tchau!'], ['aponta2', 'Olha ali'], ['explica', 'Explicando'], ['joinha', 'Joinha']],
   cut: [['tchau', 'Oi/Tchau!'], ['piscada', 'Piscadinha'], ['pulo', 'Dançando'], ['pensando', 'Pensativo'], ['ideia', 'Ideia!'], ['apontando', 'Apontando'], ['estiloso', 'Estiloso'], ['ops', 'Ops!'], ['joinha', 'Joinha'], ['codando', 'Codando'], ['apaixonado', 'Curtindo'], ['explica', 'De boa'], ['vitoria', 'Vitória!'], ['coracao', 'Coração'], ['bravo', 'Bravo'], ['dormindo', 'Dormindo'], ['serio', 'Marrento'], ['celular', 'No celular'], ['tedio', 'Entediado'], ['deitado', 'Deitado'], ['dab', 'Dab!'], ['correndo', 'Correndo'], ['chorando', 'Chorando']]
 };
-const IMG = () => { const g = gid(), c = S.me && S.me.color; return { face: CR.colorFile(g, c, true), full: CR.colorFile(g, c, false) }; };   // cor escolhida (ou a de fábrica)
+// fantasia que a pessoa está vestindo (só a Tay tem hoje); o servidor já manda `me.cos` conferido. Com fantasia o personagem é uma imagem (sem o corpo animado em WebGL).
+const COS = () => S.me && S.me.cos && gid() == 'tay' ? S.me.cos : null;
+const cosPic = (k, v = '') => `/img/fan/${k}${v ? '-' + v : ''}.webp`;
+const cosName = k => (CR.costume(k) || {}).name || '';
+const IMG = () => { const k = COS(); if (k) return { face: cosPic(k, 'face'), full: cosPic(k) }; const g = gid(), c = S.me && S.me.color; return { face: CR.colorFile(g, c, true), full: CR.colorFile(g, c, false) }; };   // cor escolhida (ou a de fábrica)
 // fundo do círculo do rosto: o que a pessoa escolheu; sem escolha, acompanha a cor da roupa (a cor de fábrica usa o degradê original)
 const bgCss = (bg, color) => { const b = CR.item(CR.BACKS, bg), c = CR.item(CR.COLORS, color); return b ? `radial-gradient(circle at 50% 28%,${b.c1},${b.c2} 78%)` : c ? `radial-gradient(circle at 50% 28%,hsl(${c.hue} 95% 72%),hsl(${c.hue} 62% 36%) 78%)` : ''; };
 // atributo style do aro/fundo: moldura conquistada pelo XP (só no aro) e fundo
-const cosStyle = (ring, o = S.me, guide = gid()) => { if (!o) return ''; const fr = ring ? CR.frameOf(o.xp, o.frame) : 0, bg = bgCss(o.bg, o.color && o.color !== CR.BASE[guide] ? o.color : ''); const v = (fr ? `--fr:${CR.TIERS[fr].color};` : '') + (bg ? `--bgc:${bg};` : ''); return v ? ` style="${v}"` : ''; };
+const cosStyle = (ring, o = S.me, guide = gid()) => { if (!o) return ''; const fr = ring ? CR.frameOf(o.xp, o.frame) : 0, bg = bgCss(o.bg, o.color && !(o === S.me && COS()) && o.color !== CR.BASE[guide] ? o.color : ''); const v = (fr ? `--fr:${CR.TIERS[fr].color};` : '') + (bg ? `--bgc:${bg};` : ''); return v ? ` style="${v}"` : ''; };
 const mascot = (s = 56, cls = '') => `<img class="mascot g-${gid()} ${cls}"${cosStyle(/\bring\b/.test(cls))} src="${IMG().face}" width=${s} height=${s} alt="${esc(gnm())}, seu guia no CodeUp">`;
 // adesivos: ícones cheios, desenhados em 24×24; a cor vem do item (--sc)
 const STK = {
@@ -100,10 +105,11 @@ const bodyMode = cls => /\bepic2?\b/.test(cls) ? 'epic' : /\bpop\b/.test(cls) ? 
 const HUE = () => CR.hueShift(gid(), S.me && S.me.color);   // a cor escolhida também vale nas poses
 // reel 'fail' (prova reprovada): o personagem chorando. O Cut usa a pose "chorando" da folha de expressões; a Tay, a imagem dela (img/fail-tay.webp)
 const failImg = () => gid() == 'cut' ? '/img/pose/cut-chorando.webp' : '/img/fail-tay.webp';
-const body = (h = 200, cls = '', extra = '', fxc = '', reel = '') => reel == 'fail' ? `<img class="body fimg" src="${failImg()}" style="height:${h}px" alt="${esc(gnm())} chorando">` : window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, reel, hue: HUE(), alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+const cosImg = (h, cls) => `<img class="body cstm ${cls}" src="${cosPic(COS())}" style="height:${h}px" alt="${esc(gnm())}, de fantasia de ${esc(cosName(COS()))}">`;
+const body = (h = 200, cls = '', extra = '', fxc = '', reel = '') => COS() ? cosImg(h, (cls + ' ' + extra).trim()) : reel == 'fail' ? `<img class="body fimg" src="${failImg()}" style="height:${h}px" alt="${esc(gnm())} chorando">` : window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: (cls + ' ' + extra).trim(), mode: bodyMode(cls), fx: /\bepic2\b/.test(cls) ? 2 : /\bepic\b/.test(cls) ? 1 : 0, fxc, reel, hue: HUE(), alt: esc(gnm()) }) : `<img class="body ${cls}" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
 const stage = (h, text, cls = '', fxc = '', reel = '') => `<div class="stage ${cls}"${(b => { const v = [b ? '--gl:' + b.c1 : '', /^#[0-9a-f]{6}$/i.test(fxc) ? '--fx:' + fxc : ''].filter(Boolean).join(';'); return v ? ` style="${v}"` : ''; })(CR.item(CR.BACKS, S.me && S.me.bg))}><div class=sb>${text}</div><div class=glow></div>${body(h, cls, '', fxc, reel)}<span class=gn>${esc(gnm())}</span></div>`;
 // personagem do mapa: de frente, com o corpo animado (respira, pisca) e, de tempos em tempos, uma expressãozinha (reel 'mapa')
-const walker = () => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h: 120, cls: 'pm', reel: 'mapa', hue: HUE(), alt: '' }) : `<img class=pm src="${IMG().full}" alt="">`;
+const walker = () => COS() ? `<img class=pm src="${cosPic(COS())}" alt="">` : window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h: 120, cls: 'pm', reel: 'mapa', hue: HUE(), alt: '' }) : `<img class=pm src="${IMG().full}" alt="">`;
 // personagem do resultado de uma conquista: título novo (cor do título) > trilha concluída > nível novo > só passou (ou prova aprovada, que também é conquista)
 // cada comemoração sorteia uma das sequências de expressões (anim.js, REELS): lição = 'win', checkpoint = 'cp', conquista (título, nível, prova, trilha) = 'big'
 const winStage = (h, text, base = 'win', big = false) => {
@@ -153,7 +159,7 @@ function confetti(n = 46) { const w = document.createElement('div'); w.className
 // acerto → "Acertou!/De primeira!/Combo" · prova aprovada → troféu · sequência de dias → chama (e marcos) · erro → personagem pensando na dica
 const sfx = (n, a) => { try { window.CodeUpSfx && CodeUpSfx.play(n, a); } catch { } };
 // o personagem só com a pose (sem o corpo animado por baixo); sem poses/WebGL ou com "reduzir movimento" aparece o corpo parado
-const ovHero = (h, reel, fxc) => window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: 'fxh', reel, hue: HUE(), rig: 0, fxc, alt: esc(gnm()) }) : `<img class="body fxh" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
+const ovHero = (h, reel, fxc) => COS() ? cosImg(h, 'fxh') : window.CodeUpAnim ? CodeUpAnim.html({ g: gid(), src: IMG().full, o: OUTF(), h, cls: 'fxh', reel, hue: HUE(), rig: 0, fxc, alt: esc(gnm()) }) : `<img class="body fxh" src="${IMG().full}" style="height:${h}px" alt="${esc(gnm())}">`;
 const ovH = k => Math.round(Math.max(120, Math.min(k, innerHeight * .24)));
 // carinha da expressão como figurinha (a imagem da pose tem o recorte no alto e os desenhinhos embaixo: mostra só o alto)
 const poseChip = (id, h = 64) => { const g = gid(), P = window.CodeUpPoses && CodeUpPoses.poses[g] && CodeUpPoses.poses[g][id]; if (!P) return ''; const hu = HUE(); return `<i class=pzc style="width:${Math.round(h * P.w / P.h)}px;height:${h}px;background-image:url(/img/pose/${g}-${id}.webp);${hu ? `filter:hue-rotate(${hu}deg)` : ''}"></i>`; };
@@ -498,7 +504,7 @@ function render() {
   if (!S.lv) S.lv = curLevel(T);
   const an = (a => a && LS.get('ann') != a.id ? `<div class="note ${a.kind}" style="margin-top:10px">${ic(a.kind == 'ok' ? 'check' : 'info', 18)}<div style="flex:1">${esc(a.text)}</div><button class=ibtn aria-label="Fechar aviso" onclick="LS.set('ann',${+a.id});render()">${ic('x', 16)}</button></div>` : '')(S.cfg && S.cfg.announce);
   const vb = m.verified ? '' : `<div class=note style="margin-top:10px">${ic('info', 18)}<div><b>Confirme seu e-mail</b><br>Enviamos um link para ${esc(m.email)}. Você já pode estudar, mas precisa confirmar para emitir o certificado. <a onclick=resendVerify() style="cursor:pointer;font-weight:800">Reenviar e-mail</a></div></div>`;
-  const head = `<header class=hd>${mascot(46, 'ring')}<div class=who><b>${document.body.classList.contains('wild') ? 'Olá, ' + esc(String(m.name).split(' ')[0]) + '!' : esc(m.name)}</b><small>${document.body.classList.contains('wild') ? 'Vamos continuar seus estudos?' : 'Estudando ' + TN[m.track]}</small></div><div class=chips-r><span class="pill fire" title="Dias seguidos">${ic('flame', 16)} <b class=n data-k=streak data-v="${m.streak}">${m.streak}</b></span><span class="pill xp" title="Pontos de experiência">${ic('bolt', 16)} <b class=n data-k=xp data-v="${m.xp}">${m.xp}</b></span></div></header>`;
+  const head = `<header class=hd>${mascot(46, 'ring')}<div class=who><b>${document.body.classList.contains('wild') ? 'Olá, ' + esc(String(m.name).split(' ')[0]) + '!' : esc(m.name)}</b><small>${document.body.classList.contains('wild') ? 'Vamos continuar seus estudos?' : 'Estudando ' + TN[m.track]}</small></div><div class=chips-r><span class="pill fire" title="Dias seguidos">${ic('flame', 16)} <b class=n data-k=streak data-v="${m.streak}">${m.streak}</b></span><span class="pill xp" title="Pontos de experiência">${ic('bolt', 16)} <b class=n data-k=xp data-v="${m.xp}">${m.xp}</b></span><button class="pill gem" onclick="openWardrobe()" title="Seus diamantes: toque para ver o guarda-roupa" aria-label="${m.gems || 0} diamantes. Abrir o guarda-roupa">${ic('gem', 16)} <b class=n data-k=gems data-v="${m.gems || 0}">${m.gems || 0}</b></button></div></header>`;
   if (S.tab == 'home') {
     const lv = S.lv, ls = lessonsOf(T, lv), open = lvOpen(T, lv), cur = ls.findIndex(l => !done(l) && !l.lock), nd = lvDone(T, lv), fin = finOf(T, lv), finReady = !!fin && !fin.lock && open && !passedLv(T, lv), pct = trackPct(T), nx = nextStep(T);
     // mapa em curva: cada lição ganha uma posição horizontal (onda suave) e uma trilha desenhada liga os botões.
@@ -627,7 +633,7 @@ function rankView() {
   } else { big = `Você ainda não pontuou${per == 'semana' ? ' nesta semana' : ''}`; sub = 'Conclua uma lição para entrar no ranking.'; }
   let fim = ''; if (per == 'semana' && k.resets) { const ms = Math.max(0, Date.parse(k.resets) - Date.now()), d = Math.floor(ms / 864e5), hh = Math.floor(ms % 864e5 / 36e5); fim = `<span>${ic('clock', 14)} Recomeça em ${d ? d + (d == 1 ? ' dia e ' : ' dias e ') : ''}${hh} h</span>`; }
   const meta = fim || k.total ? `<div class=rkmeta>${fim}${k.total ? `<span>${ic('users', 14)} ${nf(k.total)} ${k.total == 1 ? 'aluno' : 'alunos'}</span>` : ''}</div>` : '';
-  const av = (r, s) => { const fr = r.frame ? `--fr:${CR.TIERS[r.frame].color};` : '', bg = bgCss(r.bg, r.color && r.color !== CR.BASE[r.guide] ? r.color : ''), st = fr + (bg ? `--bgc:${bg};` : ''); return `<span class=av style="width:${s}px;height:${s}px"><img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${st ? ` style="${st}"` : ''} src="${CR.colorFile(r.guide, r.color, true)}" width=${s} height=${s} alt="">${stkBadge(r.sticker, Math.round(s * .45))}</span>`; };
+  const av = (r, s) => { const fr = r.frame ? `--fr:${CR.TIERS[r.frame].color};` : '', bg = bgCss(r.bg, r.color && !r.cos && r.color !== CR.BASE[r.guide] ? r.color : ''), st = fr + (bg ? `--bgc:${bg};` : ''); return `<span class=av style="width:${s}px;height:${s}px"><img class="mascot rkav g-${r.guide}${r.frame ? ' fr' : ''}"${st ? ` style="${st}"` : ''} src="${r.cos ? cosPic(r.cos, 'face') : CR.colorFile(r.guide, r.color, true)}" width=${s} height=${s} alt="">${stkBadge(r.sticker, Math.round(s * .45))}</span>`; };
   const pod = r => `<div class="pdc p${r.pos}${r.me ? ' me' : ''}">${r.pos == 1 ? `<span class=cr>${ic('crown', 22)}</span>` : ''}${av(r, r.pos == 1 ? 68 : 54)}<b class=nm>${esc(r.name)}</b><small class=tt>${r.me ? 'você · ' : ''}${esc(CR.TIERS[r.tier].title)}</small><span class=px>${nf(r.xp)} XP</span><div class=stp><b>${r.pos}º</b></div></div>`;
   const row = r => `<div class="rkx${r.me ? ' me' : ''}"><b class=pn>${r.pos}º</b>${av(r, 42)}<div class=bd><b>${esc(r.name)}${r.me ? ' <span class=badge>você</span>' : ''}</b><small>${esc(CR.TIERS[r.tier].title)}</small><span class=rbar><i style="width:${Math.max(3, Math.round(r.xp / lead * 100))}%"></i></span></div><span class=rxp><b>${nf(r.xp)}</b><small>XP</small></span></div>`;
   const rest = top.slice(3);
@@ -733,17 +739,64 @@ function czView() {
   const outs = chip('outfit', 'auto', !m.outfit, `<i class=sw style="background:${outBg('liso', hue)}"></i>`, 'Liso') + CR.OUTFITS.filter(o => o.id).map(o => chip('outfit', o.key, m.outfit == o.key, `<i class=sw style="background:${outBg(o.key, hue)}"></i>`, o.name, o)).join('');
   const pbg = bgCss(m.bg, m.color && m.color != CR.BASE[g] ? m.color : '');
   const free = [CR.COLORS.filter(c => c.key != CR.BASE[g]), CR.STICKERS, CR.BACKS, CR.OUTFITS.filter(o => o.id)].reduce((a, l) => a + l.filter(x => !lk(x)).length, 0), all = CR.COLORS.length - 1 + CR.STICKERS.length + CR.BACKS.length + CR.OUTFITS.length - 1;
-  const CZG = [['ex', 'Expressões'], ['color', 'Cor'], ['outfit', 'Estilo'], ['sticker', 'Adesivo'], ['bg', 'Fundo']], gt = CZG.some(x => x[0] == S.czt) ? S.czt : 'ex';
+  const CZG = [['fan', 'Fantasias'], ['ex', 'Expressões'], ['color', 'Cor'], ['outfit', 'Estilo'], ['sticker', 'Adesivo'], ['bg', 'Fundo']], gt = CZG.some(x => x[0] == S.czt) ? S.czt : g == 'tay' ? 'fan' : 'ex';
+  const dressed = COS() && ['ex', 'color', 'outfit'].includes(gt) ? `<div class="panel wdn"><div class=bd><b>Você está de fantasia: ${esc(cosName(COS()))}</b><small>Cor, estilo e expressões são do visual normal. Tire a fantasia para usá-los.</small></div><button class="btn ghost" onclick="cosWear('nenhuma')">Tirar fantasia</button></div>` : '';
   return `<div class=sec>Personalizar personagem</div>
     <div class=czp${pbg ? ` style="--bgc:${pbg}"` : ''}><div class=czb>${body(190, S.pop ? 'pop' : '', '', '#ffd43b')}</div>${stkBadge(m.sticker, 46)}<span class=gn>${esc(gnm())}</span></div>
     <p class=tn style="margin:8px 2px 0">${free == all ? 'Você liberou todos os itens. É uma lenda!' : `${free} de ${all} itens liberados. Ganhe XP para subir de título e liberar o resto.`}</p>
     <div class=czt role=tablist aria-label="O que personalizar">${CZG.map(([k, n]) => `<button role=tab aria-selected=${gt == k} class="${gt == k ? 'on' : ''}" onclick="czTab('${k}')">${n}</button>`).join('')}</div>
-    ${gt == 'ex' ? `<div class=czh>Expressões <small style="font-weight:700">(tocar no personagem também sorteia uma)</small></div><div class="czg ex">${EXPR[g].map(([k, n]) => `<button class=czi onclick="playMove('p:${k}')" aria-label="${n}"><i class="sw pz" style="background-image:url(/img/pose/${g}-${k}.webp);${HUE() ? `filter:hue-rotate(${HUE()}deg)` : ''}"></i><small>${n}</small></button>`).join('')}</div>` : ''}
-    ${gt == 'color' ? `<div class=czh>Cor da roupa</div><div class=czg>${colors}</div>` : ''}
-    ${gt == 'outfit' ? `<div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>` : ''}
+    ${gt == 'fan' ? wardrobe() : ''}${dressed}
+    ${gt == 'ex' && !dressed ? `<div class=czh>Expressões <small style="font-weight:700">(tocar no personagem também sorteia uma)</small></div><div class="czg ex">${EXPR[g].map(([k, n]) => `<button class=czi onclick="playMove('p:${k}')" aria-label="${n}"><i class="sw pz" style="background-image:url(/img/pose/${g}-${k}.webp);${HUE() ? `filter:hue-rotate(${HUE()}deg)` : ''}"></i><small>${n}</small></button>`).join('')}</div>` : ''}
+    ${gt == 'color' && !dressed ? `<div class=czh>Cor da roupa</div><div class=czg>${colors}</div>` : ''}
+    ${gt == 'outfit' && !dressed ? `<div class=czh>Estilo da roupa</div><div class=czg>${outs}</div>` : ''}
     ${gt == 'sticker' ? `<div class=czh>Adesivo</div><div class=czg>${stk}</div>` : ''}
     ${gt == 'bg' ? `<div class=czh>Fundo</div><div class=czg>${bgs}</div>` : ''}`;
 }
+// ============================================================ GUARDA-ROUPA: fantasias da Tay
+// Cada fantasia pede um título. As de "conquista" vêm de graça com o título + dias de estudo; as da "loja" se compram com diamantes (lição +5, checkpoint +5, prova final +20, marcos da sequência).
+// Quem confere tudo é o servidor (/api/costume/buy e /wear); aqui só se mostra o estado e se pede a ação.
+const gemGot = () => S.gemsGot ? `<p class=gemgot>${ic('gem', 15)} <b>+${S.gemsGot}</b> ${S.gemsGot == 1 ? 'diamante' : 'diamantes'}</p>` : '';
+const cosP = () => ({ xp: S.me.xp, days: S.me.days || 0, own: Object.fromEntries((S.me.own || []).map(k => [k, 1])), gems: S.me.gems || 0 });
+function wardrobe() {
+  const m = S.me, g = gid(), list = CR.costumesOf(g), P = cosP(), worn = COS();
+  if (!list.length) return `<div class="panel rkem"><b>As fantasias de ${esc(GUIDES[g].name)} estão chegando</b><small>Por enquanto, só a Tay tem guarda-roupa. Enquanto isso, use as cores, estilos, adesivos e fundos.</small></div>`;
+  const have = list.filter(c => CR.costumeState(c, P) == 'own').length;
+  const st = c => CR.costumeState(c, P);
+  const sub = c => { const s = st(c), T = CR.TIERS[c.tier];
+    return worn == c.key ? `<span class=wst>${ic('check', 11)} Vestindo</span>` : s == 'own' ? '<span class=wst>Vestir</span>'
+      : s == 'tier' ? `<span class="wst lk">${ic('lock', 11)} ${T.title}</span>` : s == 'days' ? `<span class="wst lk">${ic('lock', 11)} ${P.days}/${c.days} dias</span>`
+      : `<span class="wst gm${s == 'poor' ? ' lk' : ''}">${ic('gem', 11)} ${c.price}</span>`; };
+  const card = c => { const s = st(c), on = worn == c.key, lock = s == 'tier' || s == 'days'; return `<button class="wdc${on ? ' on' : ''}${lock ? ' lk' : ''}" onclick="cosOpen('${c.key}')" aria-label="${esc(c.name)}: ${on ? 'vestindo' : s == 'own' ? 'sua, toque para vestir' : s == 'tier' ? 'bloqueada, precisa do título ' + CR.TIERS[c.tier].title : s == 'days' ? 'bloqueada, faltam dias de estudo' : 'à venda por ' + c.price + ' diamantes'}"><span class=wdp><img loading=lazy decoding=async src="${cosPic(c.key, 't')}" alt="" width=160 height=200></span><b>${esc(c.name)}</b>${sub(c)}${s == 'own' && c.days ? `<i class=wtag>Conquista</i>` : ''}</button>`; };
+  const normal = `<button class="wdc${worn ? '' : ' on'}" onclick="cosWear('nenhuma')" aria-label="Visual normal${worn ? ', toque para tirar a fantasia' : ' (em uso)'}"><span class="wdp nm"><img src="/img/${g}-face.webp" alt="" width=128 height=128></span><b>Visual normal</b><span class=wst>${worn ? 'Vestir' : `${ic('check', 11)} Vestindo`}</span></button>`;
+  return `<div class="panel wdh"><span class=wgi>${ic('gem', 22)}</span><div class=bd><b>${nf(P.gems)} ${P.gems == 1 ? 'diamante' : 'diamantes'}</b><small>${nf(P.days)} ${P.days == 1 ? 'dia' : 'dias'} de estudo · ${have} de ${list.length} fantasias</small></div></div>
+    <p class=tn style="margin:8px 2px 0">Estude com frequência: as fantasias de <b>conquista</b> chegam com o título e os dias de estudo, e as da <b>loja</b> se compram com diamantes. Toque numa para ver os detalhes.</p>
+    <div class=wdg>${normal}${list.map(card).join('')}</div>`;
+}
+function cosOpen(key) {
+  const c = CR.costume(key); if (!c) return; closeCos();
+  const m = S.me, P = cosP(), s = CR.costumeState(c, P), worn = COS() == key, T = CR.TIERS[c.tier], falta = c.price ? c.price - P.gems : 0;
+  const how = c.days ? `<b>Conquista:</b> chegue ao título ${T.title} (${nf(T.xp)} XP) e estude em ${c.days} dias diferentes. Você tem ${P.days} ${P.days == 1 ? 'dia' : 'dias'}.`
+    : `<b>Loja:</b> libera com o título ${T.title} (${nf(T.xp)} XP) e custa ${c.price} diamantes. Diamantes vêm de estudar: lição +5, checkpoint +5, prova final +20 e bônus nos marcos da sequência de dias.`;
+  const btn = worn ? `<button class="btn ghost block" onclick="cosWear('nenhuma')">Tirar fantasia</button>`
+    : s == 'own' ? `<button class="btn pri block" onclick="cosWear('${key}')">Vestir</button>`
+    : s == 'buy' ? `<button class="btn pri block" onclick="cosBuy('${key}')">${ic('gem', 16)} Comprar por ${c.price}</button>`
+    : `<button class="btn block" disabled>${s == 'poor' ? `Faltam ${falta} ${falta == 1 ? 'diamante' : 'diamantes'}` : s == 'tier' ? `Libera com o título ${T.title}` : `Faltam ${c.days - P.days} ${c.days - P.days == 1 ? 'dia' : 'dias'} de estudo`}</button>`;
+  const o = document.createElement('div'); o.className = 'ov'; o.id = 'cosov'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-label', `Fantasia ${c.name}`);
+  o.innerHTML = `<div class="modal wsh"><span class="wpv${s == 'tier' || s == 'days' ? ' lk' : ''}"><img src="${cosPic(key)}" alt="${esc(c.name)}"></span><h2>${esc(c.name)}</h2><p class=wdesc>${how}</p>${btn}<button class="btn ghost block" style="margin-top:8px" onclick="closeCos()">Fechar</button></div>`;
+  o.addEventListener('click', e => { if (e.target === o) closeCos(); });
+  document.body.appendChild(o);
+  const f = o.querySelector('.btn.pri') || o.querySelector('.btn'); if (f) setTimeout(() => f.focus({ preventScroll: true }), 60);
+}
+function closeCos() { const o = document.getElementById('cosov'); if (o) o.remove(); }
+async function cosWear(key) {
+  const y = window.scrollY; closeCos();
+  try { S.me = await api('costume/wear', { body: { key } }); S.pop = 1; sfx('pop'); render(); S.pop = 0; window.scrollTo(0, y); toast(key == 'nenhuma' ? 'Visual normal de volta!' : `${gnm()} vestiu a fantasia ${cosName(key)}!`); } catch (e) { fail(e); }
+}
+async function cosBuy(key) {
+  const y = window.scrollY; closeCos();
+  try { S.me = await api('costume/buy', { body: { key } }); S.pop = 1; sfx('streak'); confetti(36); render(); S.pop = 0; window.scrollTo(0, y); toast(`Fantasia ${cosName(key)} comprada! ${gnm()} já está vestindo.`); } catch (e) { fail(e); }
+}
+function openWardrobe() { closeCos(); S.pft = 'per'; S.czt = 'fan'; go('pf'); }
 function czTab(k) { if (S.czt === k) return; S.czt = k; const y = window.scrollY; render(); window.scrollTo(0, y); }
 async function czSet(kind, key) {
   const it = key == 'auto' ? null : CR.item(CR.LISTS[kind], key);
@@ -761,6 +814,8 @@ function unlocksOf(lk0, xb, s) {
   S.ls.filter(opened).forEach(x => g.push(x.n == 1 && x.lv > 1 ? { i: 'flag', t: `Nível ${LV[x.lv - 1]}`, d: `${TN[x.track]} · a lição 1 já está livre` } : { i: 'play', t: `Lição ${x.n}`, d: x.title }));
   (S.cps || []).filter(opened).forEach(c => g.push(c.fin ? { i: 'cap', t: 'Prova final', d: `${TN[c.track]} ${LV[c.lv - 1]} · 3 chances` } : { i: 'flag', t: `Checkpoint da lição ${c.after}`, d: `${c.title.replace(/^Checkpoint: /, '')} · 2 chances` }));
   if (s.trackComplete && cur) g.push({ i: 'award', t: `Certificado de ${TN[cur.track]}`, d: 'Pronto para emitir' });
+  (s.newCos || []).forEach(k => g.push({ i: 'star', t: `Nova fantasia: ${cosName(k)}`, d: 'Já está no guarda-roupa, em Perfil › Personagem', cos: k }));
+  if (s.gemBonus) g.push({ i: 'gem', t: `+${s.gemBonus} diamantes de bônus`, d: `Pela sequência de ${s.streak} dias seguidos` });
   const tiers = []; for (let k = CR.tierOf(xb) + 1; k <= CR.tierOf(s.xp); k++) tiers.push({ k, items: [['color', 'Cor', CR.COLORS], ['sticker', 'Adesivo', CR.STICKERS], ['bg', 'Fundo', CR.BACKS], ['outfit', 'Estampa', CR.OUTFITS]].flatMap(([kind, nm, list]) => list.filter(x => x.tier == k).map(it => ({ kind, nm, it }))) });
   return { g, tiers };
 }
@@ -769,8 +824,8 @@ const unlockCard = () => {
   const m = S.me, hue = (CR.item(CR.COLORS, m.color) || CR.item(CR.COLORS, CR.BASE[gid()]) || { hue: 222 }).hue;
   const sw = ({ kind, it }) => kind == 'color' ? `<i class=sw style="background:hsl(${it.hue} 80% 58%)"></i>` : kind == 'sticker' ? `<i class=sw style="--sc:${it.color}">${stkIcon(it.key, 22)}</i>` : kind == 'bg' ? `<i class=sw style="background:${bgCss(it.key)}"></i>` : `<i class=sw style="background:${outBg(it.key, hue)}"></i>`;
   const tier = t => { const T = CR.TIERS[t.k]; return `<div class=ut style="--fr:${T.color}"><div class=ui><span class=tring>${ic('crown', 20)}</span><div class=bd><b>Novo título: ${T.title}</b><small>Moldura ${T.frame} liberada</small></div></div>${t.items.length ? `<div class=uig>${t.items.map(x => `<span class=uic>${sw(x)}<small>${x.nm}<b>${esc(x.it.name)}</b></small></span>`).join('')}</div>` : ''}</div>`; };
-  const row = x => `<div class=ui><span class=ux>${ic(x.i, 18)}</span><div class=bd><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div></div>`;
-  return `<div class=unl role=status aria-live=polite><span class=unlc aria-hidden=true>${poseChip('apontando', 64)}</span><div class=uh>${ic('unlock', 20)}<b>Desbloqueado!</b><span>${u.g.length + u.tiers.length > 1 ? 'veja o que você abriu' : 'você abriu algo novo'}</span></div>${u.tiers.map(tier).join('')}${u.g.map(row).join('')}${u.tiers.some(t => t.items.length) ? `<a class=ulk onclick="go('pf')">${ic('pencil', 14)} Personalizar meu personagem</a>` : ''}</div>`;
+  const row = x => `<div class=ui><span class=ux>${x.cos ? `<img src="${cosPic(x.cos, 't')}" alt="">` : ic(x.i, 18)}</span><div class=bd><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div></div>`;
+  return `<div class=unl role=status aria-live=polite><span class=unlc aria-hidden=true>${poseChip('apontando', 64)}</span><div class=uh>${ic('unlock', 20)}<b>Desbloqueado!</b><span>${u.g.length + u.tiers.length > 1 ? 'veja o que você abriu' : 'você abriu algo novo'}</span></div>${u.tiers.map(tier).join('')}${u.g.map(row).join('')}${u.tiers.some(t => t.items.length) ? `<a class=ulk onclick="go('pf')">${ic('pencil', 14)} Personalizar meu personagem</a>` : ''}${u.g.some(x => x.cos) ? `<a class=ulk onclick="openWardrobe()">${ic('star', 14)} Ver o guarda-roupa</a>` : ''}</div>`;
 };
 
 // ============================================================ ALUNO QUE VOLTOU DEPOIS DE DIAS: o personagem estava dormindo
@@ -1046,7 +1101,7 @@ async function concluir() {
     }
     S.lastRes = r.html;                                                              // o resultado que o aluno acabou de acertar aparece na tela de conclusão
     const lk0 = {}; [...S.ls, ...(S.cps || [])].forEach(x => { lk0[x.id] = x.lock; });                                              // o que estava com cadeado antes desta conquista
-    const xb = S.me.xp, before = Math.floor(S.me.xp / 100); Object.assign(S.me, { xp: s.xp, gems: s.gems, streak: s.streak, done: s.done, cps: s.cps, passed: s.passed, certs: s.certs, fails: s.fails }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
+    const xb = S.me.xp, before = Math.floor(S.me.xp / 100); S.gemsGot = s.gemsGot || 0; Object.assign(S.me, { xp: s.xp, gems: s.gems, days: s.days, own: s.own, cos: s.cos, streak: s.streak, done: s.done, cps: s.cps, passed: s.passed, certs: s.certs, fails: s.fails }); S.tierUp = CR.tierOf(s.xp) > CR.tierOf(xb) ? CR.tierOf(s.xp) : 0;
     S.gained = s.gained; S.used = T ? l.chances - before0 + 1 : 0; S.lvlUp = Math.floor(s.xp / 100) > before ? Math.floor(s.xp / 100) + 1 : 0; try { [S.ls, S.cps] = await Promise.all([api('lessons'), api('checkpoints')]); } catch { }
     S.unl = unlocksOf(lk0, xb, s);                                                   // o cartão "Desbloqueado!" da tela de conclusão
     if (l.fin) { try { await new Promise(res => passFx(s, l, res)); } catch { closeOv(true); } testPass(s); return streakLater(s); }   // prova final: tela do troféu e depois o resultado
@@ -1167,6 +1222,7 @@ function result() {
   ${last ? `<p class=gl>Você terminou as 30 lições de ${esc(l.level)}. Agora faça a <b>prova final</b>: ${what} com tudo o que aprendeu desde o começo. São 3 chances${l.lv < 3 ? ' e, passando, o próximo nível abre' : ' e, passando, a trilha termina e o certificado é liberado'}.</p>` : ''}
   ${needCp ? `<p class=gl>Checkpoint liberado! Monte ${what} com o que você aprendeu nas lições 1 a ${needCp.after} para abrir a lição ${nx.n}. São 2 chances.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div><div><b>${S.h}</b><small>dicas usadas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>na prática</small></div></div>
+  ${gemGot()}
   ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos desta lição.</p>'}
   ${btn}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button><button class="btn ghost block" onclick=lesson()>Rever explicação</button>${adSlot()}</div>`;
@@ -1177,6 +1233,7 @@ function resultCp() {
   const l = S.cur, nx = S.ls.find(x => x.track == l.track && x.lv == l.lv && x.n == l.after + 1);
   sfx(S.lvlUp || S.tierUp ? 'level' : 'cp'); confetti(); A.innerHTML = `<div class="c res">${winStage(230, 'Checkpoint conquistado!', 'cp')}<h1>Checkpoint concluído!</h1><p class=sub>${TN[l.track]} ${esc(l.level)} · depois da lição ${l.after}</p>${S.lvlUp ? `<p class=gl>Você subiu para o nível ${S.lvlUp}.</p>` : ''}${unlockCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP extra</small></div><div><b>${S.used || 1}/${l.chances}</b><small>tentativas</small></div><div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>no desafio</small></div></div>
+  ${gemGot()}
   ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos deste checkpoint.</p>'}
   ${nx ? `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>` : ''}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button>${adSlot()}</div>`;
@@ -1190,6 +1247,7 @@ function testPass(r) {
   const l = S.cur, t = l.track, lv = l.lv, next = lv < 3, fin = !!r.trackComplete;
   confetti(); A.innerHTML = `<div class="c res">${winStage(240, fin ? 'Trilha concluída! Que orgulho!' : 'Aprovado! Que orgulho!', 'good epic', fin)}<h1>Prova final aprovada!</h1><p class=sub>${TN[t]} ${esc(l.level)}</p>${unlockCard()}
   <div class=stats3><div><b>+${S.gained}</b><small>XP bônus</small></div><div><b>${S.used || 1}/${l.chances}</b><small>tentativas</small></div><div><b>${lvDone(t, lv)}/30</b><small>lições feitas</small></div></div>
+  ${gemGot()}
   ${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado o bônus desta prova.</p>'}
   ${fin ? `<p class=gl>Você concluiu toda a trilha ${TN[t]}. Seu certificado está pronto.</p>` : ''}

@@ -55,6 +55,48 @@
   const colorFile = (guide, color, face) => { const g = guide === 'tay' ? 'tay' : 'cut'; return `/img/${g}${color && color !== BASE[g] && item(COLORS, color) ? '-' + color : ''}${face ? '-face' : ''}.webp`; };
   // quantos graus o matiz da cor escolhida está da cor de fábrica do guia (-180 a 180): é a mesma conta que gerou as imagens coloridas, e o que recolore as poses (anim.js)
   const hueShift = (guide, color) => { const g = guide === 'tay' ? 'tay' : 'cut', c = item(COLORS, color), b = item(COLORS, BASE[g]); return c && b && c.key !== b.key ? ((c.hue - b.hue) % 360 + 540) % 360 - 180 : 0; };
-  const api = { TIERS, tierOf, nextTier, frameOf, BASE, COLORS, STICKERS, BACKS, OUTFITS, LISTS, item, pick, outfitId, colorFile, hueShift };
+
+  // ---- Guarda-roupa: fantasias do personagem (imagens em /img/fan/<chave>.webp, -t.webp miniatura e -face.webp rostinho).
+  // Hoje só a Tay tem fantasias (guide: 'tay'); quando o Cut ganhar as dele, basta somar à lista com guide: 'cut'.
+  // Dois jeitos de ter uma fantasia, sempre exigindo um TÍTULO (tier = posição em TIERS):
+  //   • conquista (campo days): é dada de graça quando a pessoa chega ao título E já estudou `days` dias diferentes (a frequência conta, não só o XP);
+  //   • loja (campo price): depois do título, compra-se com diamantes (que só vêm de estudar: lição, checkpoint, prova final e sequência de dias).
+  const COSTUMES = [
+    { key: 'gatinha',     name: 'Gatinha',      guide: 'tay', tier: 1, days: 3 },
+    { key: 'dino',        name: 'Dino',         guide: 'tay', tier: 2, days: 6 },
+    { key: 'doutora',     name: 'Doutora',      guide: 'tay', tier: 3, days: 12 },
+    { key: 'astronauta',  name: 'Astronauta',   guide: 'tay', tier: 4, days: 21 },
+    { key: 'maga',        name: 'Maga',         guide: 'tay', tier: 5, days: 30 },
+    { key: 'princesa',    name: 'Princesa',     guide: 'tay', tier: 6, days: 45 },
+    { key: 'anjo',        name: 'Anjinha',      guide: 'tay', tier: 7, days: 60 },
+    { key: 'unicornio',   name: 'Unicórnio',    guide: 'tay', tier: 1, price: 60 },
+    { key: 'panda',       name: 'Pandinha',     guide: 'tay', tier: 1, price: 60 },
+    { key: 'vaquinha',    name: 'Vaquinha',     guide: 'tay', tier: 2, price: 80 },
+    { key: 'azulzinho',   name: 'Azulzinho',    guide: 'tay', tier: 2, price: 90 },
+    { key: 'eletrica',    name: 'Faísca',       guide: 'tay', tier: 2, price: 90 },
+    { key: 'confeiteira', name: 'Confeiteira',  guide: 'tay', tier: 3, price: 120 },
+    { key: 'skatista',    name: 'Skatista',     guide: 'tay', tier: 3, price: 120 },
+    { key: 'cafezinho',   name: 'Café fofo',    guide: 'tay', tier: 3, price: 130 },
+    { key: 'policial',    name: 'Policial',     guide: 'tay', tier: 4, price: 150 },
+    { key: 'exploradora', name: 'Exploradora',  guide: 'tay', tier: 4, price: 150 },
+    { key: 'vaqueira',    name: 'Vaqueira',     guide: 'tay', tier: 5, price: 180 },
+    { key: 'pirata',      name: 'Pirata',       guide: 'tay', tier: 5, price: 180 },
+    { key: 'diabinha',    name: 'Diabinha',     guide: 'tay', tier: 6, price: 220 }
+  ];
+  // diamantes de bônus quando a sequência de dias chega a estes números (uma vez só para cada marco)
+  const STREAK_GEMS = { 3: 5, 7: 10, 14: 20, 30: 40, 60: 80, 100: 120 };
+  const costume = key => COSTUMES.find(c => c.key === key) || null;
+  const costumesOf = guide => COSTUMES.filter(c => c.guide === guide);
+  // p = { xp, days, own: { chave: data } | null, gems }. Estado de uma fantasia para esta pessoa:
+  // 'own' (já é dela) | 'buy' (à venda e dá para pagar) | 'poor' (à venda, falta diamante) | 'tier' (falta o título) | 'days' (conquista: título ok, faltam dias de estudo)
+  const costumeState = (c, p) => {
+    const own = p && p.own && Object.prototype.hasOwnProperty.call(p.own, c.key);
+    if (own) return 'own';
+    if (c.days) return tierOf(p && p.xp) < c.tier ? 'tier' : num(p && p.days) >= c.days ? 'own' : 'days';
+    if (tierOf(p && p.xp) < c.tier) return 'tier';
+    return num(p && p.gems) >= c.price ? 'buy' : 'poor';
+  };
+  const ownedCostumes = p => COSTUMES.filter(c => costumeState(c, p) === 'own').map(c => c.key);
+  const api = { TIERS, tierOf, nextTier, frameOf, BASE, COLORS, STICKERS, BACKS, OUTFITS, LISTS, item, pick, outfitId, colorFile, hueShift, COSTUMES, STREAK_GEMS, costume, costumesOf, costumeState, ownedCostumes };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.CodeUpRewards = api;
 })(typeof window !== 'undefined' ? window : globalThis);
