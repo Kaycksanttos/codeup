@@ -46,6 +46,16 @@ try { seedTables = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 's
 const seedKey = s => require('crypto').createHash('sha1').update(String(s || '')).digest('hex').slice(0, 10);
 lessons.forEach(x => { const r = RD[x.id]; if (r) { x.read = r; if (x.type === 'sql') x.read.seedKey = seedKey(r.seed || x.seed); } });
 
+// 3ª ATIVIDADE (só Python e SQL, níveis Intermediário e Avançado): "explicar o código" com as próprias palavras. Os itens ficam em content/ex-*.js (um por lição, pelo id),
+// são corrigidos por conceitos (veja explain.js) e conferidos por `npm run check:explicar`.
+//   { code, kind: 'faz' | 'traz', q?, groups: ['!rótulo :: raiz|raiz', ...], need?, model, alt?, facts?, seed? (SQL) }
+const EXPLAIN = require('./explain');
+const EX = {};
+for (const tr of TRACKS) FILES[tr].forEach(f => {
+  try { Object.assign(EX, require('./content/ex-' + f)); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND' || !/ex-/.test(e.message)) throw e; }
+});
+lessons.forEach(x => { const r = EX[x.id]; if (r && x.read && x.lv >= 2 && x.type !== 'excel') { x.expl = EXPLAIN.compile(r); if (x.type === 'sql') x.expl.seedKey = seedKey(r.seed || x.seed); } });
+
 // provas de checkpoint e prova final: ficam fora de `lessons` para não mudar a contagem das 30 lições do nível
 const tests = [...require('./content/checkpoints'), ...require('./content/cp-xl')].map(fill);
 for (const t of tests) {
@@ -56,4 +66,4 @@ for (const t of tests) {
 const checkpoints = tests.filter(t => t.cp), finals = tests.filter(t => t.fin);
 
 module.exports = lessons;
-Object.assign(module.exports, { checkpoints, finals, tests, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, seedTables, seedKey });
+Object.assign(module.exports, { checkpoints, finals, tests, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });

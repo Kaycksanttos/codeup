@@ -3,6 +3,7 @@ require('dotenv').config({ quiet: true });                                      
 const express = require('express'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const { Worker } = require('worker_threads');
 const lessons = require('./lessons');
+const EXPLAIN = require('./explain');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
 const { checkpoints, finals, tests, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
 const TRACK_NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel' };
@@ -132,13 +133,40 @@ const pub = u => ({
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true])),
   away: u.away ? { days: Math.max(1, Math.floor((Date.now() - Date.parse(u.away.from)) / 864e5)) } : null          // dias sem entrar (só enquanto a tela "dormindo" não foi vista)
 });
-// ---------- as DUAS atividades de cada lição: 1) executar (teoria + prática) e 2) ler o código ----------
-// `u.ex[id]` = atividade 1 feita · `u.done[id]` = lição concluída (as duas feitas; é o que libera a próxima lição). Quem já tinha a lição concluída antes
-// da atividade de ler existir continua concluído (e já tinha ganhado todo o XP). O XP da lição se divide: metade (arredondada para cima) na 1 e o resto na 2.
+// ---------- as ATIVIDADES de cada lição: x) executar (teoria + prática) · r) ler o código · e) explicar o código (só Python/SQL Intermediário e Avançado) ----------
+// A ORDEM em que aparecem é sorteada por aluno e por lição (e fica guardada: o sorteio é sempre o mesmo para a mesma pessoa e lição). Cada atividade só abre quando as que vêm
+// antes dela na ordem estão feitas. `u.ex[id]` = executar feita · `u.ler[id]` = ler feita · `u.exp[id]` = explicar feita · `u.done[id]` = lição concluída (todas feitas; é o que libera
+// a próxima lição). Quem já tinha a lição concluída antes de existirem as atividades novas continua concluído (e já tinha ganhado o XP). O XP da lição se divide entre as atividades.
 const hasRead = l => !!(l && l.read && !l.cp && !l.fin);
-const exDone = (u, l) => !!((u.ex || {})[l.id] || u.done[l.id]);
-const xpParts = l => { const a = Math.ceil(l.xp / 2); return [a, l.xp - a]; };
-const GEMS2 = [2, 3];                                                                   // diamantes: 5 por lição, divididos entre as duas atividades
+const hasExpl = l => !!(l && l.expl && hasRead(l));
+const actsOf = l => !hasRead(l) ? [] : hasExpl(l) ? ['x', 'r', 'e'] : ['x', 'r'];
+const ACT_NAME = { x: 'executar o código', r: 'ler o código', e: 'explicar o código' };
+const ACT_FLAG = { x: 'ex', r: 'ler', e: 'exp' };
+const actDone = (u, l, a) => !!(u.done[l.id] || (u[ACT_FLAG[a]] || {})[l.id]);
+const exDone = (u, l) => actDone(u, l, 'x');
+const FIXED_ORDER = process.env.FIXED_ACT_ORDER === '1' && !PROD;                      // só nos testes automáticos: ordem fixa (executar, ler, explicar) em vez de sorteada
+const ordOf = (u, l) => { const a = actsOf(l); return a.length > 1 && !FIXED_ORDER ? shuffled(a, u.id + ':ord:' + l.id) : a; };      // a ordem sorteada das atividades desta lição para esta pessoa
+const nextAct = (u, l) => ordOf(u, l).find(a => !actDone(u, l, a)) || null;           // a próxima atividade que falta (null = lição completa)
+function actBefore(u, l, a) {                                                          // a atividade que precisa ser feita antes de `a` (ou null se `a` já pode abrir)
+  if (u.done[l.id]) return null;                                                       // lição concluída: pode treinar qualquer uma
+  for (const b of ordOf(u, l)) { if (b === a) return null; if (!actDone(u, l, b)) return b; }
+  return null;
+}
+const ordMsg = b => `Antes, faça a atividade de ${ACT_NAME[b]}.`;
+const xpShare = (l, a) => {                                                            // 2 atividades: metade (arredondada para cima) para executar e o resto para ler · 3: um terço, depois o resto dividido
+  const n = actsOf(l).length, x = Math.ceil(l.xp / n); if (n < 3) return a === 'x' ? x : l.xp - x;
+  const r = Math.ceil((l.xp - x) / 2); return a === 'x' ? x : a === 'r' ? r : l.xp - x - r;
+};
+const GEMS = { 2: { x: 2, r: 3 }, 3: { x: 2, r: 2, e: 1 } };                          // diamantes: 5 por lição, divididos entre as atividades
+function award(u, l, a) {                                                              // XP e diamantes de uma atividade, só na 1ª vez (devolve o XP ganho)
+  const f = l.id + ':' + a; if (u.xpd[l.id] || u.xpd[f]) return 0;
+  u.xpd[f] = 1; const g = xpShare(l, a); gainXp(u, g); u.gems = (u.gems || 0) + GEMS[actsOf(l).length][a]; return g;
+}
+function finishLesson(u, l, code) {                                                    // todas as atividades feitas? então a lição conclui (libera a próxima)
+  if (u.done[l.id] || !actsOf(l).every(a => actDone(u, l, a))) return false;
+  u.done[l.id] = { code: code ?? ((u.ex || {})[l.id] || {}).code ?? '', date: new Date().toISOString() }; return true;
+}
+const clearActs = (u, id) => { delete u.done[id]; for (const f of Object.values(ACT_FLAG)) delete (u[f] || {})[id]; };   // recomeçar a lição: apaga todas as atividades
 function tickStreak(u) {                                                                // a sequência de dias vale uma vez por dia, na 1ª atividade certa do dia
   const today = day(new Date()), yest = day(new Date(Date.now() - 864e5)); let streakUp = 0, gemBonus = 0;
   if (u.last !== today) {
@@ -159,9 +187,9 @@ const idx = id => lessons.findIndex(l => l.id === String(id));
 const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                       // lições + checkpoints + provas finais
 const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
-const strip = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, read, ...rest }) => rest;   // o gabarito nunca vai para o navegador
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, solution, hints, explain, example, read, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
-const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
+const strip = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, answer, altSet, keep, noAlt, solution, hints, explain, example, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
 const key = (track, lv) => `${track}-${lv}`;
@@ -553,7 +581,7 @@ app.post('/api/track', auth, (req, res) => {
 });
 
 app.get('/api/lessons', auth, (req, res) =>
-  res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, rd: hasRead(l) ? 1 : 0, lock: lockOf(req.u, l) }))));
+  res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, rd: hasRead(l) ? 1 : 0, ord: ordOf(req.u, l).join('') || undefined, dn: actsOf(l).filter(a => actDone(req.u, l, a)).join('') || undefined, lock: lockOf(req.u, l) }))));
 
 // provas: os 2 checkpoints de cada nível (depois das lições 10 e 20) e a prova final (depois da 30), com as chances que ainda restam
 app.get('/api/checkpoints', auth, (req, res) =>
@@ -648,6 +676,8 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (!l) return res.sendStatus(404);
   const u = req.u, k = l.id, lock = lockOf(u, l), test = isTest(l), lk = key(l.track, l.lv);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
+  const before = !test && hasRead(l) ? actBefore(u, l, 'x') : null;                    // lição com várias atividades: a de executar só abre depois das que vêm antes dela na ordem sorteada
+  if (before) return res.status(409).json({ error: ordMsg(before), lock: 'ord', need: before });
   const already = test && (l.fin ? !!u.passed[lk] : !!u.cpdone[k]);                    // prova já vencida: pode refazer só para treinar, sem perder chance nem voltar lições
   u.attempts[k] = (u.attempts[k] || 0) + 1;
   const code = cleanCode(req.body.code, l), { ok, missing, busy, engine, xl } = await grade(l, code, req.body.out, true);
@@ -655,7 +685,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
   let gained = 0, streakUp = 0, rewind = null, gemBonus = 0; const gems0 = u.gems || 0, own0 = new Set(cosOwned(u));     // streakUp: a sequência de dias valeu hoje pela 1ª vez (a tela de comemoração da sequência usa isso)
-  const two = !test && hasRead(l);                                                       // lição com 2 atividades: aqui é a 1 (executar); a lição só conclui na 2 (ler)
+  const two = !test && hasRead(l);                                                       // lição com várias atividades: aqui é a de executar; a lição só conclui quando todas estiverem feitas
   if (ok) {
     ({ streakUp, gemBonus } = tickStreak(u));
     if (l.fin) {                                                                       // prova final aprovada: libera o próximo nível e dá o bônus (uma vez só)
@@ -665,7 +695,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
       const date = new Date().toISOString();
       if (two) {
         (u.ex ??= {})[k] = { code, date }; if (u.done[k]) u.done[k] = { code, date };                // lição já concluída (treino): só atualiza o código
-        if (!u.xpd[k] && !u.xpd[k + ':x']) { u.xpd[k + ':x'] = 1; gained = xpParts(l)[0]; gainXp(u, gained); u.gems = (u.gems || 0) + GEMS2[0]; }   // metade do XP, só na 1ª vez
+        gained = award(u, l, 'x'); finishLesson(u, l, code);                           // a parte do XP desta atividade, só na 1ª vez; e conclui a lição se era a última
       } else {
         (l.cp ? u.cpdone : u.done)[k] = { code, date };
         if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
@@ -676,50 +706,74 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
     if (l.fin) { u.tries = u.tries || {}; u.tries[lk] = (u.tries[lk] || 0) + 1; }
     u.cptry[k] = (u.cptry[k] || 0) + 1;
     if (u.cptry[k] >= l.chances) {                                                     // acabaram as chances: volta `back` lições para relembrar (o XP já ganho fica)
-      levelLessons(l.track, l.lv).filter(x => x.n >= l.backFrom && x.n <= l.after).forEach(x => { delete u.done[x.id]; delete (u.ex || {})[x.id]; });
+      levelLessons(l.track, l.lv).filter(x => x.n >= l.backFrom && x.n <= l.after).forEach(x => clearActs(u, x.id));
       delete u.cptry[k]; u.fails[l.fin ? lk : k] = (u.fails[l.fin ? lk : k] || 0) + 1;
       rewind = { from: l.backFrom, to: l.after, back: l.back };
     }
   }
   save();
-  const lvDone = ok && !test && !(two && !u.done[k]) && levelDone(u, l.track, l.lv);
+  const lvDone = ok && !test && !!u.done[k] && levelDone(u, l.track, l.lv);
   res.json({
     ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
     view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
-    levelComplete: lvDone || undefined, next: ok && two && !u.done[k] ? 'read' : undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
+    levelComplete: lvDone || undefined, next: ok && two ? nextAct(u, l) || undefined : undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
     trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(k => !own0.has(k)), ...pub(u)
   });
 });
 
-// ---------- 2ª atividade da lição: LER o código ----------
-// O aluno vê um código pronto e responde o que ele faz (escolher ou digitar). Só abre depois da atividade 1 (executar). Acertou = a lição conclui e libera a próxima.
+// ---------- atividade de LER o código ----------
+// O aluno vê um código pronto e responde o que ele faz (escolher ou digitar). Só abre quando as atividades que vêm antes dela, na ordem sorteada da lição, estão feitas.
 // A resposta certa nunca vai para o navegador; as erradas não gastam nada (é treino de leitura), então dá para tentar de novo.
-function readLesson(req, res) {
+function actLesson(req, res, a) {                                                       // confere lição, bloqueios e ordem; devolve a lição ou responde o erro
   const l = actOf(req.params.id || req.body.id);
-  if (!l || !hasRead(l)) { res.sendStatus(404); return null; }
+  if (!l || !(a === 'e' ? hasExpl(l) : hasRead(l))) { res.sendStatus(404); return null; }
   const lock = lockOf(req.u, l);
   if (lock) { res.status(409).json({ error: lockMsg(lock, l), lock }); return null; }
-  if (!exDone(req.u, l)) { res.status(409).json({ error: 'Faça primeiro a atividade 1 (executar) desta lição para abrir a atividade de ler.', lock: 'ex' }); return null; }
+  const before = actBefore(req.u, l, a);
+  if (before) { res.status(409).json({ error: ordMsg(before), lock: 'ord', need: before }); return null; }
   return l;
 }
-app.get('/api/lessons/:id/read', auth, (req, res) => { const l = readLesson(req, res); if (l) res.json(readPub(req.u, l)); });
+// o que sobra depois de uma atividade (r/e): se a lição concluiu, a próxima atividade que falta, XP, diamantes e fim de nível
+function actDoneRes(req, l, a, extra) {
+  const u = req.u, k = l.id, gems0 = u.gems || 0, own0 = new Set(cosOwned(u)), first = !actDone(u, l, a);
+  const { streakUp, gemBonus } = tickStreak(u); let gained = 0;
+  if (first) { (u[ACT_FLAG[a]] ??= {})[k] = { date: new Date().toISOString(), ...(extra || {}) }; gained = award(u, l, a); finishLesson(u, l); }
+  save();
+  return {
+    ok: true, gained, streakUp: streakUp || undefined, next: nextAct(u, l) || undefined, levelComplete: !!u.done[k] && levelDone(u, l.track, l.lv) || undefined,
+    gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(x => !own0.has(x)), ...pub(u)
+  };
+}
+app.get('/api/lessons/:id/read', auth, (req, res) => { const l = actLesson(req, res, 'r'); if (l) res.json(readPub(req.u, l)); });
 app.post('/api/read', auth, limit(240 * RELAX, 60e3), (req, res) => {
-  const l = readLesson(req, res); if (!l) return;
+  const l = actLesson(req, res, 'r'); if (!l) return;
   const u = req.u, k = l.id, r = l.read, a = String(req.body.a ?? '').slice(0, 2000);
   const okAns = r.k === 'mc' ? a === r.ok : (Array.isArray(r.ok) ? r.ok : [r.ok]).some(x => norm(x) === norm(a));
   u.rtries ??= {}; u.rtries[k] = (u.rtries[k] || 0) + 1;
   if (!okAns) { save(); return res.json({ ok: false, tries: u.rtries[k], hint: r.hint || undefined }); }
-  const gems0 = u.gems || 0, own0 = new Set(cosOwned(u)), first = !u.done[k]; let gained = 0;
-  const { streakUp, gemBonus } = tickStreak(u);
-  if (first) {
-    u.done[k] = { code: ((u.ex || {})[k] || {}).code || '', date: new Date().toISOString() };
-    if (!u.xpd[k] && !u.xpd[k + ':r']) { u.xpd[k + ':r'] = 1; gained = xpParts(l)[1]; gainXp(u, gained); u.gems = (u.gems || 0) + GEMS2[1]; }
+  res.json({ ...actDoneRes(req, l, 'r'), tries: u.rtries[k], why: r.why });
+});
+
+// ---------- atividade de EXPLICAR o código (só Python/SQL, Intermediário e Avançado) ----------
+// O aluno escreve com as próprias palavras o que o código faz (ou o que ele traz). O servidor confere os conceitos (explain.js). Errar não gasta nada: mostra o que faltou e,
+// depois de 3 tentativas, uma explicação de exemplo. Acertou = mostra uma boa explicação e conta a atividade.
+function explainPub(u, l) {
+  const e = l.expl, code = e.code || '', names = l.type === 'sql' ? (lessons.seedTables[e.seedKey] || []).filter(t => new RegExp('\\b' + t.name + '\\b', 'i').test(code)) : [];
+  return { ...readMeta(l), kind: e.kind, q: e.q || (e.kind === 'traz' ? (l.type === 'sql' ? 'Explique com suas palavras o que esta consulta traz como resultado.' : 'Explique com suas palavras o que aparece na tela quando este código roda.') : 'Explique com suas palavras o que este código faz.'), code, tables: names.length ? names : undefined, minw: EXPLAIN.MINW, done: !!u.done[l.id] };
+}
+app.get('/api/lessons/:id/explain', auth, (req, res) => { const l = actLesson(req, res, 'e'); if (l) res.json(explainPub(req.u, l)); });
+app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
+  const l = actLesson(req, res, 'e'); if (!l) return;
+  const u = req.u, k = l.id, e = l.expl, txt = String(req.body.a ?? '').slice(0, EXPLAIN.MAXC).trim();
+  const g = EXPLAIN.grade(e, txt);
+  u.etries ??= {};
+  if (!g.ok) {
+    if (!g.short && !g.copy) u.etries[k] = (u.etries[k] || 0) + 1;                       // texto curto demais ou código copiado não contam como tentativa
+    save();
+    return res.json({ ok: false, tries: u.etries[k] || 0, short: g.short || undefined, copy: g.copy || undefined, got: g.got, total: g.total, miss: g.miss, model: (u.etries[k] || 0) >= 3 ? e.model : undefined });
   }
-  save();
-  res.json({
-    ok: true, gained, tries: u.rtries[k], why: r.why, streakUp: streakUp || undefined, levelComplete: levelDone(u, l.track, l.lv) || undefined,
-    gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(x => !own0.has(x)), ...pub(u)
-  });
+  u.etries[k] = (u.etries[k] || 0) + 1;
+  res.json({ ...actDoneRes(req, l, 'e', { txt }), tries: u.etries[k], model: e.model });
 });
 
 // ============================================================================
