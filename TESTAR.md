@@ -137,7 +137,16 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Lição 15: aceita `* 0.05` e também `* 0,05`. Lição 17: sem o terceiro argumento do DIVIDE o produto sem venda online some da tabela de comparação.
 - [ ] Lições 21 a 26 (colunas calculadas): uma coluna errada mostra as linhas em que o valor não bate.
 - [ ] Checkpoint depois da 10 (quiz), depois da 20 (5 medidas) e prova final (6 colunas): 2 e 3 chances; as provas não têm Dica, Solução nem Teoria.
-- [ ] O Intermediário/Avançado e a Análise de Dados e Storytelling continuam como “Em breve”.
+- [ ] O Intermediário e o Avançado do Power BI ainda não existem.
+
+**5d. Curso de Análise de Dados e Storytelling**
+- [ ] Na aba **Cursos**, abra **Análise de Dados e Storytelling** (ícone e cores próprios): as 30 lições do Básico são quizzes com tabelas e gráficos; errar mostra a explicação só nas perguntas erradas.
+- [ ] Lição 6 (limpeza): a tabela mostra as células vazias em itálico (“vazio”); digitar `445` na soma passa e `525` (com a cópia repetida) não.
+- [ ] Lição 9: a média aceita `6,14` e `6.14`; lição 13: as perguntas de queda pedem o número **sem sinal** (`45`, `11,4`, `50`).
+- [ ] Lição 21 (gráficos que enganam): o gráfico de colunas começa em 90 de propósito; a pergunta 3 pede quantas vezes a coluna parece maior (`1,6`).
+- [ ] Lição 23 (títulos), 25 (insight), 26, 27 e 29: há uma pergunta **escrita**; um texto sem sentido não passa e mostra o que falta; um texto muito curto pede mais palavras.
+- [ ] Lição 28: monte um cartão, uma tabela e uma segmentação escolhendo os campos; o visual aparece antes de tocar em Concluído.
+- [ ] Checkpoints (depois da 10 e da 20) e prova final (12 perguntas, 3 delas escritas): 2 e 3 chances; sem Dica, Solução nem Teoria; passando a prova final o curso fica concluído.
 
 **6. Painel do dono**
 - [ ] **Ajustes → Cursos do aplicativo:** desative o **Excel** (o painel pede confirmação). No app do aluno o Excel some da aba Cursos, da escolha do primeiro curso e dos Desafios, e as lições dele ficam bloqueadas. Reative e volte tudo ao normal. Tente desativar o último curso ativo: o painel recusa.

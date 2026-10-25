@@ -32,7 +32,7 @@ function pubItem(it, seed) {
 }
 const pub = (l, uid) => l.quiz.map((it, i) => pubItem(it, uid + ':' + l.id + ':' + i));
 
-const parseNum = s => { s = nz(s).replace(/^R\$\s*/i, '').replace(/%$/, ''); if (!s) return null; if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, ''); else s = s.replace(',', '.'); return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(s) ? parseFloat(s) : null; };
+const parseNum = s => { s = nz(s).replace(/[−–]/g, '-').replace(/^R\$\s*/i, '').replace(/%$/, ''); if (!s) return null; if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, ''); else s = s.replace(',', '.'); return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(s) ? parseFloat(s) : null; };
 const eqSet = (a, b) => { const x = (a || []).map(nk).sort(), y = (b || []).map(nk).sort(); return x.length === y.length && x.every((v, i) => v === y[i]); };
 const BUILD_KEYS = ['axis', 'legend', 'values', 'rows', 'cols', 'fields'];
 const WR = new WeakMap(); const compiled = it => { let c = WR.get(it); if (!c) { c = EXPLAIN.compile(it); WR.set(it, c); } return c; };

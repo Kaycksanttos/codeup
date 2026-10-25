@@ -1,7 +1,7 @@
 // Gráficos, tabelas e diagramas de modelo de dados em SVG/HTML puro (sem biblioteca), para as lições de Power BI e de Análise de Dados.
 // Funciona no navegador e no Node (os testes montam todos os gráficos das lições para conferir que nenhum quebra).
 //
-//   chart({ type, title?, cats, series: [{ name, values }], fmt?, stack?, label? })        type: column | bar | line | area | pie | donut | scatter | card
+//   chart({ type, title?, cats, series: [{ name, values }], fmt?, stack?, label?, min? })        min: onde o eixo de valores começa (colunas e linhas); sem ele começa no zero        type: column | bar | line | area | pie | donut | scatter | card
 //   chart({ type: 'scatter', series: [{ name, points: [[x, y], ...] }], xlabel?, ylabel? })
 //   chart({ type: 'card', label, value, fmt? })                                             um cartão com um número grande (KPI)
 //   table({ cols, rows, title?, fmt? })                                                     fmt: { índiceDaColuna: 'moeda' | 'int' | 'pct0' | 'pct1' | 'dec1' | 'dec2' }
@@ -53,21 +53,21 @@
   function column(d) {
     const n = d.cats.length, m = d.series.length, M = { l: 46, r: 10, t: 14, b: n > 6 ? 56 : 30 }, pw = W - M.l - M.r, ph = H - M.t - M.b;
     const vals = d.series.flatMap(s => s.values.filter(v => typeof v === 'number'));
-    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); if (d.stack) { hi = Math.max(0, ...d.cats.map((_, i) => d.series.reduce((a, s) => a + (s.values[i] > 0 ? s.values[i] : 0), 0))); }
+    let lo = typeof d.min === 'number' ? d.min : Math.min(0, ...vals), hi = Math.max(0, ...vals); if (d.stack) { hi = Math.max(0, ...d.cats.map((_, i) => d.series.reduce((a, s) => a + (s.values[i] > 0 ? s.values[i] : 0), 0))); }
     const { A, svg: grid } = axes(d, lo, hi, M, false), Y = v => num(H - M.b - (v - A.lo) / (A.hi - A.lo) * ph), band = pw / n, bw = d.stack ? band * 0.62 : Math.min(band * 0.72 / m, 46);
     let bars = '', labels = '';
     d.cats.forEach((c, i) => {
       const cx = M.l + band * (i + 0.5); let acc = 0;
       d.series.forEach((s, k) => {
         const v = s.values[i]; if (typeof v !== 'number') return;
-        const x = d.stack ? cx - bw / 2 : cx - (bw * m) / 2 + bw * k, y0 = d.stack ? Y(acc) : Y(0), y1 = d.stack ? Y(acc + v) : Y(v);
+        const x = d.stack ? cx - bw / 2 : cx - (bw * m) / 2 + bw * k, y0 = d.stack ? Y(acc) : Y(Math.max(0, A.lo)), y1 = d.stack ? Y(acc + v) : Y(v);
         bars += `<rect class="b f${k % 6}" x=${num(x)} y=${Math.min(y0, y1)} width=${num(bw - 1)} height=${Math.max(1, Math.abs(y0 - y1))} rx=2 />`;
         if (d.stack) acc += v; else if (n * m <= 10) labels += `<text class=vl x=${num(x + (bw - 1) / 2)} y=${v >= 0 ? y1 - 3 : y1 + 10} text-anchor=middle>${esc(nf(v, d.fmt))}</text>`;
       });
       const lx = num(cx), ly = H - M.b + 14;
       labels += n > 6 ? `<text class=at transform="rotate(-40 ${lx} ${ly})" x=${lx} y=${ly} text-anchor=end>${esc(cut(c, 12))}</text>` : `<text class=at x=${lx} y=${ly} text-anchor=middle>${esc(cut(c, n > 4 ? 9 : 13))}</text>`;
     });
-    return `<svg viewBox="0 0 ${W} ${H}" class=chs>${grid}<line class=ax x1=${M.l} x2=${W - M.r} y1=${Y(0)} y2=${Y(0)} />${bars}${labels}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" class=chs>${grid}<line class=ax x1=${M.l} x2=${W - M.r} y1=${Y(Math.max(0, A.lo))} y2=${Y(Math.max(0, A.lo))} />${bars}${labels}</svg>`;
   }
   function bar(d) {
     const n = d.cats.length, m = d.series.length, M = { l: 86, r: 34, t: 8, b: 24 }, pw = W - M.l - M.r, ph = H - M.t - M.b, H2 = Math.max(H, n * (12 + m * 8) + M.t + M.b);
@@ -86,7 +86,7 @@
   }
   function line(d, area) {
     const n = d.cats.length, M = { l: 46, r: 12, t: 14, b: n > 7 ? 50 : 30 }, pw = W - M.l - M.r, ph = H - M.t - M.b;
-    const vals = d.series.flatMap(s => s.values.filter(v => typeof v === 'number')), lo = Math.min(area ? 0 : Math.min(...vals) >= 0 ? 0 : Math.min(...vals), ...vals), hi = Math.max(...vals, 0);
+    const vals = d.series.flatMap(s => s.values.filter(v => typeof v === 'number')), lo = typeof d.min === 'number' ? d.min : Math.min(area ? 0 : Math.min(...vals) >= 0 ? 0 : Math.min(...vals), ...vals), hi = Math.max(...vals, 0);
     const { A, svg: grid } = axes(d, lo, hi, M, false), Y = v => num(H - M.b - (v - A.lo) / (A.hi - A.lo) * ph), X = i => num(M.l + (n === 1 ? pw / 2 : pw * i / (n - 1)));
     let s = '';
     d.series.forEach((sr, k) => {

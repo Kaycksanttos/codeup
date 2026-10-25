@@ -6,16 +6,16 @@ const initSqlJs = require('sql.js');
 const lessons = require('../lessons'), { checkpoints, finals, tests, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
 const xlcheck = require('../xlcheck'), checkExcel = require('../tools/check-xl'), checkPbi = require('../tools/check-pbi');
 const daxcheck = require('../daxcheck'), quizcheck = require('../quizcheck');
-const PFX = { python: 'py', sql: 'sql', excel: 'xl', powerbi: 'pbi' };
+const PFX = { python: 'py', sql: 'sql', excel: 'xl', powerbi: 'pbi', dados: 'da' };
 // campos obrigatórios de cada tipo de atividade (provas e lições)
 const REQ = { excel: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'sheet', 'answer', 'targets'], dax: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter', 'model', 'answer'], quiz: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'quiz'], other: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter'] };
 const reqOf = l => REQ[l.type] || REQ.other;
 
 const norm = (r, ordered) => { const v = (r ? r.values : []).map(x => JSON.stringify(x)); return ordered ? v : v.sort(); };
 
-test('estrutura dos cursos: Python e SQL (3 níveis), Excel e Power BI e DAX (nível Básico), 30 lições por nível', () => {
-  assert.deepEqual(TRACKS, ['python', 'sql', 'excel', 'powerbi']);
-  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, excel: 1, powerbi: 1 });
+test('estrutura dos cursos: Python e SQL (3 níveis), Excel, Power BI e DAX e Análise de Dados e Storytelling (nível Básico), 30 lições por nível', () => {
+  assert.deepEqual(TRACKS, ['python', 'sql', 'excel', 'powerbi', 'dados']);
+  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, excel: 1, powerbi: 1, dados: 1 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ls = lessons.filter(l => l.track === t && l.lv === lv);
     assert.equal(ls.length, 30, `${t} nível ${lv} deveria ter 30 lições`);
@@ -27,12 +27,13 @@ test('estrutura dos cursos: Python e SQL (3 níveis), Excel e Power BI e DAX (n�
   for (const t of TRACKS) assert.equal(lessons.filter(l => l.track === t).length, 30 * LEVELS_OF[t], t);
   assert.ok(lessons.filter(l => l.track === 'excel').every(l => l.type === 'excel' && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'powerbi').every(l => (l.type === 'dax' || l.type === 'quiz') && l.lv === 1 && l.level === 'Básico'));
+  assert.ok(lessons.filter(l => l.track === 'dados').every(l => l.type === 'quiz' && l.lv === 1 && l.level === 'Básico'), 'o curso de Análise de Dados é todo de quizzes');
 });
 
-test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, Excel e Power BI', () => {
-  assert.equal(checkpoints.length, 16);
-  assert.equal(finals.length, 8);
-  assert.equal(tests.length, 24);
+test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, Excel, Power BI e Análise de Dados', () => {
+  assert.equal(checkpoints.length, 18);
+  assert.equal(finals.length, 9);
+  assert.equal(tests.length, 27);
   assert.deepEqual(CHANCES, { cp: 2, fin: 3 });
   assert.deepEqual(BACK, { cp: 5, fin: 10 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
@@ -127,9 +128,9 @@ test('Excel: todas as atividades passam na conferência de conteúdo (tools/chec
   assert.deepEqual(r.bad, []);
 });
 
-test('Power BI e DAX: todas as atividades passam na conferência de conteúdo (tools/check-pbi.js)', () => {
+test('Power BI e DAX e Análise de Dados: todas as atividades passam na conferência de conteúdo (tools/check-pbi.js)', () => {
   const r = checkPbi();
-  assert.equal(r.n, 33, '30 lições + 2 checkpoints + 1 prova final');
+  assert.equal(r.n, 66, '2 cursos × (30 lições + 2 checkpoints + 1 prova final)');
   assert.deepEqual(r.bad, []);
   assert.deepEqual(r.warn, [], 'nenhum aviso de conteúdo');
 });
