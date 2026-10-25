@@ -25,13 +25,18 @@ module.exports = function mountAdmin(app, X) {
 
   // ---------- chave do admin ----------
   function adminKey() {
-    if (process.env.ADMIN_KEY) return process.env.ADMIN_KEY;
+    if (process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD) return process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD;   // ADMIN_PASSWORD é o mesmo que ADMIN_KEY, com o nome que a tela de e-mail e senha usa
     if (PROD) return '';
     DB.meta ??= {}; DB.meta.admin ??= {};
     if (!DB.meta.admin.devKey) { DB.meta.admin.devKey = crypto.randomBytes(12).toString('base64url'); save(); }   // só para uso local
     return DB.meta.admin.devKey;
   }
   const keyOk = k => { const K = adminKey(); return !!K && same(sha(String(k || '')), sha(K)); };
+  // e-mail fixo do administrador (opcional): com ADMIN_EMAIL definido a tela pede e-mail + senha (a senha é a ADMIN_KEY/ADMIN_PASSWORD)
+  const adminEmail = () => String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const emailOk = e => { const E = adminEmail(); return !E || same(sha(String(e || '').trim().toLowerCase()), sha(E)); };
+  const credOk = b => { const a = emailOk(b.email), c = keyOk(b.key); return a && c; };     // sempre testa os dois (sem revelar qual errou)
+  const WHAT = () => adminEmail() ? 'E-mail ou senha' : 'Chave';
 
   // ---------- autenticador (código de 6 dígitos) ----------
   // guardado em DB.meta.admin.totp = { secret, needKey, on, last (último passo aceito: um código não vale duas vezes), at }
@@ -70,17 +75,17 @@ module.exports = function mountAdmin(app, X) {
   const guard = [limit(600, 15 * 60e3), adm];
 
   // a tela de entrada precisa saber o que pedir (só a chave, chave + código ou só o código)
-  app.get('/api/admin/login-info', limit(120, 15 * 60e3), (req, res) => { const T = tf(); res.set('Cache-Control', 'no-store').json({ ready: !!adminKey(), twofa: !!T, needKey: T ? T.needKey !== false : true }); });
+  app.get('/api/admin/login-info', limit(120, 15 * 60e3), (req, res) => { const T = tf(); res.set('Cache-Control', 'no-store').json({ ready: !!adminKey(), twofa: !!T, needKey: T ? T.needKey !== false : true, ...(adminEmail() ? { email: true } : {}) }); });
   app.post('/api/admin/login', limit(8, 15 * 60e3), (req, res) => {
-    if (!adminKey()) return res.status(503).json({ error: 'O painel admin está desligado: defina ADMIN_KEY nas variáveis do servidor (veja o README).' });
+    if (!adminKey()) return res.status(503).json({ error: 'O painel admin está desligado: defina ADMIN_KEY (ou ADMIN_EMAIL e ADMIN_PASSWORD) nas variáveis do servidor (veja o README).' });
     if (tooMany('admlogin', 40, 15 * 60e3)) return res.status(429).json({ error: 'Muitas tentativas. Aguarde alguns minutos.' });
     const T = tf(); let used = -1;
-    if (!T) { if (!keyOk(req.body.key)) { audit(req, 'login-falhou', '', ''); return res.status(401).json({ error: 'Chave incorreta.' }); } }
+    if (!T) { if (!credOk(req.body)) { audit(req, 'login-falhou', '', adminEmail() ? 'e-mail ou senha' : ''); return res.status(401).json({ error: WHAT() + (adminEmail() ? ' incorretos.' : ' incorreta.') }); } }
     else {
       const wait = lockLeft(); if (wait > 0) { audit(req, 'login-bloqueado', '', 'código errado várias vezes'); return res.status(429).json({ error: `Muitos códigos errados. Aguarde ${Math.ceil(wait / 60e3)} min e tente de novo.` }); }
-      if (T.needKey !== false && !keyOk(req.body.key)) { audit(req, 'login-falhou', '', 'chave'); return res.status(401).json({ error: 'Chave ou código incorreto.' }); }
+      if (T.needKey !== false && !credOk(req.body)) { audit(req, 'login-falhou', '', adminEmail() ? 'e-mail ou senha' : 'chave'); return res.status(401).json({ error: WHAT() + ' ou código incorreto.' }); }
       used = totp.check(T.secret, req.body.code);
-      if (used < 0) { badCode(); audit(req, 'login-falhou', '', 'código'); return res.status(401).json({ error: T.needKey !== false ? 'Chave ou código incorreto.' : 'Código incorreto. Ele muda a cada 30 segundos.' }); }
+      if (used < 0) { badCode(); audit(req, 'login-falhou', '', 'código'); return res.status(401).json({ error: T.needKey !== false ? WHAT() + ' ou código incorreto.' : 'Código incorreto. Ele muda a cada 30 segundos.' }); }
       if (used <= (T.last ?? -1)) { audit(req, 'login-falhou', '', 'código repetido'); return res.status(401).json({ error: 'Esse código já foi usado. Espere o próximo (muda a cada 30 segundos).' }); }
       T.last = used; bad.n = 0;
     }
@@ -348,7 +353,7 @@ module.exports = function mountAdmin(app, X) {
     res.json({
       db: store.kind, node: process.version, uptime: Math.round(process.uptime()), memMB: Math.round(m.rss / 1048576), prod: PROD, base: BASE,
       users: Object.keys(DB.users).length, sessions: Object.keys(DB.sessions).length, certs: Object.keys(DB.certs || {}).length, audit: Object.keys(DB.audit || {}).length,
-      keyFromEnv: !!process.env.ADMIN_KEY, twofa: !!tf(), twofaKey: tf() ? tf().needKey !== false : null, twofaStored: !!(DB.meta && DB.meta.admin && DB.meta.admin.totp && DB.meta.admin.totp.on), twofaEnvOff: !!process.env.ADMIN_2FA_OFF, adminHost: adminHost || '', now: new Date().toISOString(), ...info()
+      keyFromEnv: !!(process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD), emailFromEnv: !!adminEmail(), twofa: !!tf(), twofaKey: tf() ? tf().needKey !== false : null, twofaStored: !!(DB.meta && DB.meta.admin && DB.meta.admin.totp && DB.meta.admin.totp.on), twofaEnvOff: !!process.env.ADMIN_2FA_OFF, adminHost: adminHost || '', now: new Date().toISOString(), ...info()
     });
   });
   app.get('/api/admin/audit', ...guard, (req, res) => {
@@ -372,7 +377,7 @@ module.exports = function mountAdmin(app, X) {
     banner() {
       const K = adminKey(), WHERE = adminHost ? (PROD ? 'https://' : 'http://') + adminHost : BASE;
       if (!K) { console.warn('⚠ Painel admin DESLIGADO: defina ADMIN_KEY nas variáveis do servidor para usar /admin.'); return; }
-      if (process.env.ADMIN_KEY) { console.log(`Painel admin: ${WHERE}/admin  (use a sua ADMIN_KEY)`); if (PROD && K.length < 16) console.warn('⚠ ADMIN_KEY curta: use pelo menos 16 caracteres.'); }
+      if (process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD) { console.log(`Painel admin: ${WHERE}/admin  (${adminEmail() ? 'entre com o e-mail e a senha que você definiu' : 'use a sua ADMIN_KEY'})`); if (PROD && K.length < 16) console.warn('⚠ ADMIN_KEY curta: use pelo menos 16 caracteres.'); }
       else console.log(`\n  Painel admin: ${WHERE}/admin\n  Chave de acesso (gerada só para este computador): ${K}\n  Para fixar a sua, coloque ADMIN_KEY=... no arquivo .env\n`);
     }
   };

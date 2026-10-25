@@ -92,7 +92,14 @@ Como funciona: o Google entrega um token ao navegador, o servidor confere a assi
 - **Python corrigido no servidor:** ao enviar uma lição ou responder uma prova, o servidor roda o código do aluno num processo isolado (sem rede, sem acesso a arquivos, sem subprocessos, com limite de tempo e memória) e compara a saída; o que o navegador diz ter impresso é ignorado. Precisa de `python3` + pandas no servidor (o `Dockerfile` já instala). Se não houver python3, o app avisa no log e volta ao modo antigo.
 
 ## 5b) Painel admin (só para você)
-Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/admin`) e entre com a chave de administrador.
+Abra **`https://seu-site/admin`** (no seu computador: `http://localhost:3000/admin`) e entre com a chave de administrador — ou, se preferir uma entrada fixa, com **e-mail e senha**:
+
+**Entrada fixa com e-mail e senha (o jeito mais simples, sem autenticador):** no `.env` do seu computador (ou em *Environment* no Render) escreva
+```
+ADMIN_EMAIL=seu@email.com
+ADMIN_PASSWORD=uma-senha-longa-so-sua
+```
+e reinicie o servidor. A tela do painel passa a pedir **E-mail** e **Senha** (o e-mail não diferencia maiúsculas; use 16+ caracteres na senha). A senha vale exatamente como a `ADMIN_KEY` (se você definir as duas, vale a `ADMIN_KEY`); sem `ADMIN_EMAIL` a tela volta a pedir só a chave. O erro é sempre "E-mail ou senha incorretos", sem dizer qual dos dois errou, e **o e-mail e a senha ficam só nas variáveis do servidor — nunca escreva isso em arquivo que vai para o GitHub** (o `.env` não vai no zip nem no repositório). O autenticador de 6 dígitos (abaixo) é opcional e continua desligado até você ligar. Se ele já estiver ligado e você não consegue usá-lo, crie `ADMIN_2FA_OFF=1`, reinicie e entre só com e-mail e senha (veja "Perdeu o celular?" abaixo).
 
 **No Render:** a chave já é criada sozinha — abra o seu serviço → **Environment** → `ADMIN_KEY` → *Reveal* e copie (pode trocar por uma sua).
 

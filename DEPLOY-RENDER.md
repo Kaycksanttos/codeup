@@ -66,7 +66,7 @@ O Git abre uma janela do navegador para você entrar no GitHub. Depois do `push`
 
 1. No topo da página do serviço **codeup** o Render mostra o endereço real (por exemplo `https://codeup-x1y2.onrender.com`; se `codeup` já existir, ele acrescenta letras). Clique para abrir: deve aparecer a tela **"Você é feminino ou masculino?"**.
 2. Vá em **Environment**, edite `BASE_URL` e coloque **esse endereço real** (com `https://`, sem barra no fim). Salve: o Render reinicia sozinho. Ele é usado nos links dos e-mails (confirmar e-mail, nova senha), nos links públicos dos certificados e para ligar a proteção HTTPS (HSTS).
-3. Painel do dono: abra `SEU-ENDERECO/admin`. A senha é a variável `ADMIN_KEY`: em **Environment → ADMIN_KEY → Reveal**. O Render já gerou uma chave longa; você pode trocar por uma sua (16+ caracteres).
+3. Painel do dono: abra `SEU-ENDERECO/admin`. A senha é a variável `ADMIN_KEY`: em **Environment → ADMIN_KEY → Reveal**. O Render já gerou uma chave longa; você pode trocar por uma sua (16+ caracteres). Para entrar com **e-mail e senha** fixos em vez da chave, crie também as variáveis `ADMIN_EMAIL` (seu e-mail) e `ADMIN_PASSWORD` (a senha) e salve; a tela do painel passa a pedir e-mail e senha.
 
 ### Teste rápido (faça logo depois)
 - [ ] Criar uma conta pelo celular (gênero → personagem → cadastro).

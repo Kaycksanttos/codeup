@@ -1603,3 +1603,34 @@ test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias d
   for (const s of ['.wdg{', '.wdc{', '.pill.gem', '.wsh .wpv', '@keyframes cjump']) assert.ok(css.includes(s), 'style.css sem ' + s);
   assert.match(sw, /codeup-v(5[2-9]|[6-9]\d)/, 'o cache offline foi trocado');
 });
+
+test('admin: entrada fixa com e-mail e senha (ADMIN_EMAIL + ADMIN_PASSWORD), sem autenticador', async () => {
+  const port = PORT + 880, base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ae-')), 'data.json'), EM = 'Dono.Do.Site@Exemplo.com', PW = 'senha-fixa-do-dono-123';
+  const boot = async env => { let lg = ''; const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, DATABASE_URL: '', ADMIN_KEY: '', ADMIN_PASSWORD: '', ADMIN_EMAIL: '', ADMIN_2FA_OFF: '', ...env } }); p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x); for (let i = 0; i < 450 && !/rodando/.test(lg); i++) await new Promise(z => setTimeout(z, 100)); assert.match(lg, /rodando/, lg); return p; };
+  let ip = 0; const j = async (pth, body, tok, hd) => { const x = await fetch(base + pth, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.66.' + (++ip % 200) + '.1', ...(tok ? { 'x-admin-token': tok } : {}), ...hd }, body: body ? JSON.stringify(body) : undefined }); return { status: x.status, j: await x.json().catch(() => null) }; };
+  let p = await boot({ ADMIN_EMAIL: EM, ADMIN_PASSWORD: PW });
+  try {
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: false, needKey: true, email: true }, 'a tela sabe que deve pedir e-mail + senha');
+    let r = await j('/api/admin/login', { key: PW }); assert.equal(r.status, 401, 'só a senha, sem o e-mail, não entra'); assert.equal(r.j.error, 'E-mail ou senha incorretos.');
+    r = await j('/api/admin/login', { email: 'outro@exemplo.com', key: PW }); assert.equal(r.status, 401); assert.equal(r.j.error, 'E-mail ou senha incorretos.', 'a mensagem é a mesma para e-mail errado e senha errada');
+    r = await j('/api/admin/login', { email: EM, key: 'senha-errada' }); assert.equal(r.status, 401); assert.equal(r.j.error, 'E-mail ou senha incorretos.');
+    r = await j('/api/admin/login', { email: EM }); assert.equal(r.status, 401);
+    r = await j('/api/admin/login', { email: '  dono.do.site@exemplo.COM ', key: PW }); assert.equal(r.status, 200, 'e-mail sem diferenciar maiúsculas e espaços nas pontas'); assert.ok(r.j.token);
+    assert.equal((await j('/api/admin/ping', null, r.j.token)).status, 200);
+    const sys = (await j('/api/admin/system', null, r.j.token)).j; assert.equal(sys.keyFromEnv, true); assert.equal(sys.emailFromEnv, true); assert.equal(sys.twofa, false, 'sem autenticador');
+    assert.equal((await j('/api/admin/stats', null, null, { 'x-admin-key': PW })).status, 200, 'rotas de script continuam com a senha no cabeçalho x-admin-key');
+    assert.equal((await j('/api/admin/stats', null, null, { 'x-admin-key': 'errada' })).status, 404);
+    const au = (await j('/api/admin/audit', null, r.j.token)).j, txt = JSON.stringify(au); assert.ok(/login-falhou/.test(txt) && !txt.includes(PW) && !txt.includes(EM.toLowerCase()), 'a auditoria registra a falha sem guardar senha nem e-mail');
+  } finally { p.kill(); }
+  await new Promise(z => setTimeout(z, 400));
+  // sem ADMIN_EMAIL: continua só a chave, como antes (e ADMIN_PASSWORD vale como a chave)
+  p = await boot({ ADMIN_PASSWORD: PW });
+  try {
+    assert.deepEqual((await j('/api/admin/login-info')).j, { ready: true, twofa: false, needKey: true });
+    assert.equal((await j('/api/admin/login', { key: 'x' })).j.error, 'Chave incorreta.'); assert.equal((await j('/api/admin/login', { key: PW })).status, 200);
+  } finally { p.kill(); }
+  // a tela e os textos
+  const adm = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.js'), 'utf8'), env = fs.readFileSync(path.join(__dirname, '..', '.env.example'), 'utf8'), rd = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  for (const k of ['li.email', 'id="em"', 'autocomplete="username"', "email: e1 ? e1.value : ''", 'Entre com o e-mail e a senha de administrador.', 'ADMIN_EMAIL', 'ADMIN_PASSWORD']) assert.ok(adm.includes(k), 'admin.js: ' + k);
+  assert.ok(env.includes('ADMIN_EMAIL=') && env.includes('ADMIN_PASSWORD=') && rd.includes('ADMIN_EMAIL') && rd.includes('ADMIN_PASSWORD'), 'documentado');
+});
