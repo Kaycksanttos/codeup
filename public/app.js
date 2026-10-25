@@ -276,8 +276,8 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python, SQL e Excel do básico ao avançado, com provas.</p></div></div>
-    <div class=feat><span>${ic('code', 16)} 210 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python, SQL, Excel, Power BI e Análise de Dados, com provas.</p></div></div>
+    <div class=feat><span>${ic('code', 16)} 270 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
   if (g) googleBtn();
@@ -668,7 +668,7 @@ const TOUR = [
   { t: 'Oi! Eu sou o guia do CodeUp', p: 'Aqui você aprende Python e SQL escrevendo código de verdade, um passo de cada vez. Quer um tour de 20 segundos?', sel: null },
   { t: 'Este é o seu próximo passo', p: 'Toque na lição que brilha no mapa. Primeiro você lê a teoria, depois pratica, e quando terminar, você toca em Concluído para conferir.', sel: '.ti.cur' },
   { t: 'Estude todo dia', p: 'Cada dia seguido aumenta sua sequência, e cada lição dá XP. Pequenos treinos diários vencem maratonas.', sel: '.hd .chips-r' },
-  { t: 'Seu menu', p: 'Em Cursos você escolhe entre Python, SQL e Excel. No Ranking você vê sua posição. Em Desafios ficam as provas. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
+  { t: 'Seu menu', p: 'Em Cursos você escolhe entre Python, SQL, Excel, Power BI e Análise de Dados. No Ranking você vê sua posição. Em Desafios ficam as provas. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
 ];
 function startTour(force) {
   if ($('.tour') || S.tab != 'home' || !S.me) return;
@@ -773,7 +773,7 @@ function pfSet(T) {
     </div>
     <div class=sec>Minha conta</div>
     <div class="panel lst">
-      ${row('swap', 'Trocar de curso', "go('tr')", 'Python, SQL, Excel…')}
+      ${row('swap', 'Trocar de curso', "go('tr')", 'Python, SQL, Excel, Power BI…')}
       ${row('key', m.hasPassword ? 'Alterar senha' : 'Criar senha', 'changePw()')}
       ${row('bulb', 'Rever o tour', "go('home').then(() => startTour(true))")}
       ${row('down', 'Baixar meus dados', 'exportData()')}
