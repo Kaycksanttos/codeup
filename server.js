@@ -1,4 +1,5 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env'), quiet: true });   // lê o .env da pasta do projeto, mesmo que o servidor seja iniciado de outra pasta
+require('dotenv').config({ quiet: true });                                                   // e o da pasta atual, se houver (nunca sobrescreve o que já foi lido)
 const express = require('express'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const { Worker } = require('worker_threads');
 const lessons = require('./lessons');

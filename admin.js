@@ -376,8 +376,9 @@ module.exports = function mountAdmin(app, X) {
   return {
     banner() {
       const K = adminKey(), WHERE = adminHost ? (PROD ? 'https://' : 'http://') + adminHost : BASE;
-      if (!K) { console.warn('⚠ Painel admin DESLIGADO: defina ADMIN_KEY nas variáveis do servidor para usar /admin.'); return; }
-      if (process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD) { console.log(`Painel admin: ${WHERE}/admin  (${adminEmail() ? 'entre com o e-mail e a senha que você definiu' : 'use a sua ADMIN_KEY'})`); if (PROD && K.length < 16) console.warn('⚠ ADMIN_KEY curta: use pelo menos 16 caracteres.'); }
+      if (!K) { console.warn('⚠ Painel admin DESLIGADO: defina ADMIN_EMAIL e ADMIN_PASSWORD (ou só ADMIN_KEY) nas variáveis do servidor para usar /admin.'); return; }
+      if (adminEmail() && !process.env.ADMIN_PASSWORD && !process.env.ADMIN_KEY) console.warn('⚠ ADMIN_EMAIL está definido, mas falta ADMIN_PASSWORD no .env: sem ela o painel não terá a senha que você espera.');
+      if (process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD) { console.log(`Painel admin: ${WHERE}/admin  (${adminEmail() ? 'entre com o e-mail e a senha que você definiu' : 'use a chave ADMIN_KEY; para entrar com e-mail e senha defina ADMIN_EMAIL e ADMIN_PASSWORD no .env e reinicie'})`); if (PROD && K.length < 16) console.warn('⚠ Senha do admin curta: use pelo menos 16 caracteres.'); }
       else console.log(`\n  Painel admin: ${WHERE}/admin\n  Chave de acesso (gerada só para este computador): ${K}\n  Para fixar a sua, coloque ADMIN_KEY=... no arquivo .env\n`);
     }
   };
