@@ -970,6 +970,9 @@ test('prática: o botão Concluído fica fixo no rodapé e nada é executado nem
   assert.match(pr, /OUT0/); assert.match(app, /O resultado do seu código aparece aqui depois que você tocar em <b>Concluído<\/b>/);
   assert.match(css, /\.dbar\{position:fixed;left:0;right:0;bottom:0;/, 'barra presa ao rodapé da tela');
   assert.match(css, /\.dbar \.btn,\.dbar \.btn:hover,\.dbar \.btn:active\{transform:none/, 'o botão não sobe nem desce ao passar o mouse ou apertar');
+  // o botão Concluído é parado: nenhum código o move com o teclado, a rolagem ou o zoom (só CSS); tocar fora do editor fecha o teclado para o botão aparecer
+  assert.ok(!/dockBar|dockKb|visualViewport/.test(app) && !/\.dbar\{[^}]*(will-change|transform)/.test(css), 'o botão Concluído não é movido por script');
+  assert.match(app, /function tapFora\(e\)[\s\S]{0,260}ed\.blur\(\)/, 'tocar fora do editor fecha o teclado');
   assert.ok(!/\.fb\{position:sticky/.test(css) && !/\.dbar \.fb/.test(css), 'o aviso não cresce por cima do editor');
   assert.match(css, /\.c\.pr\{padding-bottom:calc\(112px/, 'o fim da página não fica escondido atrás do botão');
   assert.match(app, /function concluir\(\)|async function concluir\(\)/); assert.match(app, /Conferindo…/);

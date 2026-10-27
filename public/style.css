@@ -371,7 +371,7 @@ body.neo .fb.srv{background:#eaf1ff;border-color:#5b8def;color:#1e3a8a}body.neo 
 
 /* barra "Concluído": fica sempre à mão no fim da tela, com o aviso de certo/errado logo acima do botão */
 /* botão Concluído: preso ao rodapé da tela, sempre no mesmo lugar e do mesmo tamanho (resultado, erro e dicas aparecem na página, acima dele) */
-.dbar{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:22px 16px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to bottom,transparent,var(--bg) 42%);pointer-events:none;will-change:transform}
+.dbar{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:22px 16px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to bottom,transparent,var(--bg) 42%);pointer-events:none}
 .dbar .btn{pointer-events:auto;display:flex;width:100%;max-width:488px;margin:0 auto;min-height:52px}
 .dbar .btn .spin{border-color:#05201666;border-top-color:#052016}
 .dbar .btn,.dbar .btn:hover,.dbar .btn:active{transform:none;border-bottom-width:5px}.dbar .btn:active{filter:brightness(.9)}

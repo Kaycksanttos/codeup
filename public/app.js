@@ -1192,7 +1192,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   ${outBox(X ? OUT0X : Q ? OUT0Q : DX ? OUT0D : OUT0)}
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
-  dockBar();
+
   if (X) xlInit(l); else if (Q) qzInit(); else {
     editor(l); const ed = $('#ed');
     ed.addEventListener('focus', () => {
@@ -1325,21 +1325,13 @@ function limpar() {
   const ed = $('#ed'); if (!ed || S.busy) return; ++S.lt; ed.value = ''; ed.dispatchEvent(new Event('input')); ed.focus();
   const o = $('#out'); o.className = 'out'; o.innerHTML = S.cur && S.cur.type == 'dax' ? OUT0D : OUT0; setFb('idle');
 }
-// O botão Concluído fica preso ao rodapé da tela. Só sai do lugar quando o teclado do celular abre (sobe uma vez, para não ficar escondido) e quando fecha (volta).
-// Não se mexe com a rolagem nem com a digitação (mudanças de 1 px são ignoradas) e ignora o zoom com os dedos, que antes fazia o botão subir e descer.
-let dockOn = false, dockKb = 0, dockRaf = 0;
-function dockBar() {
-  const vv = window.visualViewport;
-  const fit = () => {
-    const bar = $('.dbar'); if (!bar || !vv || vv.scale > 1.02) return;
-    const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)), v = kb > 40 ? kb : 0;
-    if (Math.abs(v - dockKb) < 2) return;
-    dockKb = v; bar.style.transform = v ? `translate3d(0,${-v}px,0)` : '';
-  };
-  const soon = () => { cancelAnimationFrame(dockRaf); dockRaf = requestAnimationFrame(fit); };
-  if (!dockOn && vv) { dockOn = true; vv.addEventListener('resize', soon); vv.addEventListener('scroll', soon); }
-  dockKb = 0; fit();   // a tela nova começa com o botão no lugar de fábrica; se o teclado já estiver aberto, sobe agora
+// O botão Concluído (e o Conferir das outras atividades) fica PARADO no rodapé da tela: é só CSS (position: fixed), sem nenhum código que o mova.
+// Quando o teclado do celular está aberto ele fica atrás do teclado, no mesmo lugar; tocar fora do editor fecha o teclado e o botão aparece de novo (veja tapFora).
+function tapFora(e) {
+  const ed = $('#ed'); if (!ed || document.activeElement !== ed || e.target.closest('.ed, button, a, input, textarea, select, label, [onclick]')) return;
+  ed.blur();
 }
+document.addEventListener('click', tapFora);
 
 const table = r => !r ? '<i>(tabela vazia)</i>' : `<div class=tw><table><tr>${r.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr>${r.values.slice(0, 200).map(v => `<tr>${v.map(x => `<td>${x === null ? '<i>NULL</i>' : esc(x)}</td>`).join('')}</tr>`).join('')}</table></div>`;
 
@@ -1477,7 +1469,7 @@ function readAct() {
   ${body}
   <div id=fb class="fb idle" aria-live=polite></div><div id=rdwhy></div>${theoryBox(l)}</div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=rdCheck() disabled>${ic('check', 18)} Conferir</button></div>`;
-  dockBar(); window.scrollTo(0, 0); tutAuto();
+  window.scrollTo(0, 0); tutAuto();
   const t = $('#rdin'); if (t) t.onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); rdCheck(); } };
 }
 function rdBtn() { const b = $('#bdone'), t = $('#rdin'); if (b && S.step == 'ler') b.disabled = S.rd.k == 'mc' ? S.rsel == null : !(t && t.value.trim()); }
@@ -1547,7 +1539,7 @@ function expAct() {
   <p class="tn rdr-exn" id=exn>Escreva pelo menos ${r.minw} palavras. Não precisa estar perfeito: errar aqui não gasta nada, e o app mostra o que ainda falta explicar.</p>
   <div id=fb class="fb idle" aria-live=polite></div><div id=rdwhy></div>${theoryBox(l)}</div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=expCheck() disabled>${ic('check', 18)} Conferir</button></div>`;
-  dockBar(); window.scrollTo(0, 0); tutAuto();
+  window.scrollTo(0, 0); tutAuto();
   const t = $('#exin'); if (t) t.onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); expCheck(); } };
 }
 function expBtn() { const b = $('#bdone'), t = $('#exin'); if (b && S.step == 'exp') b.disabled = wordsIn(t && t.value) < 2; }
