@@ -1083,6 +1083,14 @@ const tblFor = (l, title, more) => {
   const src = isTest(l) ? '' : String(l.solution || ''), used = src ? all.filter(t => new RegExp('\\b' + t.name + '\\b', 'i').test(src)) : [], show = used.length ? used : all;
   return tblCard(show, { title: used.length ? title : show.length > 1 ? 'Tabelas do banco' : 'Tabela do banco', rest: used.length ? all.filter(t => !used.includes(t)) : [], more });
 };
+// teoria de SQL: logo abaixo do código do exemplo vem a tabelinha com o que ele devolve (gerada no servidor rodando o exemplo de verdade; veja tools/build-content.js)
+const exResult = l => {
+  const o = l && l.exampleOut; if (!o || !o.cols || !o.rows) return '';
+  const rest = o.total - o.rows.length;
+  return `<div class=exr><div class=exh>${ic('out', 16)}<small>${esc(o.label || 'Resultado do exemplo')}</small></div>${table({ columns: o.cols, values: o.rows })}<p class=exm>${rest > 0 ? `… e mais ${rest} ${rest == 1 ? 'linha' : 'linhas'} (${o.total} no total)` : `${o.total} ${o.total == 1 ? 'linha' : 'linhas'}`}</p></div>`;
+};
+// "Na atividade de prática": a tabela em que o aluno vai trabalhar (só aqui, longe do exemplo) e as explicações de como usar e do que vai aparecer na tela
+const praticaInfo = l => { const t = tblFor(l, 'A tabela desta lição'), c = infoCards(l.info, ['como', 'retorno']); return t || c ? `<div class=infot>Na atividade de prática</div>${t}${c}` : ''; };
 // ler / explicar o código: as tabelas que o código usa (o servidor já separa) e onde estão os dados
 const tblRd = r => r && r.tables && r.tables.length ? tblCard(r.tables, { title: r.tables.length > 1 ? 'Tabelas usadas no código' : 'Tabela usada no código', more: 'Os dados dela aparecem logo abaixo do código.' }) : '';
 
@@ -1165,7 +1173,7 @@ function lesson() {   // etapa 1: teoria
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}</div>
   ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.example ? codeBox(l.example, lang(l), 'Exemplo') : ''}${tblFor(l, 'A tabela desta lição')}${l.mat ? matHtml(l.mat) : ''}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
+  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.example ? codeBox(l.example, lang(l), 'Exemplo') + exResult(l) : ''}${l.mat ? matHtml(l.mat) : ''}${praticaInfo(l)}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
   window.scrollTo(0, 0); tutAuto();

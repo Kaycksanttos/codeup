@@ -1221,6 +1221,12 @@ body.neo .tl .ti.cur .rail span.nd:before{display:none}   /* o anel de progresso
 .tbi{margin-top:9px}.tbn{display:inline-block;font:700 17px/1.2 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;color:var(--text);background:color-mix(in srgb,var(--acc) 20%,transparent);border-radius:8px;padding:3px 10px}
 .tbcols{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.tbcols i{font:600 12.5px/1 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;font-style:normal;color:var(--mute);background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
 .tbr{margin:9px 0 0;font-size:12.5px;line-height:1.45;color:var(--mute)}.tbr b{color:var(--text)}
+.infot+.tbc{margin:8px 0 10px}
+/* resultado do exemplo (teoria de SQL): fica colado no código e tem a cara de "saída" */
+.exr{margin:-4px 0 12px;background:color-mix(in srgb,var(--ok) 6%,var(--panel));border:2px solid color-mix(in srgb,var(--ok) 30%,var(--line));border-radius:16px;padding:10px 12px 8px}
+.exr .exh{display:flex;align-items:center;gap:7px;color:var(--ok)}.exr .exh small{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase}
+.exr .tw{margin-top:6px;border-radius:10px}.exr table{margin:0;font-size:12.5px}.exr th{color:var(--ok)}.exr td,.exr th{padding:6px 9px}
+.exr .exm{margin:6px 2px 2px;font-size:12px;color:var(--mute)}
 /* tutorial da primeira atividade */
 .tuthelp{width:28px;height:28px;border:2px solid var(--line);border-radius:50%;font:800 14px/1 inherit;color:var(--mute);flex:none}.tuthelp:hover{color:var(--text);border-color:var(--acc)}
 .tour.tut{pointer-events:auto;background:linear-gradient(rgba(5,8,15,0) 45%,rgba(5,8,15,.55))}

@@ -21,7 +21,7 @@ exports.lessons = [
     "Liste o nome dos produtos de 'Eletrônicos' com preço abaixo de 300.", "SELECT nome FROM produtos WHERE categoria = 'Eletrônicos' AND preco < 300", ['and'], "WHERE categoria = 'Eletrônicos' AND preco < 300"),
   L('OR', 'OR aceita que apenas uma das condições seja verdadeira.', "SELECT * FROM produtos WHERE categoria = 'Móveis' OR preco < 5",
     "Liste o nome dos produtos que são 'Móveis' ou que custam menos de 10.", "SELECT nome FROM produtos WHERE categoria = 'Móveis' OR preco < 10", ['or'], "categoria = 'Móveis' OR preco < 10"),
-  L('Parênteses', 'Misturando AND e OR, use parênteses para deixar claro o que vem primeiro.', "SELECT * FROM produtos WHERE (a OR b) AND c",
+  L('Parênteses', 'Misturando AND e OR, use parênteses para deixar claro o que vem primeiro.', "SELECT nome, categoria, preco FROM produtos WHERE (categoria = 'Móveis' OR estoque = 0) AND preco < 700",
     "Liste o nome dos produtos que são 'Móveis' ou 'Papelaria' E que custam menos de 100.", "SELECT nome FROM produtos WHERE (categoria = 'Móveis' OR categoria = 'Papelaria') AND preco < 100", ['and', 'or', '('], "(categoria = 'Móveis' OR categoria = 'Papelaria') AND preco < 100"),
   L('IN', 'IN testa se o valor está numa lista: mais curto que vários OR.', "SELECT * FROM produtos WHERE categoria IN ('Móveis', 'Papelaria')",
     "Liste o nome dos produtos cujo id seja 1, 3 ou 5.", 'SELECT nome FROM produtos WHERE id IN (1, 3, 5)', ['in ('], 'WHERE id IN (1, 3, 5)'),

@@ -154,3 +154,23 @@ test('SQL: o cartão da tabela mostra o nome e as colunas certos em todos os ban
     assert.deepEqual(Object.fromEntries(seedSchema(s).map(t => [t.name, t.cols])), real);
   }
 });
+
+// SQL: o EXEMPLO da teoria é uma consulta completa (nada de "SELECT ..." ou "WITH a AS (...)") que roda no banco da lição, e logo abaixo dele a teoria mostra a
+// tabelinha do que ele devolve (exampleOut, gerado por `npm run build:content`). Exemplos que não devolvem linhas (INSERT, UPDATE, CREATE...) mostram o efeito via content/example-after.js.
+test('SQL: exemplo completo e executável em cada lição, com a tabela do resultado (exampleOut) em dia', async () => {
+  const SQL = await initSqlJs(), AFTER = require('../content/example-after');
+  const sqls = lessons.filter(l => l.type === 'sql' && l.example);
+  assert.equal(sqls.length, 90, '90 lições de SQL com exemplo');
+  for (const l of sqls) {
+    assert.ok(!/\.\.\.|…/.test(l.example), `${l.id}: o exemplo está abreviado ("..."), escreva a consulta completa: ${l.example}`);
+    const db = new SQL.Database(); db.run(l.seed);
+    let r = db.exec(l.example).pop(), label = '';
+    if (!r) { assert.ok(AFTER[l.id], `${l.id}: o exemplo não devolve linhas; crie a consulta de depois em content/example-after.js`); r = db.exec(AFTER[l.id][0]).pop(); label = AFTER[l.id][1]; }
+    assert.ok(r && r.values.length > 0, `${l.id}: a tabela do exemplo não pode ficar vazia`);
+    const o = l.exampleOut; assert.ok(o, `${l.id} sem exampleOut: rode "npm run build:content"`);
+    assert.deepEqual(o.cols, r.columns, `${l.id}: colunas do resultado do exemplo desatualizadas (rode "npm run build:content")`);
+    assert.deepEqual(o.rows, r.values.slice(0, 8), `${l.id}: linhas do resultado do exemplo desatualizadas (rode "npm run build:content")`);
+    assert.equal(o.total, r.values.length); assert.equal(o.label || '', label);
+  }
+  assert.ok(!tests.some(t => 'exampleOut' in t), 'as provas não têm exemplo nem resultado dele');
+});

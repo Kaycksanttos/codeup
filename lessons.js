@@ -3,6 +3,8 @@
 // O conteúdo fica em ./content (py1..py3, sql1..sql3, xl1, pbi1...). O gabarito dos Python (expectedOut) é
 // gerado por `npm run build:content`, que roda cada solução no python3 e grava content/expected.json.
 // Para editar uma lição: mude o arquivo em ./content, rode `npm run build:content` e `npm test`.
+// O EXEMPLO de cada lição de SQL precisa ser uma consulta completa: o build roda o exemplo e grava a tabela do resultado em content/example-sql.json (a teoria mostra abaixo do código).
+// Exemplo sem linhas de resposta (INSERT, UPDATE, CREATE...) ganha uma consulta de "depois" em content/example-after.js.
 //
 // Além das lições, cada nível tem 3 PROVAS (content/checkpoints.js), cada uma é uma tarefa completa:
 //   • checkpoint depois da lição 10: 2 chances; se errar as duas, volta 5 lições (6 a 10);
@@ -32,6 +34,9 @@ for (const tr of TRACKS) FILES[tr].forEach(f => {
 });
 const KEYS = ['oque', 'serve', 'como', 'retorno'];
 lessons.forEach(x => { const a = INFO[x.id]; if (a) x.info = Object.fromEntries(KEYS.map((k, i) => [k, a[i]])); });
+// tabelinha com o que o EXEMPLO de cada lição de SQL devolve (gerada por `npm run build:content`, que roda o exemplo no banco da lição; só a teoria usa)
+let EXOUT = {}; try { EXOUT = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'example-sql.json'), 'utf8')); } catch { }
+lessons.forEach(x => { if (EXOUT[x.id]) x.exampleOut = EXOUT[x.id]; });
 
 // 2ª ATIVIDADE DE CADA LIÇÃO: "ler o código". A lição tem duas atividades: 1) executar (teoria + prática: o aluno escreve e roda) e
 // 2) ler (o aluno vê um código pronto e diz o que ele faz). Os itens ficam em content/rd-*.js (um por lição, pelo id) e são conferidos

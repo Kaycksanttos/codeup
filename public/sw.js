@@ -1,6 +1,6 @@
 // Service worker: deixa o app instalável e abre o "casco" (HTML/CSS/JS) mesmo com internet ruim.
 // Sempre tenta a rede primeiro, então atualizações do app chegam na hora.
-const C = 'codeup-v64';
+const C = 'codeup-v65';
 const SHELL = ['/', '/style.css', '/app.js', '/xl.js', '/xlui.js', '/dax.js', '/daxlib.js', '/daxdata.js', '/charts.js', '/pbui.js', '/fmt.js', '/rewards.js', '/poses.js', '/sfx.js', '/anim.js', '/bgfx.js', '/scene.js', '/mapscene.js', '/img/tay.webp', '/img/logo-python.webp', '/img/logo-sql.webp', '/img/logo-excel.webp', '/img/logo-powerbi.webp', '/img/logo-dados.webp', '/img/tay-face.webp', '/img/cut.webp', '/img/cut-face.webp', '/manifest.webmanifest', '/icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

@@ -31,4 +31,19 @@ console.log('gabaritos Python gerados:', Object.keys(out).length);
   }
   fs.writeFileSync(path.join(__dirname, '..', 'content', 'expected-sql.json'), JSON.stringify(sqlOut));
   console.log('gabaritos SQL gerados:', Object.keys(sqlOut).length);
+
+  // Tabela de resultado do EXEMPLO de cada lição de SQL (a teoria mostra o código e, logo abaixo, o que ele devolve).
+  // O exemplo roda de verdade no banco da lição; se não devolve linhas (INSERT, UPDATE, CREATE...), roda a consulta de content/example-after.js depois dele.
+  const AFTER = require('../content/example-after'), exOut = {}, MAXR = 8;
+  for (const f of ['sql1', 'sql2', 'sql3']) for (const x of require('../content/' + f).lessons) {
+    if (!x.example) continue;
+    try {
+      const db = new SQL.Database(); db.run(x.seed); const r = db.exec(x.example); let last = r[r.length - 1], label = '';
+      if (!last && AFTER[x.id]) { last = db.exec(AFTER[x.id][0]).pop(); label = AFTER[x.id][1]; }
+      if (!last) throw new Error('o exemplo não devolve linhas (use content/example-after.js)');
+      exOut[x.id] = { cols: last.columns, rows: last.values.slice(0, MAXR), total: last.values.length, ...(label ? { label } : {}) }; db.close();
+    } catch (e) { console.error(`✗ exemplo de ${x.id}: ${e.message}`); process.exitCode = 1; }
+  }
+  fs.writeFileSync(path.join(__dirname, '..', 'content', 'example-sql.json'), JSON.stringify(exOut));
+  console.log('resultados dos exemplos SQL gerados:', Object.keys(exOut).length);
 })();

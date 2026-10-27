@@ -190,7 +190,7 @@ const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                
 const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
 const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
 const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
