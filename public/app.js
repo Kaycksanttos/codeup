@@ -1059,23 +1059,125 @@ const steps = n => `<div class=steps><span class="${n == 1 ? 'on' : 'ok'}">${n =
 // As 4 explicações de cada atividade (em linguagem de criança de 10 anos): o que é, para que serve, como você vai usar aqui e o que vai aparecer na tela
 const INFO_K = { oque: ['O que é', 'info'], serve: ['Para que serve', 'target'], como: ['Como você vai usar aqui', 'pencil'], retorno: ['O que vai aparecer na tela', 'out'] };
 const infoCards = (info, keys, title) => { const ks = (keys || Object.keys(INFO_K)).filter(k => info && info[k]); return ks.length ? `${title ? `<div class=infot>${title}</div>` : ''}<div class=infos>${ks.map(k => `<div class="inf ${k}"><div class=ih><span class=ii>${ic(INFO_K[k][1], 17)}</span><b>${INFO_K[k][0]}</b></div><p>${esc(info[k])}</p></div>`).join('')}</div>` : ''; };
+// ============================================================ TABELAS DO SQL
+// O nome da tabela e as colunas aparecem num cartão em cada atividade de SQL, para o aluno saber em qual tabela a lição trabalha.
+function seedSchema(seed) {   // lê os CREATE TABLE do banco de treino: [{ name, cols }]
+  const out = [], re = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`\[]?(\w+)["`\]]?\s*\(([\s\S]*?)\)\s*;/gi; let m;
+  while ((m = re.exec(String(seed || '')))) {
+    const cols = []; let d = 0, cur = '';
+    for (const ch of m[2] + ',') {
+      if (ch == ',' && !d) { const w = cur.trim().split(/\s+/)[0].replace(/["`\[\]]/g, ''); if (w && !/^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)$/i.test(w)) cols.push(w); cur = ''; continue; }
+      if (ch == '(') d++; else if (ch == ')') d--;
+      cur += ch;
+    }
+    out.push({ name: m[1], cols });
+  }
+  return out;
+}
+const listPt = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1];
+const tblCard = (tabs, o = {}) => `<div class=tbc><div class=tbh>${ic('db', 16)}<small>${o.title || (tabs.length > 1 ? 'Tabelas desta atividade' : 'Tabela desta atividade')}</small></div>${tabs.map(t => `<div class=tbi><b class=tbn>${esc(t.name)}</b><span class=tbcols>${t.cols.map(c => `<i>${esc(c)}</i>`).join('')}</span></div>`).join('')}${o.rest && o.rest.length ? `<p class=tbr>Também existe no banco: ${listPt(o.rest.map(t => `<b>${esc(t.name)}</b>`))}.</p>` : ''}${o.more ? `<p class=tbr>${o.more}</p>` : ''}</div>`;
+// lição e prática: as tabelas que a solução usa ficam em destaque; as outras do mesmo banco aparecem só como aviso. Nas provas (sem solução) mostra todas.
+const tblFor = (l, title, more) => {
+  if (!l || l.type != 'sql') return '';
+  const all = seedSchema(l.seed); if (!all.length) return '';
+  const src = isTest(l) ? '' : String(l.solution || ''), used = src ? all.filter(t => new RegExp('\\b' + t.name + '\\b', 'i').test(src)) : [], show = used.length ? used : all;
+  return tblCard(show, { title: used.length ? title : show.length > 1 ? 'Tabelas do banco' : 'Tabela do banco', rest: used.length ? all.filter(t => !used.includes(t)) : [], more });
+};
+// ler / explicar o código: as tabelas que o código usa (o servidor já separa) e onde estão os dados
+const tblRd = r => r && r.tables && r.tables.length ? tblCard(r.tables, { title: r.tables.length > 1 ? 'Tabelas usadas no código' : 'Tabela usada no código', more: 'Os dados dela aparecem logo abaixo do código.' }) : '';
+
+// ============================================================ TUTORIAL DA PRIMEIRA ATIVIDADE
+// Na primeira vez que o aluno abre cada tela de uma lição 1 (teoria, executar, ler, explicar), o guia mostra onde fica cada coisa e como funciona.
+// Quem já concluiu lições daquele curso não vê. O botão "?" no topo da tela reabre o tutorial quando o aluno quiser.
+const tutBtn = '<button class="ibtn tuthelp" onclick="tutorial(true)" aria-label="Como funciona esta tela (tutorial)">?</button>';
+const tutId = () => S.step == 'ler' ? 'r' : S.step == 'exp' ? 'e' : S.step == 'teoria' ? 't' : 'x';
+const tutKey = l => 'tut-' + l.type + '-' + tutId();
+const tutDue = l => !!l && !isTest(l) && l.n == 1 && !LS.get(tutKey(l)) && !(S.ls || []).some(m => m.track == l.track && S.me.done[m.id]);
+const tutAuto = () => { const l = S.cur; if (tutDue(l)) setTimeout(() => { if (S.cur === l && !$('.tour')) tutorial(); }, 450); };
+function tutSteps(l) {
+  const id = tutId(), T = l.type, py = T == 'python', sql = T == 'sql', ed = py || sql || T == 'dax', m = rowOf(l.id) || {}, N = actOrd(m).length, nms = actOrd(m).map(a => actNm(l, a).toLowerCase());
+  const what = py ? 'código em Python' : sql ? 'consulta em SQL' : T == 'dax' ? 'fórmula em DAX' : T == 'excel' ? 'planilha com fórmulas' : 'resposta';
+  const hi = { t: 'Oi! Eu sou ' + esc(gnm()), p: {
+    t: 'Toda lição começa com uma <b>teoria rápida</b>. Em menos de 1 minuto eu mostro onde fica cada coisa. Se preferir, toque em <b>Pular</b>: dá para rever depois no botão <b>?</b> do topo.',
+    x: `Esta é a <b>prática</b>: aqui você escreve ${/^[aeiou]/.test(what) ? 'uma' : 'um'} ${what} de verdade. Vou mostrar onde fica cada coisa e como funciona. Se preferir, toque em <b>Pular</b>: dá para rever depois no botão <b>?</b> do topo.`,
+    r: 'Nesta atividade você <b>lê um código que já está pronto</b> e responde o que ele faz. Vou mostrar onde fica cada coisa. Dá para rever depois no botão <b>?</b> do topo.',
+    e: 'Nesta atividade você <b>explica com as suas palavras</b> o que um código faz. Vou mostrar onde fica cada coisa. Dá para rever depois no botão <b>?</b> do topo.' }[id] };
+  const top = { sel: '.c .top', t: 'Seu progresso', p: `O <b>X</b> fecha a lição e volta ao mapa. A barra mostra quanto do curso você já andou, e o número é a lição em que você está: <b>${l.n} de 30</b>.` };
+  const stp = { sel: '.steps', t: 'Teoria e prática', p: id == 't' ? 'Toda lição tem duas etapas: primeiro a <b>Teoria</b> (onde você está agora) e depois a <b>Prática</b>, onde você escreve e confere.' : 'Toda lição tem duas etapas: a <b>Teoria</b>, que você já leu, e a <b>Prática</b>, onde você está agora. O botão <b>Teoria</b>, logo abaixo, leva de volta se precisar relembrar.' };
+  const task = { sel: '.task', t: id == 'x' ? 'O desafio' : 'A pergunta', p: id == 'x' ? 'Aqui fica o que você precisa fazer. Leia com calma antes de começar a escrever.' : 'Aqui está o que querem saber sobre o código. Leia com calma antes de responder.' };
+  const names = [...document.querySelectorAll('.tbc .tbn')].map(n => `<b>${esc(n.textContent)}</b>`);   // as tabelas que o cartão da tela está mostrando
+  const tbl = { sel: '.tbc', t: names.length > 1 ? 'As tabelas' : 'A tabela', p: `Em SQL, os dados ficam guardados em <b>tabelas</b>, como as da planilha. Este cartão mostra ${names.length ? 'o nome ' + (names.length > 1 ? 'das tabelas' : 'da tabela') + ' (' + listPt(names) + ') e' : 'o nome da tabela e'} as <b>colunas</b> dela, que são os campos que você pode pedir. ${id == 'x' || id == 't' ? 'O nome da tabela vai logo depois da palavra <b>FROM</b>.' : 'O nome dela aparece depois da palavra <b>FROM</b> no código.'}` };
+  const fin = { sel: null, t: 'Agora é com você!', p: (N > 1 ? `Esta lição tem <b>${N} atividades</b>: ${listPt(nms)}. Quando as ${N} estiverem feitas, a lição conclui e a próxima abre. ` : '') + 'Ficou com dúvida? Toque no <b>?</b> lá em cima para rever este tutorial.' };
+  const relembrar = { sel: '.rdr-th', t: 'Precisa relembrar?', p: 'Toque aqui para abrir de novo a explicação da lição, sem sair da atividade.' };
+  if (id == 't') return [hi, top, stp, { sel: '.tutor', t: 'A explicação', p: 'Aqui o guia explica o assunto em poucas palavras. Leia com calma, sem pressa.' },
+    { sel: '.cb', t: 'O exemplo', p: 'Este é um exemplo pronto do que a lição ensina. Ele serve só para ler: na próxima etapa é você quem faz.' }, ...(sql ? [tbl] : []),
+    { sel: '.c > .btn.pri.block', t: 'Entendeu? Siga em frente', p: 'Quando terminar de ler, toque em <b>Entendi, ir para a prática</b>. A prática vem com outro tutorial, bem rapidinho.' }];
+  if (id == 'x') {
+    const AJ = { 'Dica': 'uma pista, sem entregar a resposta', 'Dados': py ? 'os dados da atividade, quando houver' : T == 'dax' ? 'o modelo de dados, com as tabelas' : 'as tabelas com todos os dados que você pode usar', 'Fórmulas': 'mostra as fórmulas das células', 'Solução': 'a resposta pronta (deixe por último!)', 'Teoria': 'volta à explicação da lição', 'Limpar': 'apaga o que você escreveu' };
+    const labs = [...document.querySelectorAll('.acts .btn span')].map(s => s.textContent.trim()).filter(k => AJ[k]);
+    const box = T == 'excel' ? { sel: '.xs', t: 'A planilha', p: 'As células <b>verdes</b> são as que você preenche. Toque numa célula, escreva a fórmula na barra (<b>fx</b>) e confirme com o ✓ ou com Enter. Depois de <b>=</b> ou <b>(</b>, dá para tocar em outras células para apontar para elas.' }
+      : T == 'quiz' ? { sel: '#qzi0', t: 'As perguntas', p: 'Cada pergunta é um cartão numerado. Responda tocando na alternativa certa ou digitando a resposta, quando a pergunta pedir. Pode responder na ordem que quiser.' }
+      : { sel: '.ed', t: sql ? 'Onde você escreve a consulta' : py ? 'Onde você escreve o código' : 'Onde você escreve a fórmula', p: py ? 'Toque aqui e escreva o seu código Python. Os números mostram as linhas e as cores ajudam a ler. A tecla <b>Tab</b> faz o recuo.' : sql ? 'Toque aqui e escreva a sua consulta SQL. O que começa com <b>--</b> é só um comentário: o SQL ignora, pode apagar. A tecla <b>Tab</b> faz o recuo.' : 'Toque aqui e escreva a fórmula DAX da medida. Os números mostram as linhas e as cores ajudam a ler.' };
+    return [hi, top, stp, task, ...(sql ? [tbl] : []), box,
+      { sel: '.acts', t: 'As ajudas', p: labs.map(k => `<b>${k}</b>: ${AJ[k]}`).join('<br>') },
+      { sel: '.ob', t: py ? 'A saída' : sql ? 'O resultado' : 'Resultado e ajuda', p: py ? 'Aqui aparece a <b>saída</b> do seu código, o que ele mostra na tela. Nada aparece enquanto você digita: só depois de tocar em <b>Concluído</b>.' : sql ? 'Aqui aparece o <b>resultado</b> da sua consulta, em forma de tabela. Nada aparece enquanto você digita: só depois de tocar em <b>Concluído</b>.' : 'Aqui aparecem o resultado e as explicações. Nada aparece enquanto você trabalha: só depois de tocar em <b>Concluído</b>.' },
+      { sel: '#bdone', t: 'Concluído: é aqui que roda', p: `Quando terminar, toque em <b>Concluído</b>${ed ? ' (no computador: Ctrl+Enter)' : ''}. Só nesse momento o app ${py || sql ? 'roda o seu código e ' : ''}confere a resposta. <b>Acertou:</b> você ganha XP e segue em frente. <b>Errou:</b> eu mostro o que faltou e você tenta de novo, sem perder nada.` }, fin];
+  }
+  const code = { sel: '.cb, .xs', t: 'O código', p: 'Ele já está pronto: você não escreve nada aqui. Leia linha por linha e pense no que ele faz.' + (sql ? ' Os dados da tabela aparecem logo abaixo.' : '') };
+  if (id == 'r') return [hi, task, ...(sql ? [tbl] : []), code,
+    { sel: '.rdr-opts, .qz-num, #rdin', t: 'A sua resposta', p: S.rd && S.rd.k == 'mc' ? 'Toque na alternativa que você acha certa.' : 'Digite a resposta aqui, do jeito que o código mostraria.' },
+    { sel: '#bdone', t: 'Conferir', p: 'Marque a resposta e toque em <b>Conferir</b>. Se errar, aparece uma explicação e você pode tentar de novo: aqui errar não gasta nada.' }, relembrar, fin];
+  return [hi, task, ...(sql ? [tbl] : []), code,
+    { sel: '#exin', t: 'Sua explicação', p: `Escreva com as suas palavras, como se explicasse para um amigo. Não copie o código. Precisa de pelo menos <b>${(S.rd && S.rd.minw) || 5} palavras</b>.` },
+    { sel: '#bdone', t: 'Conferir', p: 'O app confere se você citou as ideias principais e mostra o que ainda falta. Pode tentar de novo: aqui errar não gasta nada.' }, relembrar, fin];
+}
+function tutorial(force) {
+  const l = S.cur; if (!l || $('.tour') || !['teoria', 'pratica', 'ler', 'exp'].includes(S.step) || (isTest(l) && !force)) return;
+  const key = tutKey(l), steps = tutSteps(l).filter(s => !s.sel || $(s.sel)), anchor = A.firstElementChild; if (!steps.length || !anchor) return;
+  let i = 0, ob; const o = document.createElement('div'); o.className = 'tour tut'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-label', 'Tutorial desta tela');
+  document.body.appendChild(o); document.body.classList.add('tutmode');
+  const clear = () => document.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
+  const key2 = e => { if (e.key == 'Escape') end(); else if (e.key == 'ArrowRight') go1(1); else if (e.key == 'ArrowLeft') go1(-1); };
+  function end() { LS.set(key, '1'); document.removeEventListener('keydown', key2, true); if (ob) ob.disconnect(); clear(); o.remove(); document.body.classList.remove('tutmode'); if (anchor.isConnected) window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function go1(d) { const n = i + d; if (n < 0) return; if (n >= steps.length) return end(); i = n; show(); }
+  function show() {
+    const s = steps[i], el = s.sel && $(s.sel), last = i == steps.length - 1; clear();
+    o.classList.toggle('up', !!(el && el.closest('.dbar')));   // o botão Concluído fica fixo embaixo: o cartão do guia vai para cima
+    o.innerHTML = `<div class=tb2><button class=tutx id=tkSkip>${last ? 'Fechar' : 'Pular'}</button><div class=tr1>${mascot(56, 'ring')}<div><h3>${s.t}</h3><p>${s.p}</p></div></div>
+      <div class=dots>${steps.map((_, k) => `<i class="${k == i ? 'on' : ''}"></i>`).join('')}</div>
+      <div class=row>${i ? '<button class="btn ghost" id=tkBack>Voltar</button>' : ''}<button class="btn pri" id=tkNext>${last ? 'Entendi, vamos lá!' : i ? 'Próximo' : 'Mostrar onde fica cada coisa'}</button></div></div>`;
+    $('#tkNext').onclick = () => go1(1); $('#tkSkip').onclick = end; const bk = $('#tkBack'); if (bk) bk.onclick = () => go1(-1);
+    if (el) {
+      el.classList.add('hl');
+      if (!el.closest('.dbar')) {   // leva o item para a parte de cima da tela, acima do cartão do guia
+        const r = el.getBoundingClientRect(), avail = innerHeight - o.firstElementChild.offsetHeight - 56, want = r.height <= avail ? 16 + (avail - r.height) / 2 : 16;
+        window.scrollTo({ top: Math.max(0, r.top + scrollY - want), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+    }
+  }
+  ob = new MutationObserver(() => { if (!anchor.isConnected) end(); }); ob.observe(A, { childList: true });
+  document.addEventListener('keydown', key2, true);
+  show();
+}
+
 function lesson() {   // etapa 1: teoria
   delete document.body.dataset.calm;
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
-  A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
+  A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}</div>
   ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.example ? codeBox(l.example, lang(l), 'Exemplo') : ''}${l.mat ? matHtml(l.mat) : ''}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
+  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.example ? codeBox(l.example, lang(l), 'Exemplo') : ''}${tblFor(l, 'A tabela desta lição')}${l.mat ? matHtml(l.mat) : ''}${infoCards(l.info, ['como', 'retorno'], 'Na atividade de prática')}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0); tutAuto();
 }
 function practice() {   // etapa 2: prática. Nada é executado nem mostrado enquanto o aluno digita: resultado, erro e dicas de correção só aparecem depois que ele toca em Concluído (botão fixo no rodapé)
   document.body.dataset.calm = '1';   // fundo 3D mais leve enquanto o aluno digita
   const l = S.cur, T = isTest(l), ok = T && testDone(l), X = l.type == 'excel', Q = l.type == 'quiz', DX = l.type == 'dax'; theme(l.track); S.step = 'pratica'; S.lt = 0; S.t0 = Date.now(); S.h = 0; clearTimeout(LT);
   const left = l.left ?? l.chances;
-  A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>`}</div>
+  A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}`}</div>
   ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
   <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : (rowOf(l.id) || {}).rd ? actTag(l, 'x') : 'Desafio'}</small>${esc(l.task)}</div></div>
+  ${tblFor(l, '', 'Toque em <b>Dados</b> para ver as linhas de cada tabela.')}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${DX ? daxViewsNote(l) : ''}${X ? xlBox(l) : Q ? qzBox(l) : edBox(l, l.starter)}
   <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="Ver dados">${ic('eye', 20)}<span>Dados</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
@@ -1084,7 +1186,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
   dockBar();
   if (X) xlInit(l); else if (Q) qzInit(); else { editor(l); const ed = $('#ed'); ed.addEventListener('focus', () => { if (ed.selectionStart == 0 && ed.selectionEnd == 0) ed.setSelectionRange(ed.value.length, ed.value.length); }, { once: true }); }
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0); tutAuto();
 }
 // texto das chances restantes de uma prova
 const chanceMsg = (n, l) => n <= 1 ? `<b>Última chance.</b> Se não acertar, você volta ${l.back} lições para relembrar.` : `Você tem <b>${n} chances</b>. Cada resposta errada gasta uma; sem chances, você volta ${l.back} lições.`;
@@ -1344,14 +1446,15 @@ function readAct() {
     ? `<div class=rdr-opts role=group aria-label="Escolha a resposta">${r.opts.map((o, i) => `<button class=rdr-o data-i=${i} onclick="rdPick(${i})"><i class=rdr-k>${'ABCD'[i]}</i><span>${esc(o)}</span></button>`).join('')}</div>`
     : r.k == 'num' ? `<label class=rdr-lb for=rdin>Digite o número:</label><div class=qz-num><input id=rdin class="in rdr-in1" inputmode=decimal autocomplete=off autocapitalize=off spellcheck=false placeholder="Só o número" oninput="rdBtn()">${r.unit ? `<span class=qz-u>${esc(r.unit)}</span>` : ''}</div>`
     : `<label class=rdr-lb for=rdin>Digite a resposta:</label><textarea id=rdin class=rdr-in rows=3 spellcheck=false autocapitalize=off autocomplete=off autocorrect=off placeholder="Escreva exatamente o que o código mostra" oninput="rdBtn()"></textarea>`;
-  A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${l.n / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
+  A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${l.n / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}</div>
   <div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('pensando', 40)}</span></div>
   <div class=task>${ic('eye', 20)}<div><small>${actTag(l, 'r')}</small>${esc(r.q)}</div></div>
+  ${tblRd(r)}
   ${X ? xlRead(r) : (r.code ? codeBox(r.code, r.lang || lang(l), 'Código') : '') + matHtml({ ...r, code: null })}${dataTables(r)}
   ${body}
   <div id=fb class="fb idle" aria-live=polite></div><div id=rdwhy></div>${theoryBox(l)}</div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=rdCheck() disabled>${ic('check', 18)} Conferir</button></div>`;
-  dockBar(); window.scrollTo(0, 0);
+  dockBar(); window.scrollTo(0, 0); tutAuto();
   const t = $('#rdin'); if (t) t.onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); rdCheck(); } };
 }
 function rdBtn() { const b = $('#bdone'), t = $('#rdin'); if (b && S.step == 'ler') b.disabled = S.rd.k == 'mc' ? S.rsel == null : !(t && t.value.trim()); }
@@ -1411,16 +1514,17 @@ const wordsIn = t => (String(t || '').trim().match(/\S+/g) || []).length;
 function expAct() {
   delete document.body.dataset.calm;
   const l = S.cur, r = S.rd; theme(l.track); S.step = 'exp'; S.busy = false; clearTimeout(LT);
-  A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${l.n / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
+  A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${l.n / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}</div>
   <div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('explica', 40)}</span></div>
   <div class=task>${ic('bulb', 20)}<div><small>${actTag(l, 'e')}</small>${esc(r.q)}</div></div>
+  ${tblRd(r)}
   ${codeBox(r.code, l.type, 'Código')}${dataTables(r)}
   <label class=rdr-lb for=exin>Sua explicação${r.kind == 'traz' ? ' (o que ele mostra ou traz)' : ' (o que ele faz)'}:</label>
   <textarea id=exin class="rdr-in rdr-ex" rows=5 maxlength=600 spellcheck=true autocapitalize=sentences autocomplete=off placeholder="Escreva como se estivesse explicando para um amigo, com suas palavras. Não copie o código." oninput="expBtn()"></textarea>
   <p class="tn rdr-exn" id=exn>Escreva pelo menos ${r.minw} palavras. Não precisa estar perfeito: errar aqui não gasta nada, e o app mostra o que ainda falta explicar.</p>
   <div id=fb class="fb idle" aria-live=polite></div><div id=rdwhy></div>${theoryBox(l)}</div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=expCheck() disabled>${ic('check', 18)} Conferir</button></div>`;
-  dockBar(); window.scrollTo(0, 0);
+  dockBar(); window.scrollTo(0, 0); tutAuto();
   const t = $('#exin'); if (t) t.onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); expCheck(); } };
 }
 function expBtn() { const b = $('#bdone'), t = $('#exin'); if (b && S.step == 'exp') b.disabled = wordsIn(t && t.value) < 2; }

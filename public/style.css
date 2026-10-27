@@ -1214,3 +1214,18 @@ body.neo .tl .ti.cur .rail span.nd:before{display:none}   /* o anel de progresso
 .qzv.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--text)}.qzv.ok svg{color:var(--ok)}.qzv.bad{background:color-mix(in srgb,var(--err) 12%,transparent)}.qzv.bad svg{color:var(--err)}.qzw{width:100%}.qzw p{margin:4px 0}
 .lnk{background:none;border:0;color:var(--acc);font:inherit;cursor:pointer;text-decoration:underline;padding:0}
 .rdr-in1{max-width:240px}
+
+/* cartão da tabela do SQL: nome da tabela e colunas em destaque */
+.tbc{margin:-4px 0 12px;background:color-mix(in srgb,var(--acc) 7%,var(--panel));border:2px solid color-mix(in srgb,var(--acc) 28%,var(--line));border-radius:16px;padding:10px 14px 12px}
+.tbc .tbh{display:flex;align-items:center;gap:7px;color:var(--acc)}.tbc .tbh small{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase}
+.tbi{margin-top:9px}.tbn{display:inline-block;font:700 17px/1.2 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;color:var(--text);background:color-mix(in srgb,var(--acc) 20%,transparent);border-radius:8px;padding:3px 10px}
+.tbcols{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.tbcols i{font:600 12.5px/1 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;font-style:normal;color:var(--mute);background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.tbr{margin:9px 0 0;font-size:12.5px;line-height:1.45;color:var(--mute)}.tbr b{color:var(--text)}
+/* tutorial da primeira atividade */
+.tuthelp{width:28px;height:28px;border:2px solid var(--line);border-radius:50%;font:800 14px/1 inherit;color:var(--mute);flex:none}.tuthelp:hover{color:var(--text);border-color:var(--acc)}
+.tour.tut{pointer-events:auto;background:linear-gradient(rgba(5,8,15,0) 45%,rgba(5,8,15,.55))}
+.tour.tut.up{align-items:flex-start;background:linear-gradient(rgba(5,8,15,.55),rgba(5,8,15,0) 55%);padding:calc(12px + env(safe-area-inset-top,0px)) 16px 16px}
+.tour.tut .tb2{position:relative}.tour.tut .tr1{align-items:flex-start}.tour.tut .tr1 .mascot{width:56px;height:56px;flex:none}
+.tour.tut h3{font-size:17px;padding-right:54px}.tour.tut p{font-size:14px;line-height:1.5}.tour.tut p b{color:var(--text)}
+.tutx{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--mute);font:700 12px/1 inherit;padding:6px 8px;cursor:pointer;text-decoration:underline}.tutx:hover{color:var(--text)}
+body.tutmode #app{padding-bottom:380px}

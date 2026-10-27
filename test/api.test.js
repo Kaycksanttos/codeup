@@ -1382,7 +1382,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
   // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
   for (const k of ['O que é', 'Para que serve', 'Como você vai usar aqui', 'O que vai aparecer na tela']) assert.ok(ui.includes(`'${k}'`), k);
-  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.example \? codeBox\(l\.example, lang\(l\), 'Exemplo'\) : ''\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
+  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.example \? codeBox\(l\.example, lang\(l\), 'Exemplo'\) : ''\}\$\{tblFor\(l, 'A tabela desta lição'\)\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{infoCards\(l\.info, \['como', 'retorno'\]/);
   assert.ok(!/class=infod/.test(ui), 'a prática não tem o bloco "como fazer e o que esperar"');
   // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada
   for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);

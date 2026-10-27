@@ -134,3 +134,23 @@ test('Power BI e DAX e Análise de Dados: todas as atividades passam na conferê
   assert.deepEqual(r.bad, []);
   assert.deepEqual(r.warn, [], 'nenhum aviso de conteúdo');
 });
+
+// O cartão "Tabela desta atividade" (public/app.js) lê o nome e as colunas dos CREATE TABLE do banco de treino: tem de bater com o que o sql.js realmente cria
+test('SQL: o cartão da tabela mostra o nome e as colunas certos em todos os bancos de treino (lições, provas, ler e explicar)', async () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const a = src.indexOf('function seedSchema'), b = src.indexOf('const listPt');
+  assert.ok(a > 0 && b > a, 'seedSchema precisa existir no app.js');
+  const seedSchema = new Function(src.slice(a, b) + '; return seedSchema;')();
+  const SQL = await initSqlJs(), seeds = new Set();
+  [...lessons, ...tests].forEach(l => { if (l.type === 'sql' && l.seed) seeds.add(l.seed); });
+  Object.values(lessons.RD).concat(Object.values(lessons.EX)).forEach(r => { if (r.seed) seeds.add(r.seed); });
+  assert.ok(seeds.size >= 3, 'há vários bancos de treino de SQL');
+  for (const s of seeds) {
+    const db = new SQL.Database(); db.run(s);
+    const names = (db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0] || { values: [] }).values.flat();
+    const real = Object.fromEntries(names.map(t => [t, db.exec(`PRAGMA table_info(${t})`)[0].values.map(r => r[1])]));
+    db.close();
+    assert.deepEqual(Object.fromEntries(seedSchema(s).map(t => [t.name, t.cols])), real);
+  }
+});
