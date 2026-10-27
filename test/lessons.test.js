@@ -3,7 +3,7 @@
 const test = require('node:test'), assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const initSqlJs = require('sql.js');
-const lessons = require('../lessons'), { checkpoints, finals, tests, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
+const lessons = require('../lessons'), { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
 const xlcheck = require('../xlcheck'), checkExcel = require('../tools/check-xl'), checkPbi = require('../tools/check-pbi');
 const daxcheck = require('../daxcheck'), quizcheck = require('../quizcheck');
 const PFX = { python: 'py', sql: 'sql', excel: 'xl', powerbi: 'pbi', dados: 'da' };
@@ -55,9 +55,37 @@ test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova f
   }
 });
 
-test('explicações: toda lição e toda prova tem "o que é", "para que serve", "como você vai usar aqui" e "o que vai aparecer na tela"', () => {
+test('projetos: 6 por nível (depois das lições 5, 10, 15, 20, 25 e 30), em todos os cursos, com 5 temas cada e sem prova nem chance', () => {
+  assert.equal(projects.length, 54, '18 de Python, 18 de SQL e 6 de Excel, de Power BI e de Análise de Dados');
+  for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
+    const ps = projects.filter(p => p.track === t && p.lv === lv);
+    assert.deepEqual(ps.map(p => p.after), [5, 10, 15, 20, 25, 30], `${t} nível ${lv}`);
+    assert.deepEqual(ps.map(p => p.k), [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(ps.map(p => p.id), [5, 10, 15, 20, 25, 30].map(n => `pj-${PFX[t]}-${lv}-${n}`));
+    for (const p of ps) {
+      for (const k of reqOf(p)) assert.ok(p[k] !== undefined, `${p.id} sem "${k}"`);
+      assert.equal(p.proj, true); assert.ok(!p.cp && !p.fin && !p.test, 'projeto não é prova');
+      assert.equal(p.n, p.after); assert.ok(p.xp >= 40, `${p.id}: XP`); assert.match(p.title, /^Projeto: .{4,}/);
+      assert.equal(p.chances, undefined, 'projeto não tem chances'); assert.equal(p.back, undefined, 'projeto não faz voltar lição');
+      assert.equal(p.cobre.length, 5, `${p.id}: lista os temas das 5 últimas lições`);
+      assert.ok(String(p.task).length >= 120, `${p.id}: a tarefa precisa contar a história e listar o que fazer`);
+      assert.ok(Array.isArray(p.hints) && p.hints.length === 3, `${p.id}: 3 dicas`);
+      assert.ok(new Set(p.hints).size === 3);
+      if (p.type === 'python' || p.type === 'sql') assert.ok(p.starter && p.need.length >= 2, `${p.id}: starter e palavras obrigatórias`);
+      if (p.type === 'python') assert.ok(String(p.expectedOut).trim().length > 0, `${p.id}: rode "npm run build:content"`);
+    }
+    assert.equal(new Set(ps.map(p => p.title)).size, 6, 'títulos diferentes');
+  }
+  // os temas de cada projeto são os das 5 lições dele
+  const p = projects.find(x => x.id === 'pj-py-1-10');
+  assert.deepEqual(p.cobre, lessons.filter(l => l.track === 'python' && l.lv === 1 && l.n >= 6 && l.n <= 10).map(l => l.title));
+  // XP: cada projeto vale mais que um checkpoint do mesmo curso? (não: é um passo do caminho, o checkpoint continua valendo mais)
+  for (const pj of projects) { const cp = checkpoints.find(c => c.track === pj.track && c.lv === pj.lv); assert.ok(pj.xp <= cp.xp, `${pj.id} não deve valer mais que o checkpoint`); }
+});
+
+test('explicações: toda lição, toda prova e todo projeto tem "o que é", "para que serve", "como você vai usar aqui" e "o que vai aparecer na tela"', () => {
   assert.deepEqual(KEYS, ['oque', 'serve', 'como', 'retorno']);
-  for (const l of [...lessons, ...tests]) {
+  for (const l of [...lessons, ...tests, ...projects]) {
     assert.ok(l.info, `${l.id} sem explicações (content/info-*.js)`);
     for (const k of KEYS) {
       assert.equal(typeof l.info[k], 'string', `${l.id}: faltou "${k}"`);
@@ -69,17 +97,18 @@ test('explicações: toda lição e toda prova tem "o que é", "para que serve",
 });
 
 test('ids únicos e campos obrigatórios', () => {
-  const all = [...lessons, ...tests], ids = all.map(l => l.id);
+  const all = [...lessons, ...tests, ...projects], ids = all.map(l => l.id);
   assert.equal(new Set(ids).size, ids.length, 'há ids repetidos');
   for (const l of all) {
     for (const k of reqOf(l)) assert.ok(l[k] !== undefined, `atividade ${l.id} sem "${k}"`);
     assert.ok(l.type === 'sql' ? l.seed && l.expectedSql : l.type === 'excel' ? l.targets.length > 0 : l.type === 'dax' ? Object.keys(l.answer).length > 0 : l.type === 'quiz' ? l.quiz.length >= 3 : l.expectedOut !== undefined, `atividade ${l.id} sem gabarito`);
-    if (!l.cp && !l.fin) for (const k of ['explain', 'example', 'hints']) assert.ok(l[k], `lição ${l.id} sem "${k}"`);
+    if (!l.cp && !l.fin && !l.proj) for (const k of ['explain', 'example', 'hints']) assert.ok(l[k], `lição ${l.id} sem "${k}"`);
+    if (l.proj) assert.ok(Array.isArray(l.hints) && l.hints.length === 3 && l.hints.every(h => String(h).trim().length >= 25), `projeto ${l.id}: precisa de 3 dicas`);
   }
 });
 
-for (const l of [...lessons, ...tests]) {
-  test(`${l.fin ? 'prova final' : l.cp ? 'checkpoint' : 'lição'} ${l.id} — ${l.title}`, async t => {
+for (const l of [...lessons, ...tests, ...projects]) {
+  test(`${l.fin ? 'prova final' : l.cp ? 'checkpoint' : l.proj ? 'projeto' : 'lição'} ${l.id} — ${l.title}`, async t => {
     const flat = String(l.solution || '').toLowerCase().replace(/\s+/g, ' ');
     if (l.type !== 'excel' && l.type !== 'quiz') for (const w of l.need) assert.ok(flat.includes(String(w).toLowerCase()), `a solução não contém a palavra obrigatória "${w}"`);
     if (l.type === 'excel') {
@@ -114,8 +143,8 @@ for (const l of [...lessons, ...tests]) {
 // ---- Correção de Python no servidor (ambiente restrito) ----
 const pysandbox = require('../pysandbox');
 test('sandbox Python: todas as soluções passam e os ataques são barrados', { skip: !pysandbox.available() && 'sem python3' }, async () => {
-  const py = [...lessons, ...tests].filter(x => x.type === 'python');
-  assert.equal(py.length, 99);
+  const py = [...lessons, ...tests, ...projects].filter(x => x.type === 'python');
+  assert.equal(py.length, 117, '90 lições + 9 provas + 18 projetos');
   for (const x of py) { const r = await pysandbox.run(x.prelude || '', x.solution); assert.ok(r.ok && r.out.trim() === x.expectedOut, `${x.id} divergiu no sandbox: ${r.err}`); }
   const atk = ['print(open("/etc/passwd").read())', 'open("x","w").write("a")', 'import socket', 'import subprocess', 'import os\nos.system("id")', '__import__("ctypes")', 'import os\nos.listdir("/")', 'while True: pass'];
   for (const c of atk) { const r = await pysandbox.run('', c); assert.equal(r.ok, false, 'deveria falhar: ' + c); }
@@ -124,13 +153,13 @@ test('sandbox Python: todas as soluções passam e os ataques são barrados', { 
 // ---- Excel: conteúdo e correção ----
 test('Excel: todas as atividades passam na conferência de conteúdo (tools/check-xl.js)', () => {
   const r = checkExcel();
-  assert.equal(r.n, 33, '30 lições + 2 checkpoints + 1 prova final');
+  assert.equal(r.n, 39, '30 lições + 2 checkpoints + 1 prova final + 6 projetos');
   assert.deepEqual(r.bad, []);
 });
 
 test('Power BI e DAX e Análise de Dados: todas as atividades passam na conferência de conteúdo (tools/check-pbi.js)', () => {
   const r = checkPbi();
-  assert.equal(r.n, 66, '2 cursos × (30 lições + 2 checkpoints + 1 prova final)');
+  assert.equal(r.n, 78, '2 cursos × (30 lições + 2 checkpoints + 1 prova final + 6 projetos)');
   assert.deepEqual(r.bad, []);
   assert.deepEqual(r.warn, [], 'nenhum aviso de conteúdo');
 });
@@ -143,7 +172,7 @@ test('SQL: o cartão da tabela mostra o nome e as colunas certos em todos os ban
   assert.ok(a > 0 && b > a, 'seedSchema precisa existir no app.js');
   const seedSchema = new Function(src.slice(a, b) + '; return seedSchema;')();
   const SQL = await initSqlJs(), seeds = new Set();
-  [...lessons, ...tests].forEach(l => { if (l.type === 'sql' && l.seed) seeds.add(l.seed); });
+  [...lessons, ...tests, ...projects].forEach(l => { if (l.type === 'sql' && l.seed) seeds.add(l.seed); });
   Object.values(lessons.RD).concat(Object.values(lessons.EX)).forEach(r => { if (r.seed) seeds.add(r.seed); });
   assert.ok(seeds.size >= 3, 'há vários bancos de treino de SQL');
   for (const s of seeds) {
@@ -172,5 +201,5 @@ test('SQL: exemplo completo e executável em cada lição, com a tabela do resul
     assert.deepEqual(o.rows, r.values.slice(0, 8), `${l.id}: linhas do resultado do exemplo desatualizadas (rode "npm run build:content")`);
     assert.equal(o.total, r.values.length); assert.equal(o.label || '', label);
   }
-  assert.ok(!tests.some(t => 'exampleOut' in t), 'as provas não têm exemplo nem resultado dele');
+  assert.ok(!tests.some(t => 'exampleOut' in t) && !projects.some(t => 'exampleOut' in t), 'as provas e os projetos não têm exemplo nem resultado dele');
 });

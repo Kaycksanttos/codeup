@@ -1,6 +1,6 @@
 // Service worker: deixa o app instalável e abre o "casco" (HTML/CSS/JS) mesmo com internet ruim.
 // Sempre tenta a rede primeiro, então atualizações do app chegam na hora.
-const C = 'codeup-v66';
+const C = 'codeup-v67';
 const SHELL = ['/', '/style.css', '/app.js', '/xl.js', '/xlui.js', '/dax.js', '/daxlib.js', '/daxdata.js', '/charts.js', '/pbui.js', '/fmt.js', '/rewards.js', '/poses.js', '/sfx.js', '/anim.js', '/bgfx.js', '/scene.js', '/mapscene.js', '/img/tay.webp', '/img/logo-python.webp', '/img/logo-sql.webp', '/img/logo-excel.webp', '/img/logo-powerbi.webp', '/img/logo-dados.webp', '/img/tay-face.webp', '/img/cut.webp', '/img/cut-face.webp', '/manifest.webmanifest', '/icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
@@ -9,7 +9,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
-  if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api/') || u.pathname.startsWith('/admin') || ['/health', '/termos', '/privacidade'].includes(u.pathname)) return;
+  if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api/') || u.pathname.startsWith('/admin') || ['/health', '/termos', '/privacidade', '/guias', '/sitemap.xml', '/robots.txt', '/ads.txt'].includes(u.pathname) || u.pathname.startsWith('/guias/')) return;
   const cacheable = SHELL.includes(u.pathname) || u.pathname.startsWith('/img/') || u.pathname.startsWith('/icons/');   // nunca guarda links de e-mail etc.
   e.respondWith(fetch(e.request).then(r => {
     if (r.ok && cacheable) { const cp = r.clone(); caches.open(C).then(c => c.put(e.request, cp)); }

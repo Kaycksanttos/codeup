@@ -1,0 +1,111 @@
+// PROJETOS DE EXCEL (nível Básico): um depois de cada 5 lições (5, 10, 15, 20, 25 e 30). Veja content/pj.js.
+// Cada projeto é uma planilha pequena e realista com várias células para preencher (as outras vêm prontas). Quem corrige compara o RESULTADO das fórmulas
+// com os números da planilha e com números diferentes (veja xlcheck.js), então qualquer fórmula correta vale e um número digitado à mão não.
+//   xl(título, tarefa, planilha, resposta {célula: fórmula}, [funções exigidas], [o que é, para que serve, como se faz, retorno esperado], [3 dicas], {keep, altSet})
+const { base } = require('./pj');
+const { col, merge, solText, date } = require('./hx');
+
+let k = 0;
+const xl = (title, task, sheet, answer, need, info, hints, o = {}) => {
+  k++;
+  return { ...base('excel', 1, k, title, task, info, hints), sheet, answer, targets: Object.keys(answer), need, solution: solText(answer), ...o };
+};
+
+module.exports = [
+  xl('orçamento da festa',
+    'Você está organizando uma festa de aniversário. Preencha o Total de cada item (preço vezes quantidade), de D2 até D6. Depois, no resumo: D8 com o total dos itens (some os totais com +), D10 com o total com a taxa de entrega, D12 com o custo por convidado (total com entrega dividido pelos convidados; lembre dos parênteses) e D13 com a sobra se cada convidado pagar R$ 25 (o que foi arrecadado menos o total com entrega).',
+    { rows: [['Item', 'Preço', 'Qtd', 'Total'], ['Refrigerante', 6.5, 12, null], ['Salgado', 0.9, 100, null], ['Bolo', 45, 2, null], ['Docinho', 1.2, 80, null], ['Guardanapo', 8, 3, null], [null],
+      ['Total dos itens', null, null, null], ['Taxa de entrega', null, null, 30], ['Total com entrega', null, null, null], ['Convidados', null, null, 20], ['Custo por convidado', null, null, null], ['Sobra se cada um pagar R$ 25', null, null, null]],
+      fmt: { B: 'moeda', D: 'moeda' }, cfmt: { D11: 'num0' }, widths: { A: 210 } },
+    merge(col('D', 2, 6, '=B{r}*C{r}'), { D8: '=D2+D3+D4+D5+D6', D10: '=D8+D9', D12: '=(D8+D9)/D11', D13: '=D11*25-D10' }),
+    ['('],
+    [`Uma planilha de verdade para organizar uma festa. Ela junta as lições 1 a 5 do Excel: o sinal de igual, as quatro contas, usar células nas contas, copiar a fórmula para baixo e parênteses.`,
+      `Qualquer orçamento (festa, viagem, reforma) é isto: preço vezes quantidade, uma soma e uma divisão. Com fórmulas, se o preço de um item mudar, todo o resto se atualiza sozinho.`,
+      `Em D2 escreva =B2*C2 e copie para baixo até D6. Some os totais com + em D8. Use parênteses na divisão do custo por convidado: =(D8+D9)/D11. A sobra é convidados vezes 25 menos o total com entrega.`,
+      `A coluna Total toda preenchida e, no resumo, quatro números: o total dos itens, o total com entrega, o custo por convidado e a sobra.`],
+    ['Em D2 escreva =B2*C2 (preço vezes quantidade) e copie a fórmula para baixo, até D6. Use sempre as células, nunca os números.',
+      'O total dos itens é D2+D3+D4+D5+D6 e o total com entrega é D8+D9. Para dividir por convidado, a soma precisa vir entre parênteses: =(D8+D9)/D11.',
+      'A sobra: o que os convidados pagam (D11*25) menos o que a festa custou (D10). Escreva =D11*25-D10.']),
+
+  xl('notas da turma',
+    'A professora lançou as notas de 5 alunos. Preencha, para cada aluno, o Total das três notas (coluna E, com SOMA), a Média (coluna F, com MÉDIA) e a média com bônus de 10% (coluna G: a média mais 10% dela). Depois preencha o resumo: F8 com a maior média, F9 com a menor média, F10 com a média da turma e F11 com a maior nota que alguém tirou numa prova ou trabalho (olhando todas as notas de B2 até D6).',
+    { rows: [['Aluno', 'Prova 1', 'Prova 2', 'Trabalho', 'Total', 'Média', 'Com bônus de 10%'], ['Ana', 8, 7, 9, null, null, null], ['Bruno', 5, 6, 4.5, null, null, null], ['Carla', 10, 9, 9.5, null, null, null], ['Davi', 6, 7.5, 8, null, null, null], ['Elisa', 4, 5, 6, null, null, null], [null],
+      ['Maior média', null, null, null, null, null], ['Menor média', null, null, null, null, null], ['Média da turma', null, null, null, null, null], ['Maior nota de todas', null, null, null, null, null]],
+      fmt: { E: 'num2', F: 'num2', G: 'num2' }, widths: { A: 150, G: 130 } },
+    merge(col('E', 2, 6, '=SOMA(B{r}:D{r})'), col('F', 2, 6, '=MÉDIA(B{r}:D{r})'), col('G', 2, 6, '=F{r}*(1+10%)'), { F8: '=MÁXIMO(F2:F6)', F9: '=MÍNIMO(F2:F6)', F10: '=MÉDIA(F2:F6)', F11: '=MÁXIMO(B2:D6)' }),
+    ['SOMA', 'MÉDIA', 'MÁXIMO', 'MÍNIMO'],
+    [`Um boletim da turma feito com fórmulas. Ele junta as lições 6 a 10 do Excel: porcentagem, potência, SOMA, MÉDIA, MÁXIMO e MÍNIMO.`,
+      `Professores, gerentes e analistas resumem listas de números o tempo todo: total, média, o melhor e o pior resultado. Com as funções certas, isso leva segundos.`,
+      `Em E2 use =SOMA(B2:D2) e em F2 =MÉDIA(B2:D2) e copie para baixo. O bônus de 10% é a média vezes (1 + 10%). No resumo, use MÁXIMO, MÍNIMO e MÉDIA sobre a coluna F, e MÁXIMO sobre o bloco B2:D6.`,
+      `As colunas Total, Média e Com bônus preenchidas para os 5 alunos e, no resumo, quatro números: maior média, menor média, média da turma e a maior nota de todas.`],
+    ['Para cada aluno, a SOMA e a MÉDIA olham a mesma linha: B2:D2. Escreva uma vez na linha 2 e copie para baixo.',
+      'O bônus de 10% pode ser =F2*(1+10%) ou =F2+F2*10%. As duas dão o mesmo resultado.',
+      'No resumo, o intervalo é a coluna das médias: F2:F6. Só a maior nota de todas olha o bloco inteiro, B2:D6. Exemplo: =MÁXIMO(B2:D6).']),
+
+  xl('participação nas vendas',
+    'O gerente quer saber quanto cada região pesa nas vendas. Preencha: B7 com o total de vendas; na coluna C, a participação de cada região no total (vendas da região dividido pelo total, fixando o total com $); na coluna D, a comissão de cada região (vendas vezes a taxa que está em H1, arredondada para 2 casas com ARRED, fixando a taxa com $); e na coluna E, o texto "Meta batida" se as vendas forem maiores ou iguais à meta que está em H2, ou "Abaixo da meta" se não forem. Por fim, B9 com a quantidade de regiões que têm um número de vendas (CONT.NÚM) e B10 com a quantidade de regiões na lista (CONT.VALORES).',
+    { rows: [['Região', 'Vendas', '% do total', 'Comissão', 'Situação', null, 'Taxa de comissão', 0.05], ['Sul', 12500, null, null, null, null, 'Meta de vendas', 8000], ['Norte', 8300, null, null, null], ['Leste', 6450, null, null, null], ['Oeste', 9100, null, null, null], ['Centro', 3650, null, null, null],
+      ['Total', null], [null], ['Regiões com vendas', null], ['Regiões na lista', null]],
+      fmt: { B: 'moeda', C: 'pct1', D: 'moeda' }, cfmt: { H1: 'pct0', H2: 'moeda', B9: 'num0', B10: 'num0' }, widths: { A: 150, E: 130, G: 150 } },
+    merge(col('C', 2, 6, '=B{r}/$B$7'), col('D', 2, 6, '=ARRED(B{r}*$H$1;2)'), col('E', 2, 6, '=SE(B{r}>=$H$2;"Meta batida";"Abaixo da meta")'), { B7: '=SOMA(B2:B6)', B9: '=CONT.NÚM(B2:B6)', B10: '=CONT.VALORES(A2:A6)' }),
+    ['SE', 'ARRED', 'CONT.NÚM', 'CONT.VALORES', '$'],
+    [`Uma análise de participação nas vendas. Ela usa as lições 11 a 15 do Excel: CONT.NÚM e CONT.VALORES, referência fixa com $, quanto cada um representa do total, ARRED e o SE.`,
+      `Saber o peso de cada parte no todo (qual região vende mais?) e decidir se uma meta foi batida é o tipo de análise que gerentes pedem toda semana.`,
+      `Some as vendas em B7. Em C2 use =B2/$B$7 (o $ trava o total ao copiar). Em D2 use =ARRED(B2*$H$1;2). Em E2 use um SE que compara B2 com $H$2. Conte com CONT.NÚM (só números) e CONT.VALORES (qualquer coisa preenchida).`,
+      `As colunas C, D e E preenchidas para as 5 regiões, o total em B7 e dois números no final: 5 e 5.`],
+    ['Primeiro o total em B7: =SOMA(B2:B6). Sem ele, as outras colunas não têm como funcionar.',
+      'O $ trava a célula quando você copia a fórmula para baixo: =B2/$B$7 continua dividindo por B7 em todas as linhas. O mesmo vale para $H$1 e $H$2.',
+      'O SE da coluna E compara as vendas da linha com a meta: =SE(B2>=$H$2;"Meta batida";"Abaixo da meta"). Para arredondar a comissão, =ARRED(B2*$H$1;2).']),
+
+  xl('controle de metas',
+    'O time comercial tem 8 vendedores. Preencha a coluna Situação (E): "Excelente" se as vendas forem 120% da meta ou mais, "Bateu" se forem maiores ou iguais à meta e "Abaixo" nos outros casos (use um SE dentro de outro). Na coluna Bônus (F), pague 300 só para quem é da região Sul E bateu a meta (vendas maiores ou iguais à meta); os outros ganham 0. No resumo: I2 com as vendas do Sul (SOMASE), I3 com quantos vendedores ficaram "Abaixo" (CONT.SE), I4 com a média das vendas do Norte (MÉDIASE) e I5 com o total de bônus.',
+    { rows: [['Vendedor', 'Região', 'Vendas', 'Meta', 'Situação', 'Bônus', null, 'Resumo', null], ['Ana', 'Sul', 1150, 1000, null, null, null, 'Vendas do Sul', null], ['Bruno', 'Norte', 780, 900, null, null, null, 'Vendedores abaixo da meta', null],
+      ['Carla', 'Sul', 1260, 1000, null, null, null, 'Média das vendas do Norte', null], ['Davi', 'Leste', 520, 600, null, null, null, 'Total de bônus', null], ['Elisa', 'Norte', 1000, 900, null, null], ['Fábio', 'Sul', 880, 1000, null, null],
+      ['Gabi', 'Leste', 750, 600, null, null], ['Hugo', 'Norte', 1100, 900, null, null]],
+      fmt: { C: 'moeda', D: 'moeda', F: 'moeda' }, cfmt: { I2: 'moeda', I3: 'num0', I4: 'moeda', I5: 'moeda' }, widths: { E: 100, H: 200 } },
+    merge(col('E', 2, 9, '=SE(C{r}>=D{r}*120%;"Excelente";SE(C{r}>=D{r};"Bateu";"Abaixo"))'), col('F', 2, 9, '=SE(E(B{r}="Sul";C{r}>=D{r});300;0)'),
+      { I2: '=SOMASE(B2:B9;"Sul";C2:C9)', I3: '=CONT.SE(E2:E9;"Abaixo")', I4: '=MÉDIASE(B2:B9;"Norte";C2:C9)', I5: '=SOMA(F2:F9)' }),
+    ['SE', 'SOMASE', 'CONT.SE', 'MÉDIASE'],
+    [`Um painel de metas para o time comercial. Ele usa as lições 16 a 20 do Excel: SE com texto, E e OU, SE dentro de SE, SOMASE, CONT.SE e MÉDIASE.`,
+      `Acompanhar quem bateu a meta, pagar bônus só a quem cumpriu uma regra e resumir por região são tarefas diárias de qualquer gestor comercial.`,
+      `Na coluna E, faça um SE dentro de outro: o maior limite primeiro. Na F, use SE(E(região é Sul; vendas >= meta); 300; 0). No resumo, SOMASE soma com condição, CONT.SE conta e MÉDIASE tira a média só do que combina.`,
+      `As colunas Situação e Bônus preenchidas para os 8 vendedores e quatro números no resumo: vendas do Sul, quantos ficaram abaixo, média do Norte e total de bônus.`],
+    ['Comece pelo caso mais exigente: =SE(C2>=D2*120%;"Excelente";SE(C2>=D2;"Bateu";"Abaixo")). O segundo SE só roda se o primeiro for falso.',
+      'Para as duas regras ao mesmo tempo, use a função E: =SE(E(B2="Sul";C2>=D2);300;0). O bônus só sai quando as duas forem verdadeiras.',
+      'SOMASE(onde olhar; o que procurar; o que somar). Por exemplo: =SOMASE(B2:B9;"Sul";C2:C9). A MÉDIASE tem a mesma forma, e CONT.SE só precisa de onde olhar e o que procurar.']),
+
+  xl('crachás e prazos',
+    'O RH vai imprimir os crachás dos novos funcionários. Os nomes foram digitados de qualquer jeito. Preencha: na coluna D, o nome arrumado (sem espaços sobrando e com a primeira letra de cada nome em maiúscula); na E, o setor, que são as 3 primeiras letras do código; na F, o ano que está no código (4 caracteres a partir da posição 5); na G, quantos dias a pessoa tem de casa até 31/12/2025 (data final menos a data de admissão); e na H, o texto do crachá no formato Ana Lima - VEN - desde 03/2023 (nome arrumado, " - ", setor, " - desde " e o mês e o ano da admissão, com TEXTO e o formato "mm/aaaa").',
+    { rows: [['Nome digitado', 'Código', 'Admissão', 'Nome arrumado', 'Setor', 'Ano do código', 'Dias de casa', 'Crachá'], [' ana   LIMA', 'VEN-2023-014', date(10, 3, 2023), null, null, null, null, null], [' bruno CARDOSO', 'TEC-2021-007', date(2, 8, 2021), null, null, null, null, null],
+      ['CARLA  dias', 'FIN-2024-102', date(15, 1, 2024), null, null, null, null, null], ['davi   rocha', 'VEN-2022-031', date(30, 11, 2022), null, null, null, null, null]],
+      fmt: { C: 'data', F: 'num0', G: 'num0' }, widths: { A: 130, B: 120, C: 100, D: 130, H: 260 } },
+    merge(col('D', 2, 5, '=PRI.MAIÚSCULA(ARRUMAR(A{r}))'), col('E', 2, 5, '=ESQUERDA(B{r};3)'), col('F', 2, 5, '=EXT.TEXTO(B{r};5;4)'), col('G', 2, 5, '=DATA(2025;12;31)-C{r}'), col('H', 2, 5, '=D{r}&" - "&E{r}&" - desde "&TEXTO(C{r};"mm/aaaa")')),
+    ['PRI.MAIÚSCULA', 'ARRUMAR', 'ESQUERDA', 'EXT.TEXTO', 'DATA', 'TEXTO'],
+    [`Os crachás de uma empresa, feitos com fórmulas de texto e de data. O projeto usa as lições 21 a 25 do Excel: juntar textos com &, arrumar nomes, pedaços de um texto, TEXTO e as funções de data.`,
+      `Dados digitados por pessoas vêm bagunçados. Arrumar nomes, separar pedaços de um código e calcular prazos com datas é o dia a dia de quem cuida de cadastros.`,
+      `Arrume o nome com PRI.MAIÚSCULA(ARRUMAR(A2)). Pegue os pedaços do código com ESQUERDA e EXT.TEXTO. Para os dias de casa, subtraia as datas: DATA(2025;12;31)-C2. O crachá junta tudo com & e usa TEXTO(C2;"mm/aaaa").`,
+      `Cinco colunas preenchidas para as 4 pessoas. O crachá da primeira fica: Ana Lima - VEN - desde 03/2023.`],
+    ['O nome arrumado vem de duas funções juntas: ARRUMAR tira os espaços sobrando e PRI.MAIÚSCULA põe a primeira letra de cada palavra em maiúscula. Uma dentro da outra.',
+      'O setor são as 3 primeiras letras do código (ESQUERDA(B2;3)) e o ano começa na posição 5 e tem 4 caracteres (EXT.TEXTO(B2;5;4)). Os dias de casa são DATA(2025;12;31)-C2.',
+      'O crachá junta pedaços com &: =D2&" - "&E2&" - desde "&TEXTO(C2;"mm/aaaa"). Os textos fixos vão entre aspas.'],
+    { altSet: { A2: '  rita   OLIVEIRA', B3: 'COM-2020-099', C2: date(1, 1, 2024), C4: date(20, 6, 2022), A5: ' zé   NETO' } }),
+
+  xl('tabela de preços e pedidos',
+    'A loja tem uma tabela de produtos (A1:C6) e uma lista de pedidos (colunas D a I). Para cada pedido, preencha: o nome do produto em G (use PROCV e, se o código não existir, mostre o texto "Não encontrado" com SEERRO); o preço em H (PROCV com SEERRO, mostrando 0 se o código não existir); e o total em I (quantidade vezes o preço). Depois preencha o resumo: I9 com o total vendido, I10 com quantos pedidos tiveram código inexistente (CONT.SE), I11 com o nome do produto mais barato da tabela (ÍNDICE e CORRESP, com MÍNIMO) e I12 com o preço do código 104, buscado com PROCX.',
+    { rows: [['Código', 'Produto', 'Preço', 'Pedido', 'Código', 'Qtd', 'Produto', 'Preço', 'Total'], [101, 'Mouse', 50, 1, 103, 2, null, null, null], [102, 'Teclado', 120, 2, 101, 5, null, null, null], [103, 'Monitor', 900, 3, 999, 1, null, null, null],
+      [104, 'Webcam', 150, 4, 102, 3, null, null, null], [105, 'Cabo', 15, 5, 105, 10, null, null, null], [null, null, null, 6, 104, 2, null, null, null], [null],
+      [null, null, null, 'Total vendido', null, null, null, null, null], [null, null, null, 'Pedidos com código inexistente', null, null, null, null, null], [null, null, null, 'Produto mais barato', null, null, null, null, null],
+      [null, null, null, 'Preço do código 104 (PROCX)', null, null, null, null, null]],
+      fmt: { C: 'moeda', H: 'moeda', I: 'moeda' }, cfmt: { I10: 'num0' }, widths: { D: 220, G: 130 } },
+    merge(col('G', 2, 7, '=SEERRO(PROCV(E{r};$A$2:$C$6;2;FALSO);"Não encontrado")'), col('H', 2, 7, '=SEERRO(PROCV(E{r};$A$2:$C$6;3;FALSO);0)'), col('I', 2, 7, '=F{r}*H{r}'),
+      { I9: '=SOMA(I2:I7)', I10: '=CONT.SE(G2:G7;"Não encontrado")', I11: '=ÍNDICE(B2:B6;CORRESP(MÍNIMO(C2:C6);C2:C6;0))', I12: '=PROCX(104;A2:A6;C2:C6;"Não encontrado")' }),
+    ['PROCV', 'SEERRO', 'CONT.SE', 'ÍNDICE', 'CORRESP', 'MÍNIMO', 'PROCX'],
+    [`O projeto final do Excel Básico: o controle de pedidos de uma loja. Ele usa as lições 26 a 30: PROCV, SEERRO, ÍNDICE e CORRESP, PROCX e a revisão da comissão.`,
+      `Quase toda empresa tem uma tabela de preços e uma lista de pedidos separadas. Procurar o preço de cada pedido na tabela, sem errar e sem travar quando o código não existe, é um dos usos mais valiosos do Excel.`,
+      `Use =SEERRO(PROCV(E2;$A$2:$C$6;2;FALSO);"Não encontrado") em G e a mesma ideia com a coluna 3 em H. Multiplique quantidade por preço em I. No resumo, combine SOMA, CONT.SE, ÍNDICE com CORRESP e MÍNIMO e, por fim, o PROCX.`,
+      `As colunas G, H e I preenchidas para os 6 pedidos (um deles com Não encontrado e total 0) e quatro respostas no resumo: o total vendido, 1 pedido inválido, o produto mais barato (Cabo) e o preço 150.`],
+    ['O PROCV procura o código do pedido (E2) na primeira coluna da tabela $A$2:$C$6 e devolve a coluna que você pedir: 2 para o produto, 3 para o preço. Termine com FALSO (valor exato).',
+      'O SEERRO embrulha o PROCV e troca o erro pela resposta que você quiser: texto "Não encontrado" no produto e 0 no preço. Assim o total do pedido inválido dá 0 e não quebra a soma.',
+      'Produto mais barato: =ÍNDICE(B2:B6;CORRESP(MÍNIMO(C2:C6);C2:C6;0)). Preço do 104: =PROCX(104;A2:A6;C2:C6;"Não encontrado").'],
+    { keep: ['A', 'D', 'E'] })
+];

@@ -10,7 +10,8 @@ const DATA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'codeup-')), 'data.
 let srv, log = '';
 
 const call = async (p, { method, body, token, headers } = {}) => {
-  const r = await fetch(U + p, { method: method || (body ? 'POST' : 'GET'), headers: { 'Content-Type': 'application/json', ...(token ? { 'x-token': token } : {}), ...headers }, body: body ? JSON.stringify(body) : undefined });
+  const go = () => fetch(U + p, { method: method || (body ? 'POST' : 'GET'), headers: { 'Content-Type': 'application/json', ...(token ? { 'x-token': token } : {}), ...headers }, body: body ? JSON.stringify(body) : undefined });
+  let r; try { r = await go(); } catch (e) { if (!/fetch failed/.test(e.message)) throw e; r = await go(); }   // depois de uma checagem longa a conexão guardada pode ter caído: tenta de novo uma vez
   let j = null; try { j = await r.clone().json(); } catch { } return { status: r.status, j, r };
 };
 const confirm = async link => fetch(link.replace(U, U), { redirect: 'manual' });
@@ -204,9 +205,24 @@ const doCp = doTest, doFinal = (tk, track, lv) => doTest(tk, finOf(track, lv));
 const LEAK = ['solution', 'expectedSql', 'expectedOut', 'expectedRows', 'need', 'hints', 'explain', 'example', 'exampleOut', 'answer', 'altSet', 'keep', 'noAlt'];   // nada disso pode chegar ao navegador numa prova
 const doneOf = async (tk, prefix) => Object.keys((await call('/api/me', { token: tk })).j.done).filter(k => k.startsWith(prefix)).sort();
 const idsOf = (prefix, a, b) => Array.from({ length: b - a + 1 }, (_, i) => prefix + String(a + i).padStart(2, '0'));
-// faz as 30 lições do nível; antes das lições 11 e 21 é preciso passar no checkpoint (a prova com o que se aprendeu)
-const doLevelLessons = async (tk, track, lv) => { let last; for (const l of lessonsOf(track, lv)) { const c = cpBefore(l); if (c) { const r = (await doCp(tk, c)).j; assert.equal(r.ok, true, `checkpoint ${c.id} deveria passar`); } last = (await doLesson(tk, l)).j; assert.equal(last.ok, true, `lição ${l.id} deveria passar`); } return last; };
-const levelXp = (track, lv) => lessonsOf(track, lv).reduce((a, l) => a + l.xp, 0) + lessons.checkpoints.filter(c => c.track === track && c.lv === lv).reduce((a, c) => a + c.xp, 0);
+// projeto que vem depois da lição 5, 10, 15, 20, 25 e 30 (obrigatório, sem chances)
+const pjOf = (track, lv, n) => lessons.projects.find(p => p.track === track && p.lv === lv && p.after === n);
+const doProj = (tk, p) => call('/api/submit', { token: tk, body: { id: p.id, code: codeOf(p), out: p.expectedOut } });
+const doPj = async (tk, track, lv, n) => { const p = pjOf(track, lv, n), r = (await doProj(tk, p)).j; assert.equal(r.ok, true, `projeto ${p.id} deveria passar: ${JSON.stringify(r).slice(0, 200)}`); return r; };
+// faz as 30 lições do nível e os 6 projetos; depois de cada 5 lições vem o projeto e, antes das lições 11 e 21, o checkpoint (a prova com o que se aprendeu)
+const doLevelLessons = async (tk, track, lv) => {
+  let last;
+  for (const l of lessonsOf(track, lv)) {
+    if (l.n > 1 && (l.n - 1) % 5 === 0) { await doPj(tk, track, lv, l.n - 1); const c = cpBefore(l); if (c) { const r = (await doCp(tk, c)).j; assert.equal(r.ok, true, `checkpoint ${c.id} deveria passar`); } }
+    last = (await doLesson(tk, l)).j; assert.equal(last.ok, true, `lição ${l.id} deveria passar`);
+  }
+  await doPj(tk, track, lv, 30);
+  return last;
+};
+// faz as lições a..b do nível, com o projeto depois de cada 5 lições que ficarem no meio (sem os checkpoints: cada teste faz os seus à mão)
+const doRange = async (tk, track, lv, a, b) => { for (const l of lessonsOf(track, lv).filter(l => l.n >= a && l.n <= b)) { if (l.n > a && (l.n - 1) % 5 === 0) await doPj(tk, track, lv, l.n - 1); const r = (await doLesson(tk, l)).j; assert.equal(r.ok, true, `lição ${l.id} deveria passar`); } };
+const onlyCp = a => (a || []).filter(id => !id.startsWith('pj-'));       // `cps` do perfil traz os checkpoints e também os projetos concluídos
+const levelXp = (track, lv) => lessonsOf(track, lv).reduce((a, l) => a + l.xp, 0) + lessons.checkpoints.filter(c => c.track === track && c.lv === lv).reduce((a, c) => a + c.xp, 0) + lessons.projects.filter(p => p.track === track && p.lv === lv).reduce((a, p) => a + p.xp, 0);
 
 test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10 lições; acertou libera o próximo nível', async () => {
   const tk = await premiumUser('prova@t.com', 'Paula Prova'), F = finOf('python', 1);
@@ -258,8 +274,13 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   const c1 = list.find(c => c.id === 'cp-py-1-10'); assert.equal(c1.after, 10); assert.equal(c1.chances, 2); assert.equal(c1.left, 2); assert.equal(c1.back, 5); assert.equal(c1.backFrom, 6); assert.equal(c1.lock, 'seq'); assert.equal(c1.fin, false);
   assert.deepEqual(list.filter(c => c.track === 'python' && c.lv === 1).map(c => c.after), [10, 20, 30]);
   assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).status, 409, 'checkpoint bloqueado antes da lição 10');
-  for (const l of L1.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true);
-  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, null, 'liberado depois da lição 10');
+  await doRange(tk, 'python', 1, 1, 5);
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-06').lock, 'pj', 'a lição 6 só abre depois do projeto da lição 5');
+  await doPj(tk, 'python', 1, 5); await doRange(tk, 'python', 1, 6, 10);
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, 'pj', 'depois da lição 10 ainda falta o projeto');
+  assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).status, 409);
+  await doPj(tk, 'python', 1, 10);
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, null, 'liberado depois da lição 10 e do projeto');
   const cp = (await call('/api/lessons/cp-py-1-10', { token: tk })).j;
   for (const k of LEAK) assert.ok(!(k in cp), `o checkpoint vazou "${k}"`);
   assert.equal(cp.cp, true); assert.ok(cp.task && cp.info && cp.cobre.length === 10); assert.equal(cp.left, 2);
@@ -275,15 +296,15 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).j.left, 1);
   r = (await missTest(tk, C10)).j; assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }); assert.equal(r.left, 2, 'chances renovadas');
   assert.deepEqual(await doneOf(tk, 'py-1-'), idsOf('py-1-', 1, 5), 'as lições 6 a 10 voltam a ficar pendentes');
-  let me = (await call('/api/me', { token: tk })).j; assert.equal(me.fails['cp-py-1-10'], 1); assert.equal(me.xp, xp0, 'não perde pontos'); assert.deepEqual(me.cps, []);
+  let me = (await call('/api/me', { token: tk })).j; assert.equal(me.fails['cp-py-1-10'], 1); assert.equal(me.xp, xp0, 'não perde pontos'); assert.deepEqual(onlyCp(me.cps), []); assert.ok(me.cps.includes('pj-py-1-10'), 'o projeto continua feito (não volta lição nenhuma de projeto)');
   assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, 'seq', 'precisa refazer as lições antes');
   assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).status, 409);
   for (const l of L1.slice(5, 10)) { const x = (await doLesson(tk, l)).j; assert.equal(x.ok, true); assert.equal(x.gained, 0); }
-  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, null);
+  assert.equal((await call('/api/checkpoints', { token: tk })).j.find(c => c.id === 'cp-py-1-10').lock, null, 'o projeto 10 já estava feito: não precisa refazer');
 
   // passa: XP uma vez, não entra no mapa de lições e abre a lição 11
   r = (await doTest(tk, C10)).j; assert.equal(r.ok, true); assert.equal(r.gained, C10.xp);
-  assert.deepEqual(r.cps, ['cp-py-1-10']); assert.ok(!('cp-py-1-10' in r.done), 'checkpoint não entra no mapa de lições concluídas'); assert.equal(r.xp, xp0 + C10.xp);
+  assert.deepEqual(onlyCp(r.cps), ['cp-py-1-10']); assert.ok(!('cp-py-1-10' in r.done), 'checkpoint não entra no mapa de lições concluídas'); assert.equal(r.xp, xp0 + C10.xp);
   r = (await doTest(tk, C10)).j; assert.equal(r.gained, 0, 'XP só na 1ª vez');
   assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-11').lock, null, 'checkpoint feito: a lição 11 abre');
   assert.equal((await call('/api/lessons/py-1-11', { token: tk })).status, 200);
@@ -291,12 +312,12 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   assert.equal((await call('/api/lessons/cp-py-1-20', { token: tk })).status, 409, 'o próximo checkpoint só libera depois da lição 20');
 
   // checkpoint 2 (depois da lição 20): errou as duas, volta 5 lições (16 a 20)
-  for (const l of L1.slice(10, 20)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  await doRange(tk, 'python', 1, 11, 20); await doPj(tk, 'python', 1, 20);
   await missTest(tk, C20); r = (await missTest(tk, C20)).j; assert.deepEqual(r.rewind, { from: 16, to: 20, back: 5 });
   assert.deepEqual(await doneOf(tk, 'py-1-'), idsOf('py-1-', 1, 15));
   assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-21').lock, 'seq');
   for (const l of L1.slice(15, 20)) assert.equal((await doLesson(tk, l)).j.ok, true);
-  r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(r.cps, ['cp-py-1-10', 'cp-py-1-20']);
+  r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(onlyCp(r.cps), ['cp-py-1-10', 'cp-py-1-20']);
   assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'checkpoint 2 feito: a lição 21 abre');
   assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
   assert.equal((await call('/api/lessons', { token: tk })).j.length, 270);
@@ -305,7 +326,7 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
 test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a solução) e a mesma regra de chances vale', async () => {
   const tk = await reg('sqlcp@teste.com', 'Sara SQL'), C = lessons.checkpoints.find(c => c.id === 'cp-sql-1-10');
   await call('/api/track', { token: tk, body: { track: 'sql' } });
-  for (const l of lessonsOf('sql', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'sql', 1, 1, 10); await doPj(tk, 'sql', 1, 10);
   const g = await call('/api/lessons/cp-sql-1-10', { token: tk }); assert.equal(g.status, 200); for (const k of LEAK) assert.ok(!(k in g.j), `vazou "${k}"`); assert.ok(g.j.seed, 'o navegador precisa do banco de treino');
   let r = (await call('/api/submit', { token: tk, body: { id: C.id, code: 'SELECT nome FROM produtos WHERE preco < 1000' } })).j;
   assert.equal(r.ok, false); assert.equal(r.left, 1); assert.ok(r.view && r.view.columns.length >= 1 && r.view.values.length >= 1, 'mostra o resultado esperado para explicar o erro');
@@ -319,7 +340,7 @@ test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a soluç
 test('prova: código que dá erro (sintaxe, tabela inexistente) também gasta uma chance; com as chances no fim, volta as lições', async () => {
   const tk = await reg('errprova@teste.com', 'Erica Erro'), C = lessons.checkpoints.find(c => c.id === 'cp-sql-1-10');
   await call('/api/track', { token: tk, body: { track: 'sql' } });
-  for (const l of lessonsOf('sql', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'sql', 1, 1, 10); await doPj(tk, 'sql', 1, 10);
   let r = (await call('/api/submit', { token: tk, body: { id: C.id, code: 'SELEC nome FROM produtos', out: '' } })).j;
   assert.equal(r.ok, false); assert.equal(r.left, 1, 'erro de digitação no SQL gasta a 1ª chance');
   assert.equal((await call('/api/lessons/' + C.id, { token: tk })).j.left, 1, 'a chance gasta fica salva no servidor');
@@ -327,7 +348,7 @@ test('prova: código que dá erro (sintaxe, tabela inexistente) também gasta um
   assert.equal(r.ok, false); assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }, 'tabela inexistente gasta a última chance e volta as lições');
   // o Python também: código que nem roda (sintaxe) não passa e gasta chance
   const tp = await reg('errprova2@teste.com', 'Paulo Py'), P = lessons.checkpoints.find(c => c.id === 'cp-py-1-10');
-  for (const l of lessonsOf('python', 1).slice(0, 10)) assert.equal((await doLesson(tp, l)).j.ok, true, l.id);
+  await doRange(tp, 'python', 1, 1, 10); await doPj(tp, 'python', 1, 10);
   r = (await call('/api/submit', { token: tp, body: { id: P.id, code: 'print("oi"', out: '' } })).j;
   assert.equal(r.ok, false); assert.equal(r.left, 1, 'erro de sintaxe no Python gasta a 1ª chance');
 });
@@ -486,7 +507,7 @@ test('SQL: resposta certa é aprovada (inclusive várias de uma vez) e o autotes
 
 test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de marcar como errado', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nosql-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'guides.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -517,7 +538,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
 
 test('SQL: com a cópia vendor/sql do projeto, corrige mesmo sem o pacote sql.js instalado (caso do "npm install" não rodado)', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vend-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'guides.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools', 'vendor']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -854,7 +875,16 @@ test('admin: anúncios (AdSense) pelo painel: IDs validados, liga/desliga, ads.t
   } finally { p.kill(); }
   // o app não desenha quadros sem ID de bloco e o painel tem o cartão
   const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8'), adm = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.js'), 'utf8');
-  assert.match(app, /const adSlot = \(\) => S\.cfg\.ads && \(S\.cfg\.ads\.preview \|\| S\.cfg\.ads\.slot\)/);
+  assert.ok(!/adsbygoogle|adSlot|loadAds/.test(app), 'o app não desenha anúncios (só os guias públicos desenham)');
+  // servidor com anúncios + bloco: o guia público desenha o quadro e o script do Google; a lista de guias (só navegação) não
+  const gp = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: PORT + 811, DATA_FILE: path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'adsg-')), 'data.json'), BASE_URL: 'http://localhost:' + (PORT + 811), ADSENSE_CLIENT: 'ca-pub-1111111111111111', ADSENSE_SLOT: '2222222222', ADMIN_KEY: 'chave-ads-1234567890' } }); let gl = ''; gp.stdout.on('data', x => gl += x); gp.stderr.on('data', x => gl += x);
+  try {
+    for (let i = 0; i < 150 && !/rodando/.test(gl); i++) await sleep(100);
+    const gb = 'http://localhost:' + (PORT + 811), art = await (await fetch(gb + '/guias/python-basico-licoes-1-a-5')).text(), hub = await (await fetch(gb + '/guias')).text();
+    assert.match(art, /<ins class="adsbygoogle"[^>]*data-ad-client="ca-pub-1111111111111111"[^>]*data-ad-slot="2222222222"/); assert.match(art, /pagead2\.googlesyndication\.com\/pagead\/js\/adsbygoogle\.js\?client=ca-pub-1111111111111111/); assert.match(art, /requestNonPersonalizedAds=1/);
+    assert.equal((art.match(/<ins class="adsbygoogle"/g) || []).length, 2, 'dois quadros no guia: no meio e no fim');
+    assert.ok(!/adsbygoogle|googlesyndication/.test(hub), 'a lista de guias é navegação: sem anúncio');
+  } finally { gp.kill(); }
   assert.match(adm, /Anúncios \(Google AdSense\)/); assert.match(adm, /'ad-save'/); assert.match(adm, /'ad-reset'/); assert.match(adm, /data-ad-slot/);
 });
 
@@ -979,16 +1009,13 @@ test('prática: o botão Concluído fica fixo no rodapé e nada é executado nem
   assert.match(fs.readFileSync(path.join(dir, 'sw.js'), 'utf8'), /codeup-v(2[7-9]|[3-9]\d)/, 'versão nova do cache para o app atualizar');
 });
 
-test('anúncios: o aluno não escolhe o tipo — sempre não personalizados, carregam direto, aviso só informativo (um botão) e escondido na lição/prova', async () => {
-  const dir = path.join(__dirname, '..'), app = fs.readFileSync(path.join(dir, 'public', 'app.js'), 'utf8'), css = fs.readFileSync(path.join(dir, 'public', 'style.css'), 'utf8');
-  const ad = app.slice(app.indexOf('function adNotice()'), app.indexOf('// ====', app.indexOf('function adNotice()')));
-  assert.ok(ad.length > 200, 'trecho dos anúncios encontrado');
-  assert.ok(!/ckA|ckN|Aceitar anúncios personalizados|Só anúncios não personalizados|adConsent/.test(app), 'não existe mais botão para escolher o tipo de anúncio');
-  assert.equal((ad.match(/<button/g) || []).length, 1, 'o aviso tem um botão só'); assert.match(ad, /id=ckOk>Entendi</);
-  assert.match(ad, /window\.adsbygoogle\.requestNonPersonalizedAds = 1;/, 'sempre pede anúncios não personalizados');
-  assert.ok(!/if \(adPref\(\) ==|adPref\(\)\) return/.test(ad), 'carregar os anúncios não depende de nenhuma escolha');
-  assert.ok(ad.indexOf('adNotice();') < ad.indexOf('createElement(\'script\')'), 'o aviso é mostrado, mas o script do Google carrega sem esperar clique');
-  assert.match(css, /body\[data-calm\] \.cookie\{display:none\}/, 'o aviso some durante a prática e a prova');
+test('anúncios: o app não mostra anúncio nenhum (só os guias públicos), sempre não personalizados e sem escolha para o aluno', async () => {
+  const dir = path.join(__dirname, '..'), app = fs.readFileSync(path.join(dir, 'public', 'app.js'), 'utf8'), css = fs.readFileSync(path.join(dir, 'public', 'style.css'), 'utf8'), g = fs.readFileSync(path.join(dir, 'guides.js'), 'utf8');
+  // o AdSense proíbe anúncio em telas de navegação ou sem conteúdo do dono do site: mapa, abas e resultados do app ficam sem anúncio
+  assert.ok(!/adsbygoogle|adSlot|loadAds|adNotice|googlesyndication/.test(app), 'nada de anúncio dentro do app');
+  assert.ok(!/\.ad\{|\.cookie\{/.test(css), 'sem estilo de anúncio no app');
+  assert.ok(!/ckA|ckN|Aceitar anúncios personalizados|Só anúncios não personalizados|adConsent/.test(app), 'não existe botão para escolher o tipo de anúncio');
+  assert.match(g, /requestNonPersonalizedAds=1/, 'nos guias, sempre pede anúncios não personalizados');
   for (const f of ['termos', 'privacidade']) { const t = fs.readFileSync(path.join(dir, 'legal', f + '.html'), 'utf8'); assert.ok(!/você escolhe|Só ligam se você aceitar|escolhe entre anúncios/.test(t), f + ': não promete escolha ao aluno'); assert.match(t, /não personalizados/); }
   // o que a API entrega ao app não traz nenhuma opção de tipo de anúncio
   const tk = await atok();
@@ -1308,7 +1335,7 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
   assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.ok(!/const hero = [^\n]*(body\(|class=hb\b|<img)/.test(ui) && !/'hello'/.test(ui), 'a tela de entrada (login/cadastro) não tem personagem: só a marca CodeUp'); assert.match(ui, /'Qual curso você quer fazer\?', '', '', 'think'/);
-  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 3, 'o mapa usa o personagem nas três paradas (lição, checkpoint e prova final)');
+  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 4, 'o mapa usa o personagem nas quatro paradas (lição, projeto, checkpoint e prova final)');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
   assert.match(sw, /codeup-v(3[6-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
@@ -1385,7 +1412,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
   // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
   for (const k of ['O que é', 'Para que serve', 'Como você vai usar aqui', 'O que vai aparecer na tela']) assert.ok(ui.includes(`'${k}'`), k);
-  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.example \? codeBox\(l\.example, lang\(l\), 'Exemplo'\) \+ exResult\(l\) : ''\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{praticaInfo\(l\)\}/);
+  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.proj \? coverBox\(l\) : ''\}\$\{l\.example \? codeBox\(l\.example, lang\(l\), 'Exemplo'\) \+ exResult\(l\) : ''\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{praticaInfo\(l\)\}/);
   // SQL na teoria: o exemplo traz a tabela do que ele devolve; o cartão "A tabela desta lição" fica só no grupo "Na atividade de prática" (nunca colado no exemplo)
   const pI = ui.slice(ui.indexOf('const praticaInfo = l =>'), ui.indexOf('const praticaInfo = l =>') + 420);
   assert.match(pI, /Na atividade de prática<\/div>\$\{t\}\$\{c\}/, 'a tabela da lição vem dentro de "Na atividade de prática", antes das explicações');
@@ -1413,10 +1440,10 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span']) assert.ok(css.includes(c), 'css ' + c);
   assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
   // quem acerta vê o resultado (tabela do SQL ou saída do Python) na tela de conclusão: lição, checkpoint e prova final
-  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : Q \? qzStatic\(\) : DX \? daxStatic\(l, code\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 4, 'as 4 telas de acerto (lição inteira, 1ª atividade, checkpoint e prova final) mostram o resultado'); assert.ok(css.includes('.resbox'));
+  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : Q \? qzStatic\(\) : DX \? daxStatic\(l, code\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 5, 'as 5 telas de acerto (lição inteira, 1ª atividade, checkpoint, projeto e prova final) mostram o resultado'); assert.ok(css.includes('.resbox'));
   // ao conquistar algo a tela mostra o que foi desbloqueado: lição, checkpoint, prova final, nível, certificado e (por XP) título, moldura e itens de personalização
   assert.match(ui, /function unlocksOf\(lk0, xb, s\)/); assert.match(ui, /S\.unl = unlocksOf\(lk0, xb, s\)/); assert.match(ui, /Desbloqueado!/);
-  assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 3, 'as 3 telas de acerto mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
+  assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 4, 'as 4 telas de acerto (lição, checkpoint, projeto e prova final) mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
   for (const c of ['.unl{', '.unl .uig', '.unl .uic', '.unl .sw']) assert.ok(css.includes(c), 'css ' + c);
 });
 
@@ -1489,8 +1516,8 @@ test('mapa com cenário: floresta ao longo da trilha, personagem no pedestal e c
   assert.match(ui, /<div class=tl style="--n:\$\{NR\};--row:\$\{MAP\.row\}px;--top:\$\{MAP\.top\}px">\$\{scene\}\$\{pathSvg\}/);
   assert.match(ui, /Math\.sin\(\(r - 1\) \* Math\.PI \/ 4\)/, 'a trilha começa à esquerda, como no modelo');
   // lição, checkpoint e prova final do momento: personagem em pé no pedestal e cartão "INICIAR" (nos outros visuais continua o "COMEÇAR")
-  assert.equal((ui.match(/walker\(\) \+ lcard\(/g) || []).length, 3, 'os três tipos de passo têm o cartão');
-  assert.equal((ui.match(/<span class=start>COMEÇAR<\/span>/g) || []).length, 3); assert.match(ui, /<em class=lcb>INICIAR<\/em>/);
+  assert.equal((ui.match(/walker\(\) \+ lcard\(/g) || []).length, 4, 'os quatro tipos de passo (lição, projeto, checkpoint e prova final) têm o cartão');
+  assert.equal((ui.match(/<span class=start>COMEÇAR<\/span>/g) || []).length, 4); assert.match(ui, /<em class=lcb>INICIAR<\/em>/);
   assert.match(ui, /<i class=nn>\$\{l\.n\}<\/i>/, 'número da lição no botão (os títulos saem do mapa no visual Azul)');
   assert.match(ui, /class="card cont tkc"/); assert.match(ui, /<div class=tkb><i style="width:/); assert.match(ui, /Vamos continuar seus estudos\?/);
   assert.match(ui, /class=cprog/, 'os outros visuais mantêm o cartão Continuar com o progresso');
@@ -1625,16 +1652,16 @@ test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias d
   assert.equal((await call('/api/costume/buy', { body: { key: 'unicornio' } })).status, 401);
   let r = await buy('unicornio'); assert.equal(r.status, 403); assert.match(r.j.error, /Libera com o título Aprendiz/);
   const L1 = lessonsOf('python', 1), cp10 = lessons.checkpoints.find(c => c.track === 'python' && c.lv === 1 && c.after === 10);
-  for (const l of L1.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true);
+  await doRange(tk, 'python', 1, 1, 5); await doPj(tk, 'python', 1, 5); await doRange(tk, 'python', 1, 6, 10); await doPj(tk, 'python', 1, 10);
   r = await doTest(tk, cp10); assert.equal(r.j.ok, true); assert.equal(r.j.gemsGot, 5, 'checkpoint dá 5 diamantes');
   for (const l of L1.slice(10, 12)) assert.equal((await doLesson(tk, l)).j.ok, true);
-  m = await me(); assert.equal(m.gems, 65); assert.equal(m.days, 1, 'vários acertos no mesmo dia contam um dia só'); assert.equal(m.streak, 1);
+  m = await me(); assert.equal(m.gems, 85, '12 lições x 5 + checkpoint 5 + 2 projetos x 10'); assert.equal(m.days, 1, 'vários acertos no mesmo dia contam um dia só'); assert.equal(m.streak, 1);
   r = await buy('gatinha'); assert.equal(r.status, 400); assert.match(r.j.error, /dias de estudo/, 'conquista não se compra');
   r = await wear('gatinha'); assert.equal(r.status, 400); assert.match(r.j.error, /ainda não tem/);
   r = await buy('vaquinha'); assert.equal(r.status, 403, 'precisa do título Praticante'); assert.equal((await buy('naoexiste')).status, 400); assert.equal((await buy('__proto__')).status, 400); assert.equal((await buy(7)).status, 400); assert.equal((await buy('')).status, 400);
-  r = await buy('unicornio'); assert.equal(r.status, 200); assert.deepEqual([r.j.gems, r.j.own, r.j.cos], [5, ['unicornio'], 'unicornio'], 'pagou 60 e já saiu vestindo');
-  r = await buy('unicornio'); assert.equal(r.status, 400); assert.match(r.j.error, /já tem/); assert.equal((await me()).gems, 5, 'comprar de novo não cobra');
-  r = await buy('panda'); assert.equal(r.status, 400); assert.match(r.j.error, /Faltam 55 diamantes/); assert.equal((await me()).gems, 5, 'sem saldo não tira nada');
+  r = await buy('unicornio'); assert.equal(r.status, 200); assert.deepEqual([r.j.gems, r.j.own, r.j.cos], [25, ['unicornio'], 'unicornio'], 'pagou 60 e já saiu vestindo');
+  r = await buy('unicornio'); assert.equal(r.status, 400); assert.match(r.j.error, /já tem/); assert.equal((await me()).gems, 25, 'comprar de novo não cobra');
+  r = await buy('panda'); assert.equal(r.status, 400); assert.match(r.j.error, /Faltam 35 diamantes/); assert.equal((await me()).gems, 25, 'sem saldo não tira nada');
   const rkr = (await rk(tk)).mine; assert.equal(rkr.cos, 'unicornio', 'o ranking mostra o rostinho de fantasia');
   assert.equal((await wear('nenhuma')).j.cos, null); assert.equal((await wear('dino')).status, 400); assert.equal((await wear('unicornio')).j.cos, 'unicornio'); assert.equal((await wear('')).status, 400);
   // a fantasia é da Tay: com o Cut ela fica guardada e não vale; ao voltar para a Tay, volta
@@ -1644,12 +1671,12 @@ test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias d
   // o Cut tem as dele: mesmas regras, outras fantasias; a da Tay não vale para ele e vice-versa
   const tc = await regP('gr3@teste.com', 'Caio Roupa', { sex: 'm', guide: 'cut', gname: 'Beto' }), cbuy = (k, t = tc) => call('/api/costume/buy', { token: t, body: { key: k } });
   await call('/api/track', { token: tc, body: { track: 'python' } });
-  for (const l of L1.slice(0, 10)) assert.equal((await doLesson(tc, l)).j.ok, true);
+  await doRange(tc, 'python', 1, 1, 5); await doPj(tc, 'python', 1, 5); await doRange(tc, 'python', 1, 6, 10); await doPj(tc, 'python', 1, 10);
   assert.equal((await doTest(tc, cp10)).j.ok, true); for (const l of L1.slice(10, 12)) assert.equal((await doLesson(tc, l)).j.ok, true);
-  m = (await call('/api/me', { token: tc })).j; assert.deepEqual([m.guide, m.gems, m.own, m.cos], ['cut', 65, [], null]);
+  m = (await call('/api/me', { token: tc })).j; assert.deepEqual([m.guide, m.gems, m.own, m.cos], ['cut', 85, [], null]);
   r = await cbuy('unicornio', tc); assert.equal(r.status, 400); assert.match(r.j.error, /não existe para o seu personagem/, 'fantasia da Tay não vale para o Cut');
   r = await cbuy('gatinho'); assert.equal(r.status, 400, 'conquista não se compra'); r = await cbuy('ursinho'); assert.equal(r.status, 403, 'precisa do título Praticante');
-  r = await cbuy('tubarao'); assert.equal(r.status, 200); assert.deepEqual([r.j.gems, r.j.own, r.j.cos], [5, ['tubarao'], 'tubarao']);
+  r = await cbuy('tubarao'); assert.equal(r.status, 200); assert.deepEqual([r.j.gems, r.j.own, r.j.cos], [25, ['tubarao'], 'tubarao']);
   assert.equal((await rk(tc)).mine.cos, 'tubarao'); r = await call('/api/costume/wear', { token: tc, body: { key: 'unicornio' } }); assert.equal(r.status, 400);
   r = await call('/api/guide', { token: tc, body: { guide: 'tay' } }); assert.deepEqual([r.j.cos, r.j.own], [null, []], 'trocar de personagem guarda as fantasias do outro');
   r = await call('/api/guide', { token: tc, body: { guide: 'cut' } }); assert.deepEqual([r.j.cos, r.j.own], ['tubarao', ['tubarao']]);
@@ -1668,13 +1695,15 @@ test('guarda-roupa: regras das fantasias, imagens, compra com diamantes e dias d
       const b = await j('/api/read', { id: l.id, a: Array.isArray(l.read.ok) ? l.read.ok[0] : l.read.ok }, t2);
       return { ...b, j: { ...a.j, ...b.j, gemsGot: (a.j.gemsGot || 0) + (b.j.gemsGot || 0), gemBonus: a.j.gemBonus ?? b.j.gemBonus, newCos: [...(a.j.newCos || []), ...(b.j.newCos || [])] } };
     };
-    for (const l of L1.slice(0, 10)) assert.equal((await sub(l)).j.ok, true);
-    let x = (await sub(cp10)).j; assert.equal(x.ok, true); assert.deepEqual([x.days, x.streak, x.gemBonus, x.newCos], [1, 1, undefined, []]); assert.equal(x.gems, 55);
+    const pj = n => pjOf('python', 1, n);
+    for (const l of L1.slice(0, 5)) assert.equal((await sub(l)).j.ok, true);
+    assert.equal((await sub(pj(5))).j.ok, true); for (const l of L1.slice(5, 10)) assert.equal((await sub(l)).j.ok, true); assert.equal((await sub(pj(10))).j.ok, true);
+    let x = (await sub(cp10)).j; assert.equal(x.ok, true); assert.deepEqual([x.days, x.streak, x.gemBonus, x.newCos], [1, 1, undefined, []]); assert.equal(x.gems, 75, '10 lições x 5 + 2 projetos x 10 + checkpoint 5');
     p.kill(); await new Promise(z => setTimeout(z, 400));
     setUser(u => { u.last = ydIso(); u.streak = 2; u.days = 2; });             // estudou ontem e anteontem: hoje fecha 3 dias seguidos
     p = await boot();
     x = (await sub(L1[10])).j; assert.equal(x.ok, true); assert.deepEqual([x.days, x.streak, x.gemBonus, x.newCos, x.gemsGot], [3, 3, 5, ['gatinha'], 10], 'dia 3: +5 de bônus, +5 da lição e a fantasia Gatinha (título Aprendiz + 3 dias)');
-    assert.deepEqual([x.own, x.gems], [['gatinha'], 65]); assert.equal(x.cos, null, 'ganhar não veste sozinha');
+    assert.deepEqual([x.own, x.gems], [['gatinha'], 85]); assert.equal(x.cos, null, 'ganhar não veste sozinha');
     x = (await sub(L1[11])).j; assert.deepEqual([x.days, x.newCos, x.gemBonus, x.gemsGot], [3, [], undefined, 5], 'mais uma lição no mesmo dia não conta outro dia nem repete o bônus');
     assert.equal((await j('/api/costume/wear', { key: 'gatinha' }, t2)).j.cos, 'gatinha');
     p.kill(); await new Promise(z => setTimeout(z, 400));
@@ -1783,7 +1812,7 @@ test('Excel: provas (checkpoints e prova final) sem gabarito, com chances e o cu
   assert.deepEqual(cps.map(c => c.id), ['cp-xl-1-10', 'cp-xl-1-20', 'fin-xl-1']); assert.ok(cps.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
   const C10 = (await call('/api/lessons/cp-xl-1-10', { token: tk }));
   assert.equal(C10.status, 409, 'o checkpoint só abre depois da lição 10');
-  for (const l of lessonsOf('excel', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'excel', 1, 1, 10); assert.equal((await call('/api/lessons/cp-xl-1-10', { token: tk })).status, 409, 'depois da lição 10 ainda falta o projeto'); await doPj(tk, 'excel', 1, 10);
   const c = (await call('/api/lessons/cp-xl-1-10', { token: tk })).j; assert.ok(c.sheet && c.targets.length); assert.ok(!LEAK.some(k => k in c), 'a prova aberta não tem gabarito nem solução');
   let r = (await missTest(tk, lessons.checkpoints.find(x => x.id === 'cp-xl-1-10'))).j; assert.equal(r.ok, false); assert.equal(r.left, 1);
   r = (await call('/api/submit', { token: tk, body: { id: 'cp-xl-1-10', code: JSON.stringify({ D2: '=B2*C2' }) } })).j; assert.equal(r.ok, false); assert.deepEqual(r.rewind, { from: 6, to: 10, back: 5 }, 'gastou as 2 chances: volta 5 lições');
@@ -2104,8 +2133,8 @@ test('Power BI e DAX: o servidor entrega as lições sem gabarito, mostra a comp
   assert.equal((await call('/api/me', { token: tk })).j.xp, 0, 'errar não dá XP');
   r = (await doLesson(tk, ql)).j; assert.equal(r.ok, true); assert.ok(r.gained > 0);
   // DAX: faz as lições 2 a 10 e abre a 11
-  for (const l of lessonsOf('powerbi', 1).slice(1, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
-  assert.equal((await call('/api/lessons/pbi-1-11', { token: tk })).status, 409, 'o checkpoint (lição 10) vem antes da 11');
+  await doRange(tk, 'powerbi', 1, 2, 10);
+  assert.equal((await call('/api/lessons/pbi-1-11', { token: tk })).status, 409, 'o projeto e o checkpoint (lição 10) vêm antes da 11'); await doPj(tk, 'powerbi', 1, 10);
   assert.equal((await doCp(tk, lessons.checkpoints.find(c => c.id === 'cp-pbi-1-10'))).j.ok, true);
   const d = (await call('/api/lessons/pbi-1-11', { token: tk })).j; assert.equal(d.type, 'dax'); assert.equal(d.model, 'loja'); assert.ok(d.starter && d.views.length);
   for (const k of ['answer', 'need', 'forbid', 'noAlt']) assert.ok(!(k in d), `o gabarito (${k}) não pode chegar ao navegador`);
@@ -2128,16 +2157,16 @@ test('Power BI e DAX: ler a fórmula aceita número com vírgula e ponto, e colu
   const tk = await reg('pbi2@t.com', 'Priscila');
   await call('/api/track', { token: tk, body: { track: 'powerbi' } });
   const L = lessonsOf('powerbi', 1);
-  for (const l of L.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'powerbi', 1, 1, 10); await doPj(tk, 'powerbi', 1, 10);
   assert.equal((await doCp(tk, lessons.checkpoints.find(c => c.id === 'cp-pbi-1-10'))).j.ok, true);
-  for (const l of L.slice(10, 14)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'powerbi', 1, 11, 14);
   // lição de ler com resposta numérica (pbi-1-15: 17,5): "17,5" e "17.5" valem, 17 não vale
   const l15 = lessons.find(x => x.id === 'pbi-1-15'); assert.equal(l15.read.ok, 17.5);
   assert.equal((await doExec(tk, l15)).j.ok, true);
   const r0 = (await call('/api/lessons/pbi-1-15/read', { token: tk })).j; assert.equal(r0.k, 'num'); assert.ok(!('ok' in r0) && !('why' in r0), 'a leitura chega sem resposta');
   let r = (await call('/api/read', { token: tk, body: { id: 'pbi-1-15', a: '17' } })).j; assert.equal(r.ok, false);
   r = (await call('/api/read', { token: tk, body: { id: 'pbi-1-15', a: '17,5' } })).j; assert.equal(r.ok, true);
-  for (const l of L.slice(15, 20)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doPj(tk, 'powerbi', 1, 15); await doRange(tk, 'powerbi', 1, 16, 20); await doPj(tk, 'powerbi', 1, 20);
   // checkpoint de DAX: faltando medidas perde uma chance e mostra o que falta; sem gabarito na prova aberta
   const c20 = lessons.checkpoints.find(c => c.id === 'cp-pbi-1-20');
   const c = (await call('/api/lessons/cp-pbi-1-20', { token: tk })).j; assert.equal(c.type, 'dax'); assert.equal(c.left, 2); assert.ok(!LEAK.some(k => k in c), 'a prova aberta não tem gabarito nem solução');
@@ -2146,7 +2175,8 @@ test('Power BI e DAX: ler a fórmula aceita número com vírgula e ponto, e colu
   // lições 21 a 30 (colunas calculadas): coluna errada mostra as linhas que não batem
   assert.equal((await call('/api/lessons/pbi-1-21', { token: tk })).status, 200);
   r = (await call('/api/submit', { token: tk, body: { id: 'pbi-1-21', code: 'Vendas[Valor Unitário] = Vendas[Valor]' } })).j; assert.equal(r.ok, false); assert.ok(r.dx.col && r.dx.col.rows.length && r.dx.col.bad > 0);
-  for (const l of L.slice(20, 30)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'powerbi', 1, 21, 30);
+  assert.equal((await call('/api/lessons/fin-pbi-1', { token: tk })).status, 409, 'a prova final espera o projeto da lição 30'); await doPj(tk, 'powerbi', 1, 30);
   assert.equal((await call('/api/lessons/fin-pbi-1', { token: tk })).status, 200);
   const fin = (await doFinal(tk, 'powerbi', 1)).j; assert.equal(fin.ok, true); assert.equal(fin.test, 'fin'); assert.equal(fin.trackComplete, true, 'o Power BI tem só o nível Básico por enquanto: passar nele conclui o curso');
 });
@@ -2168,7 +2198,7 @@ test('Análise de Dados e Storytelling: o servidor entrega as lições (quiz) se
   let r = (await call('/api/submit', { token: tk, body: { id: 'da-1-01', code: JSON.stringify(sol.map((a, i) => i === 1 ? 'qualquer coisa' : a)) } })).j;
   assert.equal(r.ok, false); assert.equal(r.quiz.right, ql.quiz.length - 1); assert.equal(r.quiz.items[1].ok, false); assert.ok(r.quiz.items[1].why);
   assert.equal((await call('/api/me', { token: tk })).j.xp, 0, 'errar não dá XP');
-  for (const l of lessonsOf('dados', 1).slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'dados', 1, 1, 10); await doPj(tk, 'dados', 1, 10);
   assert.equal((await call('/api/lessons/da-1-11', { token: tk })).status, 409, 'o checkpoint (lição 10) vem antes da 11');
   const c10 = lessons.checkpoints.find(c => c.id === 'cp-da-1-10'); assert.ok(c10 && c10.quiz.length === 8);
   const c = (await call('/api/lessons/cp-da-1-10', { token: tk })).j; assert.equal(c.left, 2); assert.ok(!LEAK.some(k => k in c), 'a prova aberta não tem gabarito');
@@ -2181,9 +2211,9 @@ test('Análise de Dados e Storytelling: resposta negativa e com vírgula, escrit
   const tk = await reg('dados2@t.com', 'Daniela');
   await call('/api/track', { token: tk, body: { track: 'dados' } });
   const L = lessonsOf('dados', 1);
-  for (const l of L.slice(0, 10)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'dados', 1, 1, 10); await doPj(tk, 'dados', 1, 10);
   assert.equal((await doCp(tk, lessons.checkpoints.find(c => c.id === 'cp-da-1-10'))).j.ok, true);
-  for (const l of L.slice(10, 20)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'dados', 1, 11, 20); await doPj(tk, 'dados', 1, 20);
   assert.equal((await doCp(tk, lessons.checkpoints.find(c => c.id === 'cp-da-1-20'))).j.ok, true);
   // números: vírgula ou ponto, sinal de menos "bonito" e % no fim valem; só o número certo passa
   const num = (id, i) => { const l = lessons.find(x => x.id === id); return { l, i, ok: l.quiz[i].ok, sol: quizcheck.solution(l) }; };
@@ -2200,12 +2230,12 @@ test('Análise de Dados e Storytelling: resposta negativa e com vírgula, escrit
   for (const t of lessons.tests.filter(x => x.track === 'dados')) for (const q of t.quiz) if (q.t === 'num') assert.ok(q.ok >= 0, t.id);
   // escrita com as próprias palavras: texto sem sentido não passa e mostra o que falta; o texto modelo passa
   const l23 = lessons.find(x => x.id === 'da-1-23'), iw = l23.quiz.findIndex(q => q.t === 'write'); assert.ok(iw >= 0);
-  for (const l of L.slice(20, 22)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'dados', 1, 21, 22);
   let r = (await call('/api/submit', { token: tk, body: { id: 'da-1-23', code: JSON.stringify(quizcheck.solution(l23).map((a, k) => k === iw ? 'isto não tem nada a ver com o gráfico' : a)) } })).j;
   assert.equal(r.ok, false); assert.equal(r.quiz.items[iw].ok, false); assert.ok(r.quiz.items[iw].miss && r.quiz.items[iw].miss.length, 'diz o que ainda falta explicar');
   r = (await call('/api/submit', { token: tk, body: { id: 'da-1-23', code: JSON.stringify(quizcheck.solution(l23).map((a, k) => k === iw ? 'x' : a)) } })).j;
   assert.equal(r.quiz.items[iw].ok, false); assert.equal(r.quiz.items[iw].short, true, 'resposta curta demais');
-  for (const l of L.slice(22, 30)) assert.equal((await doLesson(tk, l)).j.ok, true, l.id);
+  await doRange(tk, 'dados', 1, 23, 30); await doPj(tk, 'dados', 1, 30);
   // prova final: aberta sem gabarito, 3 chances, e passar conclui o curso
   const f = (await call('/api/lessons/fin-da-1', { token: tk })); assert.equal(f.status, 200); assert.equal(f.j.left, 3); assert.ok(!LEAK.some(k => k in f.j));
   assert.ok(f.j.qz.some(q => q.t === 'write'), 'a prova final tem perguntas escritas');
@@ -2286,4 +2316,85 @@ test('app nas lojas: assetlinks.json do Android só existe configurado e válido
   assert.equal((await run({ ANDROID_PACKAGE: 'com.exemplo.codeup', ANDROID_SHA256: 'AB:CD' })).status, 404, 'impressão digital inválida não publica');
   const ui = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   assert.match(ui, /CodeUpApp/); assert.match(ui, /android-app:/); assert.match(ui, /if \(S\.cfg && IN_STORE\) S\.cfg\.ads = null/, 'sem AdSense no app das lojas'); assert.match(ui, /if \(S\.cfg && IN_WEBVIEW\) S\.cfg\.googleClientId = ''/, 'sem botão do Google no WebView');
+});
+
+test('guias públicos: texto de verdade para o Google (sem login, sem gabarito), sitemap e robots; anúncios desligados não aparecem', async () => {
+  const guides = require('../guides').build(lessons, lessons.projects, lessons.LEVEL_NAMES);
+  assert.equal(guides.length, 54, '270 lições ÷ 5 = 54 guias');
+  assert.equal(new Set(guides.map(g => g.slug)).size, 54);
+  const hub = await fetch(U + '/guias'); assert.equal(hub.status, 200); assert.match(hub.headers.get('content-type'), /text\/html/);
+  const hubHtml = await hub.text(); assert.match(hubHtml, /<h1>Guias gratuitos/); assert.equal((hubHtml.match(/href="\/guias\/[a-z0-9-]+"/g) || []).length, 54, 'a lista aponta para os 54 guias');
+  assert.ok(!/adsbygoogle/.test(hubHtml), 'a lista é navegação: nunca tem anúncio');
+  const words = h => h.replace(/<style>[\s\S]*?<\/style>/g, '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+  const seen = new Set();
+  for (const g of guides) {
+    const r = await fetch(U + '/guias/' + g.slug); assert.equal(r.status, 200, g.slug); const h = await r.text();
+    assert.ok(words(h) >= 700, `${g.slug}: precisa de texto de verdade (${words(h)} palavras)`);
+    assert.ok(h.includes(`<title>${g.title.replace(/&/g, '&amp;')} | `), 'título próprio'); assert.match(h, /<link rel="canonical" href="http:\/\/localhost:\d+\/guias\//);
+    assert.equal((h.match(/<section class="l"/g) || []).length, g.lessons.length); assert.ok(g.lessons.every(l => h.includes(`id="licao-${l.n}"`)));
+    assert.match(h, /<section class="pj"/, 'cada guia traz o projeto do bloco'); assert.ok(h.includes(g.project.title.replace(/&/g, '&amp;')));
+    assert.ok(!/adsbygoogle|googlesyndication/.test(h), 'anúncios desligados: nada do Google na página');
+    assert.ok(!/class="ad"/.test(h)); assert.ok(!seen.has(h.match(/<meta name="description" content="([^"]*)"/)[1]), 'cada guia tem descrição própria'); seen.add(h.match(/<meta name="description" content="([^"]*)"/)[1]);
+    // nunca entrega gabarito do que vale nota: projetos (solução e dicas), perguntas de leitura e provas. (As lições já mostram a solução dentro do app, no botão "Ver a solução".)
+    const hid = x => typeof x === 'string' && x.length > 30 && h.includes(x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+    for (const x of [g.project.solution, ...(g.project.hints || []), ...g.lessons.map(l => l.read && l.read.why)]) assert.ok(!hid(x), `${g.slug}: vazou gabarito`);
+    for (const t of lessons.tests.filter(t => t.track === g.track && t.lv === g.lv)) assert.ok(!hid(t.solution), `${g.slug}: vazou a solução da prova ${t.id}`);
+  }
+  assert.equal((await fetch(U + '/guias/nao-existe')).status, 404);
+  const sm = await (await fetch(U + '/sitemap.xml')).text(); assert.match(sm, /<urlset/); assert.equal((sm.match(/<loc>/g) || []).length, 54 + 4, 'início + lista + 54 guias + termos + privacidade');
+  const rb = await (await fetch(U + '/robots.txt')).text(); assert.match(rb, /Sitemap: http:\/\/localhost:\d+\/sitemap\.xml/); assert.match(rb, /Disallow: \/api\//);
+  assert.match(await (await fetch(U + '/')).text(), /<noscript>[\s\S]*href="\/guias"/, 'a página inicial aponta para os guias mesmo sem JavaScript');
+  const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /'\/guias'/); assert.match(sw, /startsWith\('\/guias\/'\)/, 'o service worker não mexe nas páginas dos guias');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8'), /href="\/guias"/, 'a tela de entrada tem o link dos guias');
+});
+
+test('projetos: um depois de cada 5 lições, obrigatórios, sem chances nem prova; dicas e solução à mão; XP e 10 diamantes só na 1ª vez; liberam as próximas lições', async () => {
+  const tk = await reg('proj1@t.com', 'Priscila Projeto'), P5 = pjOf('python', 1, 5), P10 = pjOf('python', 1, 10), L = lessonsOf('python', 1);
+  const list = (await call('/api/projects', { token: tk })).j; assert.equal(list.length, 54);
+  assert.ok(list.every(p => p.proj === true && p.id.startsWith('pj-') && [5, 10, 15, 20, 25, 30].includes(p.after) && p.xp > 0 && !LEAK.some(k => k in p)), 'a lista não entrega gabarito');
+  assert.equal(list.find(p => p.id === P5.id).lock, 'seq', 'o projeto só abre depois da lição dele');
+  assert.equal((await call('/api/lessons/' + P5.id, { token: tk })).status, 409); assert.equal((await doProj(tk, P5)).status, 409);
+  assert.equal((await call('/api/projects')).status, 401, 'só para quem entrou');
+  assert.equal((await call('/api/lessons/pj-xx-9-9', { token: tk })).status, 404);
+  await doRange(tk, 'python', 1, 1, 5);
+  assert.equal((await call('/api/projects', { token: tk })).j.find(p => p.id === P5.id).lock, null, 'lição 5 feita: o projeto abre');
+  const l6 = (await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-06'); assert.equal(l6.lock, 'pj', 'a lição 6 espera o projeto');
+  const g6 = await call('/api/lessons/py-1-06', { token: tk }); assert.equal(g6.status, 409); assert.equal(g6.j.lock, 'pj'); assert.match(g6.j.error, /projeto/i);
+  assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-06', code: 'x', out: 'x' } })).status, 409);
+
+  // o projeto aberto: tem tarefa, explicação, dicas e solução (não é prova), mas nunca o gabarito de correção
+  const g = await call('/api/lessons/' + P5.id, { token: tk }); assert.equal(g.status, 200);
+  assert.equal(g.j.proj, true); assert.ok(g.j.task && g.j.info && g.j.cobre.length === 5 && g.j.starter !== undefined); assert.equal(g.j.hints.length, 3); assert.equal(typeof g.j.solution, 'string');
+  for (const k of ['need', 'expectedOut', 'expectedSql', 'expectedRows', 'chances', 'left', 'back', 'cp', 'fin']) assert.ok(!(k in g.j) || g.j[k] === false || g.j[k] === undefined, `o projeto não pode trazer "${k}"`);
+  const chk = await call('/api/check', { token: tk, body: { id: P5.id, code: P5.solution, out: P5.expectedOut } }); assert.equal(chk.status, 200, 'conferir à vontade vale nos projetos'); assert.equal(chk.j.ok, true);
+  assert.equal((await call('/api/me', { token: tk })).j.cps.includes(P5.id), false, 'conferir não conclui');
+
+  // errar não gasta nada: sem chances, sem voltar lição
+  const xp0 = (await call('/api/me', { token: tk })).j.xp;
+  for (let i = 0; i < 4; i++) { const r = (await call('/api/submit', { token: tk, body: { id: P5.id, code: 'print("errado")', out: 'errado' } })).j; assert.equal(r.ok, false); assert.equal(r.rewind, undefined); assert.equal(r.left, undefined); assert.equal(r.test, undefined); }
+  assert.deepEqual(await doneOf(tk, 'py-1-'), idsOf('py-1-', 1, 5), 'nenhuma lição voltou'); assert.equal((await call('/api/me', { token: tk })).j.xp, xp0);
+  // acertar: XP e diamantes uma vez só; o projeto fica em `cps`, nunca em `done`
+  const g0 = (await call('/api/me', { token: tk })).j.gems;
+  let r = (await doProj(tk, P5)).j; assert.equal(r.ok, true); assert.equal(r.gained, P5.xp); assert.equal(r.gemsGot, 10); assert.equal(r.xp, xp0 + P5.xp); assert.ok(r.cps.includes(P5.id)); assert.ok(!(P5.id in r.done)); assert.equal(r.test, undefined);
+  assert.equal((await call('/api/me', { token: tk })).j.gems, g0 + 10);
+  r = (await doProj(tk, P5)).j; assert.equal(r.ok, true); assert.equal(r.gained, 0, 'XP só na 1ª vez'); assert.equal(r.gemsGot, undefined);
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-06').lock, null, 'projeto feito: a lição 6 abre');
+  assert.equal((await call('/api/lessons/py-1-06', { token: tk })).status, 200);
+
+  // o projeto 10 também trava o checkpoint e (depois do checkpoint) a lição 11; o 30, a prova final
+  await doRange(tk, 'python', 1, 6, 10);
+  assert.equal((await call('/api/lessons/cp-py-1-10', { token: tk })).status, 409); assert.match((await call('/api/lessons/cp-py-1-10', { token: tk })).j.error, /projeto da lição 10/);
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-11').lock, 'pj');
+  await doPj(tk, 'python', 1, 10);
+  assert.equal((await call('/api/lessons', { token: tk })).j.find(x => x.id === 'py-1-11').lock, 'cp', 'com o projeto feito, falta o checkpoint');
+  assert.equal((await doTest(tk, lessons.checkpoints.find(c => c.id === 'cp-py-1-10'))).j.ok, true);
+  assert.equal((await call('/api/lessons/py-1-11', { token: tk })).status, 200);
+  const t2 = await reg('proj2@t.com', 'Paulo Projeto'); await call('/api/track', { token: t2, body: { track: 'sql' } });
+  await doRange(t2, 'sql', 1, 1, 5); await doPj(t2, 'sql', 1, 5); await doRange(t2, 'sql', 1, 6, 10); await doPj(t2, 'sql', 1, 10); await doTest(t2, lessons.checkpoints.find(c => c.id === 'cp-sql-1-10'));
+  await doRange(t2, 'sql', 1, 11, 20); await doPj(t2, 'sql', 1, 20); await doTest(t2, lessons.checkpoints.find(c => c.id === 'cp-sql-1-20'));
+  await doRange(t2, 'sql', 1, 21, 30);
+  assert.equal((await call('/api/checkpoints', { token: t2 })).j.find(c => c.id === 'fin-sql-1').lock, 'pj', 'as 30 lições feitas, mas falta o projeto 30');
+  assert.equal((await call('/api/lessons/fin-sql-1', { token: t2 })).status, 409); assert.match((await call('/api/lessons/fin-sql-1', { token: t2 })).j.error, /projeto da lição 30/);
+  await doPj(t2, 'sql', 1, 30);
+  assert.equal((await doFinal(t2, 'sql', 1)).j.ok, true, 'com o projeto 30 feito a prova final abre');
 });

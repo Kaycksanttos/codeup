@@ -158,12 +158,12 @@ function checkRead(l, r, bad, warn) {
 
 function check() {
   const bad = [], warn = []; let n = 0;
-  const all = [...lessons, ...lessons.tests].filter(IS);
+  const all = [...lessons, ...lessons.tests, ...lessons.projects].filter(IS);
   for (const l of all) {
     n++;
     if (l.type === 'dax') checkDax(l, bad, warn); else checkQuiz(l, bad, warn);
     if (l.read) checkRead(l, l.read, bad, warn);
-    else if (!l.cp && !l.fin) bad.push(`${l.id}: sem atividade de leitura (content/rd-*.js)`);
+    else if (!l.cp && !l.fin && !l.proj) bad.push(`${l.id}: sem atividade de leitura (content/rd-*.js)`);
   }
   return { n, bad, warn };
 }

@@ -7,7 +7,7 @@ const XL = require(path.join(__dirname, '..', 'public', 'xl.js'));
 const X = require(path.join(__dirname, '..', 'xlcheck'));
 
 function check() {
-  const bad = [], acts = [...lessons.filter(l => l.type === 'excel'), ...lessons.tests.filter(t => t.type === 'excel')];
+  const bad = [], acts = [...lessons.filter(l => l.type === 'excel'), ...lessons.tests.filter(t => t.type === 'excel'), ...lessons.projects.filter(t => t.type === 'excel')];
   const say = (l, m) => bad.push(`${l.id}: ${m}`);
   for (const l of acts) {
     if (!l.targets.length || l.targets.length > X.MAXCELLS) say(l, 'quantidade de células pedidas inválida');

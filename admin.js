@@ -16,7 +16,7 @@
 const crypto = require('crypto'), path = require('path'), totp = require('./totp'), qr = require('./qr');
 
 module.exports = function mountAdmin(app, X) {
-  const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
+  const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
     makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf } = X;
   const lvs = t => Array.from({ length: (lessons.LEVELS_OF || {})[t] || 3 }, (_, i) => i + 1);   // níveis que o curso tem hoje (o Excel começa só com o Básico)
   const DAY = 864e5, TZ = -3 * 36e5;                                   // Brasil (sem horário de verão)
@@ -262,7 +262,7 @@ module.exports = function mountAdmin(app, X) {
         if (!TRACKS.includes(t) || (!all && !lvs(t).includes(lv))) return res.status(400).json({ error: 'Curso ou nível inválido.' });
         for (const L of all ? lvs(t) : [lv]) {
           lessons.filter(l => l.track === t && l.lv === L).forEach(l => { delete u.done[l.id]; for (const f of ['ex', 'ler', 'exp']) delete (u[f] || {})[l.id]; delete u.attempts[l.id]; });
-          [...checkpoints, ...finals].filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; delete u.cptry[c.id]; });
+          [...checkpoints, ...finals, ...projects].filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; delete u.cptry[c.id]; });
           delete u.passed[`${t}-${L}`]; delete u.exams[`${t}-${L}`];
         }
         audit(req, 'zerou-progresso', who, `${t} ${all ? 'todos os níveis' : 'nível ' + lv}`); break;

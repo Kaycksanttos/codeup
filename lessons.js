@@ -70,5 +70,10 @@ for (const t of tests) {
 }
 const checkpoints = tests.filter(t => t.cp), finals = tests.filter(t => t.fin);
 
+// PROJETOS: depois das lições 5, 10, 15, 20, 25 e 30 de cada nível o aluno faz um projeto com o que aprendeu nas 5 últimas lições (content/projects.js).
+// Não são provas: não gastam chance, não fazem voltar lição e têm dica e solução. Mas são obrigatórios: a lição seguinte (e a prova que vem depois do projeto das lições 10, 20 e 30) só libera com o projeto feito.
+const projects = require('./content/projects').map(fill);
+for (const p of projects) p.cobre = lessons.filter(l => l.track === p.track && l.lv === p.lv && l.n > p.after - 5 && l.n <= p.after).map(l => l.title);   // temas das 5 lições do projeto
+
 module.exports = lessons;
-Object.assign(module.exports, { checkpoints, finals, tests, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });
+Object.assign(module.exports, { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });

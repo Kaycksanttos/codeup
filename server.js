@@ -5,7 +5,7 @@ const { Worker } = require('worker_threads');
 const lessons = require('./lessons');
 const EXPLAIN = require('./explain');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
-const { checkpoints, finals, tests, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
+const { checkpoints, finals, tests, projects, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
 const TRACK_NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
 const xlcheck = require('./xlcheck');   // correção das atividades de Excel (compara os resultados das fórmulas)
 const daxcheck = require('./daxcheck'), quizcheck = require('./quizcheck');   // Power BI e DAX: medidas DAX (compara os resultados nos visuais) e quizzes (escolher, ordenar, ligar, número, montar visual, escrever)
@@ -186,9 +186,11 @@ function readPub(u, l) {                                                        
   return { ...readMeta(l), k: r.k, q: r.q, code: r.code, sheet: r.sheet, ask: r.ask, table: r.table, chart: r.chart, text: r.text, diagram: r.diagram, data: r.data, lang: r.lang, model: r.model, unit: r.unit, tables: names.length ? names : undefined, opts: r.k === 'mc' ? shuffled([r.ok, ...r.no], u.id + l.id) : undefined, done: !!u.done[l.id] };
 }
 const idx = id => lessons.findIndex(l => l.id === String(id));
-const ACT = new Map([...lessons, ...tests].map(l => [l.id, l]));                       // lições + checkpoints + provas finais
+const ACT = new Map([...lessons, ...tests, ...projects].map(l => [l.id, l]));       // lições + checkpoints + provas finais + projetos
 const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
+const PJ_AT = new Map(projects.map(p => [`${p.track}-${p.lv}-${p.after}`, p]));          // projeto que vem depois da lição 5, 10, 15, 20, 25 e 30
+const pjDone = (u, track, lv, n) => { const p = PJ_AT.get(`${track}-${lv}-${n}`); return !p || !!(u.cpdone || {})[p.id]; };   // o projeto feito fica guardado junto com os checkpoints (cpdone)
 const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
 const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
 const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
@@ -202,15 +204,25 @@ function lockOf(u, l) {
   if (!courseOn(l.track)) return 'off';                     // curso desligado pelo dono: ninguém abre (nem quem tinha liberado)
   if (unlocked(u, l.track)) return null;                    // liberado pelo dono
   if (!levelOpen(u, l.track, l.lv)) return 'level';
-  if (l.fin) return levelDone(u, l.track, l.lv) ? null : 'seq';                          // a prova final libera depois das 30 lições
-  if (l.cp) { const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); return prev && u.done[prev.id] ? null : 'seq'; }   // checkpoint libera depois da lição 10 e da 20
+  if (l.fin) { if (u.passed[key(l.track, l.lv)]) return null; return !levelDone(u, l.track, l.lv) ? 'seq' : pjDone(u, l.track, l.lv, 30) ? null : 'pj'; }   // a prova final libera depois das 30 lições e do projeto da lição 30 (quem já passou pode treinar)
+  if (l.cp) {                                                                              // checkpoint libera depois da lição 10 (ou 20) e do projeto dela
+    if (u.cpdone[l.id]) return null;
+    const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); if (!(prev && u.done[prev.id])) return 'seq';
+    return pjDone(u, l.track, l.lv, l.after) ? null : 'pj';
+  }
+  if (l.proj) { const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); return prev && u.done[prev.id] ? null : 'seq'; }   // o projeto libera quando a lição dele (5, 10, 15...) está feita
   if (l.n > 1 && !u.done[lessons[idx(l.id) - 1].id]) return 'seq';
-  if (!u.done[l.id] && l.n > 1 && (l.n - 1) % 10 === 0) { const c = cpBefore(l); if (c && !u.cpdone[c.id]) return 'cp'; }   // as lições 11 e 21 só liberam depois do checkpoint (a prova com o que se aprendeu)
+  if (!u.done[l.id] && l.n > 1 && (l.n - 1) % 5 === 0) {                                   // as lições 6, 11, 16, 21 e 26 só liberam com o projeto da lição anterior; a 11 e a 21 também com o checkpoint
+    const c = (l.n - 1) % 10 === 0 ? cpBefore(l) : null;
+    if (!(c && u.cpdone[c.id]) && !pjDone(u, l.track, l.lv, l.n - 1)) return 'pj';         // (quem já passou no checkpoint antes de existirem os projetos não é barrado)
+    if (c && !u.cpdone[c.id]) return 'cp';
+  }
   return null;
 }
 const cpBefore = l => CP_AFTER.get(`${l.track}-${l.lv}-${l.n - 1}`);   // checkpoint que vem logo antes da lição l (ou undefined)
-const LOCK_MSG = { off: 'Este curso não está disponível no momento.', level: 'Passe na prova final do nível anterior para liberar este nível.', seq: 'Conclua a lição anterior para liberar esta.', cp: 'Passe no checkpoint (a prova com o que você aprendeu nas últimas 10 lições) para liberar esta lição.' };
-const lockMsg = (lock, l) => lock === 'seq' && (l.cp || l.fin) ? (l.fin ? 'Conclua as 30 lições do nível para liberar a prova final.' : `Conclua a lição ${l.after} para liberar este checkpoint.`) : LOCK_MSG[lock];
+const LOCK_MSG = { off: 'Este curso não está disponível no momento.', level: 'Passe na prova final do nível anterior para liberar este nível.', seq: 'Conclua a lição anterior para liberar esta.', pj: 'Faça o projeto das últimas 5 lições para liberar esta lição.', cp: 'Passe no checkpoint (a prova com o que você aprendeu nas últimas 10 lições) para liberar esta lição.' };
+const lockMsg = (lock, l) => lock === 'seq' && (l.cp || l.fin || l.proj) ? (l.fin ? 'Conclua as 30 lições do nível para liberar a prova final.' : l.proj ? `Conclua a lição ${l.after} para liberar este projeto.` : `Conclua a lição ${l.after} para liberar este checkpoint.`)
+  : lock === 'pj' && (l.cp || l.fin) ? `Faça o projeto da lição ${l.after} para liberar ${l.fin ? 'a prova final' : 'este checkpoint'}.` : LOCK_MSG[lock];
 const isTest = l => !!(l.cp || l.fin);
 const chancesLeft = (u, l) => Math.max(0, l.chances - ((u.cptry || {})[l.id] || 0));    // chances que ainda restam nesta prova
 const levelDone = (u, track, lv) => levelLessons(track, lv).every(l => u.done[l.id]);
@@ -345,6 +357,9 @@ const legal = name => (req, res) => {
   res.type('html').send(html);
 };
 app.get('/termos', legal('termos')); app.get('/privacidade', legal('privacidade'));
+// guias públicos (texto das lições, sem login): é aqui — e só aqui — que ficam os anúncios; o app em si (mapa, abas, resultados) não mostra anúncio
+// porque o AdSense não permite anúncio em telas de navegação ou sem conteúdo do dono do site
+require('./guides').mount(app, { lessons, projects, env: () => ({ base: BASE, company: COMPANY, contact: CONTACT }), ads: () => adsNow() });
 
 // ads.txt: o AdSense exige este arquivo na raiz do site para pagar pelos anúncios
 app.get('/ads.txt', (req, res) => { const a = adsNow(); return a.client ? res.set('Cache-Control', 'public, max-age=300').type('text/plain').send(`google.com, ${a.client.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n`) : res.sendStatus(404); });
@@ -617,6 +632,10 @@ app.get('/api/lessons', auth, (req, res) =>
 app.get('/api/checkpoints', auth, (req, res) =>
   res.json(tests.map(c => ({ id: c.id, title: c.title, type: c.type, track: c.track, lv: c.lv, k: c.k, after: c.after, xp: c.xp, fin: !!c.fin, chances: c.chances, left: chancesLeft(req.u, c), back: c.back, backFrom: c.backFrom, lock: lockOf(req.u, c) }))));
 
+// projetos: um depois de cada 5 lições (5, 10, 15, 20, 25 e 30). A conclusão fica em `cps` do perfil (junto com os checkpoints)
+app.get('/api/projects', auth, (req, res) =>
+  res.json(projects.map(p => ({ id: p.id, title: p.title, type: p.type, track: p.track, lv: p.lv, k: p.k, after: p.after, xp: p.xp, proj: true, lock: lockOf(req.u, p) }))));
+
 app.get('/api/lessons/:id', auth, (req, res) => {
   const l = actOf(req.params.id);
   if (!l) return res.sendStatus(404);
@@ -730,8 +749,8 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
         (u.ex ??= {})[k] = { code, date }; if (u.done[k]) u.done[k] = { code, date };                // lição já concluída (treino): só atualiza o código
         gained = award(u, l, 'x'); finishLesson(u, l, code);                           // a parte do XP desta atividade, só na 1ª vez; e conclui a lição se era a última
       } else {
-        (l.cp ? u.cpdone : u.done)[k] = { code, date };
-        if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + 5; }   // pontos só na 1ª vez, mesmo se o nível for refeito
+        (l.cp || l.proj ? u.cpdone : u.done)[k] = { code, date };
+        if (!u.xpd[k]) { u.xpd[k] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + (l.proj ? 10 : 5); }   // pontos só na 1ª vez, mesmo se o nível for refeito (projeto vale 10 diamantes)
       }
     }
     if (test) delete u.cptry[k];
@@ -814,7 +833,7 @@ app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
 // ============================================================================
 let SQL_SELF = null;                                      // resultado do autoteste do corretor de SQL (true/false)
 const admin = require('./admin')(app, {
-  DB, save, limit, tooMany, sha, same, lessons, checkpoints, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf,
+  DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf,
   info: () => { const a = adsNow(); return { mail: mailReady, verifyOn: VERIFY_ON, google: !!GOOGLE_ID, ads: a.on ? 'on' : ADS_PREVIEW ? 'preview' : 'off', adsFrom: a.from, adsClient: a.client, adsSlot: !!a.slot, pyServer: PY_SERVER, sqlServer: SQL_SELF, company: COMPANY, contact: CONTACT }; }
 });
 
