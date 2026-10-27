@@ -1229,3 +1229,10 @@ body.neo .tl .ti.cur .rail span.nd:before{display:none}   /* o anel de progresso
 .tour.tut h3{font-size:17px;padding-right:54px}.tour.tut p{font-size:14px;line-height:1.5}.tour.tut p b{color:var(--text)}
 .tutx{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--mute);font:700 12px/1 inherit;padding:6px 8px;cursor:pointer;text-decoration:underline}.tutx:hover{color:var(--text)}
 body.tutmode #app{padding-bottom:380px}
+
+/* Celular: campo de texto com letra menor que 16px faz o navegador (iPhone) dar zoom na tela ao tocar para escrever.
+   No toque, tudo o que o aluno digita usa 16px. O editor, os números de linha e o texto colorido têm de ter o MESMO tamanho para continuar alinhados. */
+@media (pointer:coarse){
+  input,textarea,select{font-size:16px!important}
+  .ed textarea,.edb .gut,.edb .hlp{font-size:16px!important}
+}

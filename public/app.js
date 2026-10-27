@@ -1185,7 +1185,14 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
   dockBar();
-  if (X) xlInit(l); else if (Q) qzInit(); else { editor(l); const ed = $('#ed'); ed.addEventListener('focus', () => { if (ed.selectionStart == 0 && ed.selectionEnd == 0) ed.setSelectionRange(ed.value.length, ed.value.length); }, { once: true }); }
+  if (X) xlInit(l); else if (Q) qzInit(); else {
+    editor(l); const ed = $('#ed');
+    ed.addEventListener('focus', () => {
+      // o texto-guia ("-- escreva sua consulta aqui") some assim que o aluno toca para escrever; se o campo só tem comentários, esvazia
+      if (ed.value.split('\n').every(x => /^\s*((--|#|\/\/).*)?$/.test(x))) { ed.value = ''; ed.dispatchEvent(new Event('input')); }
+      else if (ed.selectionStart == 0 && ed.selectionEnd == 0) ed.setSelectionRange(ed.value.length, ed.value.length);
+    }, { once: true });
+  }
   window.scrollTo(0, 0); tutAuto();
 }
 // texto das chances restantes de uma prova
@@ -1310,12 +1317,20 @@ function limpar() {
   const ed = $('#ed'); if (!ed || S.busy) return; ++S.lt; ed.value = ''; ed.dispatchEvent(new Event('input')); ed.focus();
   const o = $('#out'); o.className = 'out'; o.innerHTML = S.cur && S.cur.type == 'dax' ? OUT0D : OUT0; setFb('idle');
 }
-// O botão Concluído fica preso ao rodapé da tela; quando o teclado do celular abre, ele sobe junto e continua à vista.
-let dockOn = false;
+// O botão Concluído fica preso ao rodapé da tela. Só sai do lugar quando o teclado do celular abre (sobe uma vez, para não ficar escondido) e quando fecha (volta).
+// Não se mexe com a rolagem nem com a digitação (mudanças de 1 px são ignoradas) e ignora o zoom com os dedos, que antes fazia o botão subir e descer.
+let dockOn = false, dockKb = 0, dockRaf = 0;
 function dockBar() {
-  const fit = () => { const bar = $('.dbar'), vv = window.visualViewport; if (!bar || !vv) return; const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)); bar.style.transform = kb > 40 ? `translateY(${-kb}px)` : ''; };
-  if (!dockOn && window.visualViewport) { dockOn = true; visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', fit); }
-  fit();
+  const vv = window.visualViewport;
+  const fit = () => {
+    const bar = $('.dbar'); if (!bar || !vv || vv.scale > 1.02) return;
+    const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)), v = kb > 40 ? kb : 0;
+    if (Math.abs(v - dockKb) < 2) return;
+    dockKb = v; bar.style.transform = v ? `translate3d(0,${-v}px,0)` : '';
+  };
+  const soon = () => { cancelAnimationFrame(dockRaf); dockRaf = requestAnimationFrame(fit); };
+  if (!dockOn && vv) { dockOn = true; vv.addEventListener('resize', soon); vv.addEventListener('scroll', soon); }
+  dockKb = 0; fit();   // a tela nova começa com o botão no lugar de fábrica; se o teclado já estiver aberto, sobe agora
 }
 
 const table = r => !r ? '<i>(tabela vazia)</i>' : `<div class=tw><table><tr>${r.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr>${r.values.slice(0, 200).map(v => `<tr>${v.map(x => `<td>${x === null ? '<i>NULL</i>' : esc(x)}</td>`).join('')}</tr>`).join('')}</table></div>`;
