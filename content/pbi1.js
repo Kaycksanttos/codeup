@@ -108,7 +108,7 @@ exports.lessons = [
     ], { hint: 'Cartão = só valores. Tabela = várias colunas. Segmentação = só o campo do filtro.' }),
 
   Q('Medida ou coluna calculada?', 'No Power BI os cálculos são escritos em DAX. A coluna calculada é feita linha por linha e fica guardada na tabela. A medida é calculada na hora, conforme os filtros do visual, e dá um número por grupo.',
-    '-- medida: muda com o filtro\nTotal Vendas = SUM(Vendas[Valor])\n\n-- coluna calculada: um valor em cada linha\nVendas[Valor Unitário] = Vendas[Valor] / Vendas[Qtd]', 'Decida quando usar uma medida e quando usar uma coluna calculada.', [
+    '-- medida: muda com o filtro\nTotal Vendas = SUM(Vendas[Valor])\n\n-- coluna calculada: um valor em cada linha\nVendas[Valor Unitario] = Vendas[Valor] / Vendas[Qtd]', 'Decida quando usar uma medida e quando usar uma coluna calculada.', [
       multi('Quais destes cálculos são melhores como MEDIDA?', ['Total de vendas', 'Média de vendas por cliente', 'Quantidade de clientes'], ['Nome do cliente em maiúsculas', 'Preço unitário de cada venda'], 'Totais, médias e contagens mudam conforme o filtro e dão **um número por grupo**: são medidas. Valores calculados para **cada linha** são colunas.'),
       mc('Quando uma medida é calculada?', 'Na hora, conforme os filtros do visual', ['Uma vez só, quando os dados são carregados', 'Só quando você salva o arquivo no computador', 'Nunca: a medida é só um nome sem cálculo'], 'A medida **recalcula** sempre que o filtro muda (por exemplo, quando você clica numa segmentação).'),
       mc('Quando uma coluna calculada é calculada?', 'Uma vez por linha, quando os dados são carregados', ['A cada clique do usuário nos filtros', 'Só dentro do gráfico, na hora de desenhar', 'Nunca é calculada: é só um nome'], 'A coluna calculada **vira parte da tabela** e fica gravada: ocupa espaço, mas não recalcula com os filtros.'),
@@ -129,9 +129,9 @@ exports.lessons = [
     { model: 'loja', views: [{ by: ['Vendas[Canal]'], title: 'Por canal' }], answer: { 'Qtd de Vendas': 'COUNTROWS(Vendas)' }, need: ['COUNTROWS'], hint: 'COUNTROWS recebe só o nome da tabela: COUNTROWS(Vendas).' }),
 
   D('Média, mínimo e máximo', 'AVERAGE calcula a média de uma coluna, MIN acha o menor valor e MAX acha o maior. Cada uma é uma medida que responde conforme o filtro.',
-    'Venda Média = AVERAGE(Vendas[Valor])',
-    'Crie três medidas: Venda Média (AVERAGE), Maior Venda (MAX) e Menor Venda (MIN), todas sobre a coluna Valor.',
-    { model: 'loja', views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { '*': 'moeda' } }], answer: { 'Venda Média': 'AVERAGE(Vendas[Valor])', 'Maior Venda': 'MAX(Vendas[Valor])', 'Menor Venda': 'MIN(Vendas[Valor])' }, need: ['AVERAGE', 'MAX', 'MIN'], hint: 'Uma medida por linha: Venda Média = AVERAGE(Vendas[Valor]), e o mesmo jeito com MAX e MIN.' }),
+    'Venda Media = AVERAGE(Vendas[Valor])',
+    'Crie três medidas: Venda Media (AVERAGE), Maior Venda (MAX) e Menor Venda (MIN), todas sobre a coluna Valor.',
+    { model: 'loja', views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { '*': 'moeda' } }], answer: { 'Venda Media': 'AVERAGE(Vendas[Valor])', 'Maior Venda': 'MAX(Vendas[Valor])', 'Menor Venda': 'MIN(Vendas[Valor])' }, need: ['AVERAGE', 'MAX', 'MIN'], hint: 'Uma medida por linha: Venda Media = AVERAGE(Vendas[Valor]), e o mesmo jeito com MAX e MIN.' }),
 
   D('Contando sem repetir: DISTINCTCOUNT', 'DISTINCTCOUNT conta quantos valores diferentes existem numa coluna. Um cliente que comprou cinco vezes conta uma vez só.',
     'Clientes Atendidos = DISTINCTCOUNT(Vendas[ClienteID])',
@@ -139,14 +139,14 @@ exports.lessons = [
     { model: 'loja', views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria' }], answer: { 'Clientes Atendidos': 'DISTINCTCOUNT(Vendas[ClienteID])' }, need: ['DISTINCTCOUNT'], hint: 'DISTINCTCOUNT(Vendas[ClienteID]) conta cada cliente uma vez só.' }),
 
   D('Contas dentro da medida', 'Uma medida pode fazer contas: o DAX calcula primeiro o SUM e depois faz a multiplicação, a divisão, a soma ou a subtração. Atenção: no Power BI em português do Brasil o decimal usa vírgula (0,05) e os argumentos das funções se separam por ponto e vírgula. Aqui você pode escrever do jeito que preferir: com ponto (0.05) ou com vírgula (0,05).',
-    'Comissão = SUM(Vendas[Valor]) * 0.05',
-    'Crie duas medidas: Comissão (5% do total de vendas) e Total com Desconto (o total de vendas com 10% de desconto, ou seja, 90% do total).',
-    { model: 'loja', views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { '*': 'moeda' } }], answer: { 'Comissão': 'SUM(Vendas[Valor]) * 0.05', 'Total com Desconto': 'SUM(Vendas[Valor]) * 0.9' }, need: ['SUM'], hint: '5% é 0.05 e 90% é 0.9. Escreva uma medida por linha: Comissão = SUM(Vendas[Valor]) * 0.05' }),
+    'Comissao = SUM(Vendas[Valor]) * 0.05',
+    'Crie duas medidas: Comissao (5% do total de vendas) e Total com Desconto (o total de vendas com 10% de desconto, ou seja, 90% do total).',
+    { model: 'loja', views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { '*': 'moeda' } }], answer: { 'Comissao': 'SUM(Vendas[Valor]) * 0.05', 'Total com Desconto': 'SUM(Vendas[Valor]) * 0.9' }, need: ['SUM'], hint: '5% é 0.05 e 90% é 0.9. Escreva uma medida por linha: Comissao = SUM(Vendas[Valor]) * 0.05' }),
 
   D('Medidas que usam medidas', 'Dá para usar uma medida dentro de outra: é só escrever o nome dela entre colchetes. Assim você não repete a fórmula e, se mudar a medida original, as outras mudam junto. Neste modelo já existem [Total Vendas] (a soma do Valor) e [Qtd de Vendas] (o número de vendas).',
-    'Ticket Médio = [Total Vendas] / [Qtd de Vendas]',
-    'Crie a medida Ticket Médio: o Total Vendas dividido pela Qtd de Vendas. Use as medidas que já existem, sem escrever SUM nem COUNTROWS.',
-    { model: 'loja', extra: { measures: { 'Total Vendas': 'SUM(Vendas[Valor])', 'Qtd de Vendas': 'COUNTROWS(Vendas)' } }, views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { '*': 'moeda' } }], answer: { 'Ticket Médio': '[Total Vendas] / [Qtd de Vendas]' }, forbid: ['SUM', 'COUNTROWS'], hint: 'Medida dentro de medida vai entre colchetes: [Total Vendas] / [Qtd de Vendas].' }),
+    'Ticket Medio = [Total Vendas] / [Qtd de Vendas]',
+    'Crie a medida Ticket Medio: o Total Vendas dividido pela Qtd de Vendas. Use as medidas que já existem, sem escrever SUM nem COUNTROWS.',
+    { model: 'loja', extra: { measures: { 'Total Vendas': 'SUM(Vendas[Valor])', 'Qtd de Vendas': 'COUNTROWS(Vendas)' } }, views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { '*': 'moeda' } }], answer: { 'Ticket Medio': '[Total Vendas] / [Qtd de Vendas]' }, forbid: ['SUM', 'COUNTROWS'], hint: 'Medida dentro de medida vai entre colchetes: [Total Vendas] / [Qtd de Vendas].' }),
 
   D('Dividir com segurança: DIVIDE', 'Dividir por zero dá erro. A função DIVIDE(numerador, denominador, resultado alternativo) faz a divisão e, se não der para dividir, devolve o terceiro valor (ou fica vazio, se você não escrever nada). Já existem as medidas [Total Online] (vendas do canal Online) e [Vendas Online] (quantas vendas foram Online).',
     'Ticket Online = DIVIDE([Total Online], [Vendas Online], 0)',
@@ -154,14 +154,14 @@ exports.lessons = [
     { model: 'loja', extra: { measures: { 'Total Online': 'CALCULATE(SUM(Vendas[Valor]), Vendas[Canal] = "Online")', 'Vendas Online': 'CALCULATE(COUNTROWS(Vendas), Vendas[Canal] = "Online")' } }, views: [{ by: ['Produtos[Produto]'], title: 'Por produto', fmt: { '*': 'moeda' } }], answer: { 'Ticket Online': 'DIVIDE([Total Online], [Vendas Online], 0)' }, need: ['DIVIDE'], hint: 'DIVIDE tem três partes: DIVIDE([Total Online], [Vendas Online], 0). O 0 é o que aparece quando não dá para dividir.' }),
 
   Q('Nomes e formatos das medidas', 'Uma medida precisa de um nome claro (para quem lê o relatório) e de um formato (moeda, porcentagem, número). O formato só muda como o número é mostrado: o valor guardado continua o mesmo.',
-    'Ticket Médio = DIVIDE([Total Vendas], [Qtd de Vendas], 0)   →  formato: moeda (R$)', 'Escolha bons nomes, o formato certo e confira uma conta de Ticket Médio.', [
-      mc('Qual é o melhor nome para uma medida que soma o valor das vendas?', 'Total Vendas', ['Medida1', 'x', 'Cálculo novo final 2'], 'Um bom nome diz **o que a medida calcula**. "Medida1" ou "x" não explicam nada para quem abre o relatório.'),
+    'Ticket Medio = DIVIDE([Total Vendas], [Qtd de Vendas], 0)   →  formato: moeda (R$)', 'Escolha bons nomes, o formato certo e confira uma conta de Ticket Medio.', [
+      mc('Qual é o melhor nome para uma medida que soma o valor das vendas?', 'Total Vendas', ['Medida1', 'x', 'Calculo novo final 2'], 'Um bom nome diz **o que a medida calcula**. "Medida1" ou "x" não explicam nada para quem abre o relatório.'),
       match('Ligue cada medida ao formato mais adequado:', [['Total Vendas', 'Moeda (R$)'], ['Participação da categoria no total', 'Porcentagem (%)'], ['Qtd de Vendas', 'Número inteiro'], ['Venda por cliente com centavos (R$ 15,56)', 'Moeda com 2 casas']],
         'Dinheiro pede **moeda**, parte do todo pede **porcentagem** e contagem pede **número inteiro**.'),
       mc('O formato de moeda muda o número guardado pela medida?', 'Não: só muda como o número aparece na tela', ['Sim: apaga os centavos do valor para sempre e não dá para voltar', 'Sim: transforma o número em texto e ele não soma mais', 'Sim: muda a fórmula da medida por baixo dos panos'], 'O formato é só a **aparência**. O valor calculado continua exato por baixo.'),
       mc('Qual formato combina com esta medida?', 'Porcentagem', ['Data', 'Texto', 'Moeda (R$)'], 'Dividir uma parte pelo todo dá um número entre 0 e 1, que fica claro como **porcentagem** (0,25 vira 25%).', { code: 'Taxa Online = DIVIDE([Vendas Online], [Qtd de Vendas])', lang: 'dax', codeCheck: false }),
       mc('Por que escrever [Total Vendas] / [Qtd de Vendas] é melhor do que repetir o SUM e o COUNTROWS dentro da conta?', 'Se a regra do total mudar, basta mudar uma medida e todas as outras acompanham', ['Porque o Power BI só aceita medidas escritas com colchetes dentro da conta', 'Porque assim a medida fica sempre mais lenta e mais complicada', 'Porque o resultado da conta muda para um valor bem menor'], 'Uma regra escrita **num lugar só** evita erros: ninguém esquece de arrumar uma cópia.'),
-      num('Total Vendas = R$ 747,00 e Qtd de Vendas = 48. Qual é o Ticket Médio, arredondado para 2 casas decimais?', 15.56, '747 ÷ 48 = 15,5625, que arredondado vira **15,56**.', { tol: 0.01, unit: 'reais', calc: () => dax('ROUND(DIVIDE(SUM(Vendas[Valor]), COUNTROWS(Vendas)), 2)') }),
+      num('Total Vendas = R$ 747,00 e Qtd de Vendas = 48. Qual é o Ticket Medio, arredondado para 2 casas decimais?', 15.56, '747 ÷ 48 = 15,5625, que arredondado vira **15,56**.', { tol: 0.01, unit: 'reais', calc: () => dax('ROUND(DIVIDE(SUM(Vendas[Valor]), COUNTROWS(Vendas)), 2)') }),
       order('Coloque na ordem os passos para criar uma medida nova:', ['Dar um nome claro à medida', 'Escrever a fórmula depois do sinal de igual', 'Escolher o formato (moeda, %, número)', 'Colocar a medida num visual', 'Conferir se o número faz sentido'], 'Nome, fórmula, formato, visual e, por fim, **conferir**: um número bonito mas errado é pior que nenhum.')
     ], { lang: 'dax', hint: 'Pense em quem vai ler o relatório: o nome e o formato precisam dizer o que o número significa.' }),
 
@@ -178,21 +178,21 @@ exports.lessons = [
   // ------------------------------------------------------------------ bloco 3
   D('Sua primeira coluna calculada', 'A coluna calculada é uma coluna nova dentro de uma tabela: o DAX faz a conta em cada linha. Você escreve Tabela[Nome da coluna] = fórmula. Dentro da fórmula, Vendas[Valor] quer dizer "o valor DESTA linha".',
     'Vendas[Dobro] = Vendas[Valor] * 2',
-    'Na tabela Vendas, crie a coluna calculada Valor Unitário: o Valor da venda dividido pela Qtd.',
-    { model: 'loja', mode: 'column', table: 'Vendas', answer: { 'Valor Unitário': 'DIVIDE(Vendas[Valor], Vendas[Qtd])' }, hint: 'Vendas[Valor Unitário] = DIVIDE(Vendas[Valor], Vendas[Qtd]). Também vale usar a barra (/).' }),
+    'Na tabela Vendas, crie a coluna calculada Valor Unitario: o Valor da venda dividido pela Qtd.',
+    { model: 'loja', mode: 'column', table: 'Vendas', answer: { 'Valor Unitario': 'DIVIDE(Vendas[Valor], Vendas[Qtd])' }, hint: 'Vendas[Valor Unitario] = DIVIDE(Vendas[Valor], Vendas[Qtd]). Também vale usar a barra (/).' }),
 
   D('Decidindo com IF', 'IF faz uma pergunta e escolhe entre duas respostas: IF(pergunta, resposta se for verdade, resposta se for falso). Numa coluna calculada, cada linha responde por si mesma.',
-    'Vendas[Online?] = IF(Vendas[Canal] = "Online", "Sim", "Não")',
+    'Vendas[Online?] = IF(Vendas[Canal] = "Online", "Sim", "Nao")',
     'Na tabela Vendas, crie a coluna Porte: "Grande" quando o Valor for 20 ou mais e "Pequena" nos outros casos.',
     { model: 'loja', mode: 'column', table: 'Vendas', answer: { 'Porte': 'IF(Vendas[Valor] >= 20, "Grande", "Pequena")' }, need: ['IF'], hint: 'IF(Vendas[Valor] >= 20, "Grande", "Pequena"). Os textos vão entre aspas.' }),
 
   D('Vários casos: SWITCH', 'Quando há mais de duas respostas, vários IF um dentro do outro ficam confusos. SWITCH(TRUE(), condição 1, resposta 1, condição 2, resposta 2, ..., resposta final) testa as condições em ordem e devolve a resposta da primeira que for verdadeira.',
     'Vendas[Tamanho] = SWITCH(TRUE(), Vendas[Qtd] = 1, "Uma", Vendas[Qtd] <= 3, "Poucas", "Muitas")',
-    'Na tabela Produtos, crie a coluna Faixa de Preço: "Barato" se o Preco for menor que 5, "Médio" se for menor que 10 e "Caro" nos outros casos.',
-    { model: 'loja', mode: 'column', table: 'Produtos', answer: { 'Faixa de Preço': 'SWITCH(TRUE(), Produtos[Preco] < 5, "Barato", Produtos[Preco] < 10, "Médio", "Caro")' }, need: ['SWITCH'], hint: 'SWITCH(TRUE(), Produtos[Preco] < 5, "Barato", Produtos[Preco] < 10, "Médio", "Caro"). A última resposta, sem condição, vale para os outros casos.' }),
+    'Na tabela Produtos, crie a coluna Faixa de Preco: "Barato" se o Preco for menor que 5, "Medio" se for menor que 10 e "Caro" nos outros casos.',
+    { model: 'loja', mode: 'column', table: 'Produtos', answer: { 'Faixa de Preco': 'SWITCH(TRUE(), Produtos[Preco] < 5, "Barato", Produtos[Preco] < 10, "Medio", "Caro")' }, need: ['SWITCH'], hint: 'SWITCH(TRUE(), Produtos[Preco] < 5, "Barato", Produtos[Preco] < 10, "Medio", "Caro"). A última resposta, sem condição, vale para os outros casos.' }),
 
   D('Buscando em outra tabela: RELATED', 'A tabela Vendas não tem o custo do produto: ele está na tabela Produtos. RELATED ("relacionado") busca, para cada venda, o valor de uma coluna da tabela do lado "um", usando o relacionamento entre elas.',
-    'Vendas[Preço de Tabela] = RELATED(Produtos[Preco])',
+    'Vendas[Preco de Tabela] = RELATED(Produtos[Preco])',
     'Na tabela Vendas, crie a coluna Lucro da Venda: o Valor menos a Qtd vezes o Custo do produto (o Custo está na tabela Produtos).',
     { model: 'loja', mode: 'column', table: 'Vendas', answer: { 'Lucro da Venda': 'Vendas[Valor] - Vendas[Qtd] * RELATED(Produtos[Custo])' }, need: ['RELATED'], hint: 'Vendas[Valor] - Vendas[Qtd] * RELATED(Produtos[Custo]). A multiplicação é feita antes da subtração.' }),
 
@@ -203,8 +203,8 @@ exports.lessons = [
 
   D('Datas: ano, mês e dia', 'Com uma coluna de data dá para tirar pedaços: YEAR devolve o ano, MONTH o número do mês e DAY o dia. FORMAT escreve a data do jeito que você pedir, por exemplo "yyyy-mm" (ano e mês).',
     'Vendas[Ano da Venda] = YEAR(Vendas[Data])',
-    'Na tabela Vendas, crie duas colunas: Mês da Venda (o número do mês da data da venda) e Ano e Mês (a data escrita assim: 2024-03, usando FORMAT com "yyyy-mm").',
-    { model: 'loja', mode: 'column', table: 'Vendas', answer: { 'Mês da Venda': 'MONTH(Vendas[Data])', 'Ano e Mês': 'FORMAT(Vendas[Data], "yyyy-mm")' }, need: ['MONTH', 'FORMAT'], hint: 'MONTH(Vendas[Data]) devolve o mês. FORMAT(Vendas[Data], "yyyy-mm") escreve ano, traço e mês.' }),
+    'Na tabela Vendas, crie duas colunas: Mes da Venda (o número do mês da data da venda) e Ano e Mes (a data escrita assim: 2024-03, usando FORMAT com "yyyy-mm").',
+    { model: 'loja', mode: 'column', table: 'Vendas', answer: { 'Mes da Venda': 'MONTH(Vendas[Data])', 'Ano e Mes': 'FORMAT(Vendas[Data], "yyyy-mm")' }, need: ['MONTH', 'FORMAT'], hint: 'MONTH(Vendas[Data]) devolve o mês. FORMAT(Vendas[Data], "yyyy-mm") escreve ano, traço e mês.' }),
 
   Q('Contexto de filtro: cada célula tem o seu', 'Quando você coloca uma medida num visual, o Power BI calcula a medida de novo em cada célula, com os filtros daquela célula: a linha, a coluna e as segmentações da página. Esse conjunto de filtros é o contexto de filtro. A fórmula é a mesma, mas o resultado muda.',
     'Total Vendas = SUM(Vendas[Valor])\n-- na linha "Lanches" só entram as vendas de Lanches', 'Descubra por que a mesma medida mostra números diferentes em cada lugar.', [
@@ -222,9 +222,9 @@ exports.lessons = [
       num('Somando as três linhas de clientes atendidos da tabela, quanto dá?', 15, '6 + 5 + 4 = **15**. Guarde esse número: daqui a pouco ele vai ser comparado com o total do cartão.', { table: tab(['Categoria', 'Clientes Atendidos'], [['Bebidas', 6], ['Doces', 5], ['Lanches', 4]], { title: 'Clientes Atendidos por categoria' }), calc: () => [6, 5, 4].reduce((a, b) => a + b, 0) }),
       num('O cartão do mesmo relatório, sem nenhuma segmentação, mostra Clientes Atendidos. O modelo tem 6 clientes cadastrados e todos compraram alguma coisa. Quantos clientes diferentes o cartão mostra?', 6, 'O modelo só tem **6 clientes**. Quem comprou em mais de uma categoria aparece em várias linhas, mas conta uma vez só no total.', { calc: () => dax('DISTINCTCOUNT(Vendas[ClienteID])') }),
       mc('Por que o total (6) é menor que a soma das linhas (15)?', 'Um mesmo cliente comprou em mais de uma categoria e o total conta cada cliente uma vez só', ['O Power BI esqueceu de somar três clientes', 'O total sempre vale metade da soma das linhas', 'Os clientes que compraram duas vezes são apagados'], 'DISTINCTCOUNT conta **valores diferentes**. No total, o cliente que aparece em três linhas conta uma vez.'),
-      multi('Em quais destas medidas o total NÃO é a soma das linhas?', ['Clientes Atendidos (DISTINCTCOUNT)', 'Venda Média (AVERAGE)', 'Maior Venda (MAX)'], ['Total Vendas (SUM)', 'Qtd de Vendas (COUNTROWS)'], 'Somas e contagens de linhas fecham. **Distintos, médias, máximos e mínimos** não se somam.'),
-      mc('A Venda Média do total é R$ 15,56, mas a média das três linhas (11,32, 13,71 e 22,67) daria R$ 15,90. Por que o total é diferente?', 'O total calcula a média de todas as vendas juntas, e cada categoria tem um número diferente de vendas', ['O Power BI arredonda o total sempre para baixo', 'O total ignora as vendas da categoria Lanches', 'O total soma as médias e divide o resultado por dois'], 'A média das médias dá o **mesmo peso a cada categoria**. O total pega **todas as 48 vendas** de uma vez, então categorias com mais vendas pesam mais.',
-        { table: tab(['Categoria', 'Venda Média'], [['Bebidas', 11.32], ['Doces', 13.71], ['Lanches', 22.67], ['Total', 15.56]], { title: 'Venda Média por categoria', fmt: { 1: 'moeda' } }) }),
+      multi('Em quais destas medidas o total NÃO é a soma das linhas?', ['Clientes Atendidos (DISTINCTCOUNT)', 'Venda Media (AVERAGE)', 'Maior Venda (MAX)'], ['Total Vendas (SUM)', 'Qtd de Vendas (COUNTROWS)'], 'Somas e contagens de linhas fecham. **Distintos, médias, máximos e mínimos** não se somam.'),
+      mc('A Venda Media do total é R$ 15,56, mas a média das três linhas (11,32, 13,71 e 22,67) daria R$ 15,90. Por que o total é diferente?', 'O total calcula a média de todas as vendas juntas, e cada categoria tem um número diferente de vendas', ['O Power BI arredonda o total sempre para baixo', 'O total ignora as vendas da categoria Lanches', 'O total soma as médias e divide o resultado por dois'], 'A média das médias dá o **mesmo peso a cada categoria**. O total pega **todas as 48 vendas** de uma vez, então categorias com mais vendas pesam mais.',
+        { table: tab(['Categoria', 'Venda Media'], [['Bebidas', 11.32], ['Doces', 13.71], ['Lanches', 22.67], ['Total', 15.56]], { title: 'Venda Media por categoria', fmt: { 1: 'moeda' } }) }),
       num('A Maior Venda de cada categoria é R$ 30,00 (Bebidas), R$ 40,00 (Doces) e R$ 60,00 (Lanches). Qual é a Maior Venda no total?', 60, 'O máximo geral é o maior dos máximos: **R$ 60,00**. Somar (130) não faz sentido para um máximo.', { unit: 'reais', calc: () => dax('MAX(Vendas[Valor])') })
     ], { lang: 'dax', hint: 'Lembre: o total é a medida calculada de novo, sem filtro, e não uma soma das linhas que você vê.' }),
 
@@ -235,12 +235,12 @@ exports.lessons = [
       multi('Uma boa tabela Calendário tem:', ['Uma linha para cada dia, sem datas faltando', 'Datas que não se repetem', 'Colunas como Ano, Mês e Trimestre'], ['Uma linha para cada venda', 'Só as datas em que houve venda'], 'O Calendário é **completo e sem repetições**; as vendas é que podem se repetir numa mesma data.'),
       mc('Como a tabela Calendário se liga à tabela Vendas?', 'Pela coluna Data, num relacionamento muitos para um', ['Pela coluna Valor, com um relacionamento do tipo um para um', 'Pela coluna ClienteID, que existe nas duas tabelas', 'Ela não precisa se ligar a nenhuma outra tabela do modelo'], 'Cada dia pode ter **muitas vendas** (lado muitos) e cada venda tem **um dia** (lado um, no Calendário).', { diagram: DG4 }),
       mc('Por que usar Calendario[Ano] nos visuais em vez de criar uma coluna Ano em cada tabela de fatos?', 'Um só calendário serve para todas as tabelas de fatos', ['Porque o Power BI não deixa criar colunas de ano em outras tabelas', 'Porque o Calendário é mais barato de guardar no arquivo', 'Não existe vantagem nenhuma: dá no mesmo usar qualquer um'], 'Com **um calendário único**, vendas, metas e devoluções filtram pelo mesmo Ano e pelo mesmo Mês.', { diagram: DG4 }),
-      order('Coloque na ordem os passos para usar um Calendário:', ['Criar uma tabela com uma linha para cada dia do período', 'Criar as colunas Ano, Mês e Trimestre', 'Marcar a tabela como tabela de datas', 'Ligar Calendario[Data] a Vendas[Data]', 'Usar Ano e Mês nos visuais'], 'Primeiro a tabela e as colunas; depois a marcação de tabela de datas e o relacionamento; só então os visuais.')
+      order('Coloque na ordem os passos para usar um Calendário:', ['Criar uma tabela com uma linha para cada dia do período', 'Criar as colunas Ano, Mês e Trimestre', 'Marcar a tabela como tabela de datas', 'Ligar Calendario[Data] a Vendas[Data]', 'Usar Ano e Mes nos visuais'], 'Primeiro a tabela e as colunas; depois a marcação de tabela de datas e o relacionamento; só então os visuais.')
     ], { mat: { diagram: DG4 }, hint: 'Pense no calendário de parede: ele tem todos os dias, mesmo os que você não anotou nada.' }),
 
   Q('Revisão do Básico', 'Revise o que você aprendeu: montar visuais, escolher entre medida e coluna calculada, ler fórmulas e usar as funções principais. Depois dela vem a prova final do Básico.',
     'SUM · COUNTROWS · AVERAGE · DISTINCTCOUNT · DIVIDE · CALCULATE · IF · SWITCH · RELATED', 'Monte dois visuais e responda as perguntas de revisão.', [
-      build('Monte um gráfico de BARRAS com o Ticket Médio de cada categoria de produto.', 'loja', FIELDS, { 'Total Vendas': 'SUM(Vendas[Valor])', 'Ticket Médio': 'DIVIDE(SUM(Vendas[Valor]), COUNTROWS(Vendas), 0)' }, ['column', 'bar', 'pie', 'card'], { v: 'bar', axis: 'Produtos[Categoria]', values: 'Ticket Médio' }, 'Categorias no **eixo** e a medida **Ticket Médio** em valores: uma barra para cada categoria.'),
+      build('Monte um gráfico de BARRAS com o Ticket Medio de cada categoria de produto.', 'loja', FIELDS, { 'Total Vendas': 'SUM(Vendas[Valor])', 'Ticket Medio': 'DIVIDE(SUM(Vendas[Valor]), COUNTROWS(Vendas), 0)' }, ['column', 'bar', 'pie', 'card'], { v: 'bar', axis: 'Produtos[Categoria]', values: 'Ticket Medio' }, 'Categorias no **eixo** e a medida **Ticket Medio** em valores: uma barra para cada categoria.'),
       build('Monte um gráfico de LINHAS com o Total de Vendas de cada ano, com uma linha para cada canal.', 'loja', FIELDS, MEAS, ['column', 'line', 'pie', 'card'], { v: 'line', axis: 'Calendario[Ano]', legend: 'Vendas[Canal]', values: 'Total Vendas' }, 'O **eixo** traz o ano, a **legenda** separa um canal de outro (uma linha para cada) e **valores** traz a medida.'),
       multi('Quais destes cálculos devem ser COLUNA calculada (um valor em cada linha)?', ['O porte de cada venda (Grande ou Pequena)', 'O nome do cliente em maiúsculas', 'O lucro de cada venda'], ['O total de vendas do ano', 'Quantos clientes diferentes compraram'], 'Valores por **linha** vão em coluna calculada. Totais e contagens que mudam com o filtro são **medidas**.'),
       mc('O que o 0 faz nesta fórmula?', 'É o resultado que aparece quando não dá para dividir', ['Multiplica o resultado por zero', 'Arredonda o resultado para 0 casas decimais', 'Apaga o filtro da medida'], 'O terceiro argumento do DIVIDE é o **resultado alternativo**: aparece quando o denominador é zero ou vazio.', { code: 'Ticket = DIVIDE([Total Vendas], [Qtd de Vendas], 0)', lang: 'dax', codeCheck: false }),

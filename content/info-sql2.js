@@ -14,8 +14,8 @@ module.exports = {
   'sql-2-03': [
     `Depois do JOIN, o WHERE funciona do mesmo jeito de sempre, como uma peneira. E ele pode peneirar usando colunas de qualquer uma das tabelas juntadas.`,
     `Serve para recortar só a parte que você quer do resultado juntado: só as vendas de uma categoria, de um dia, de um cliente.`,
-    `O WHERE vem depois do JOIN: ... JOIN produtos p ON p.id = v.produto_id WHERE p.categoria = 'Eletrônicos'. A categoria mora na tabela produtos, por isso usamos p.categoria.`,
-    `2 colunas (nome e qtd) e 8 linhas: só as vendas de produtos Eletrônicos.`],
+    `O WHERE vem depois do JOIN: ... JOIN produtos p ON p.id = v.produto_id WHERE p.categoria = 'Eletronicos'. A categoria mora na tabela produtos, por isso usamos p.categoria.`,
+    `2 colunas (nome e qtd) e 8 linhas: só as vendas de produtos Eletronicos.`],
   'sql-2-04': [
     `Depois de juntar as tabelas, o ORDER BY pode arrumar a fila usando uma coluna de qualquer tabela.`,
     `Serve para fazer relatórios em ordem, como do dia mais novo ao mais antigo, mesmo quando as informações vêm de listas diferentes.`,
@@ -85,7 +85,7 @@ module.exports = {
     `UNION quer dizer "união": junta o resultado de dois SELECT, um embaixo do outro, e tira as linhas repetidas. Os dois SELECT precisam ter o mesmo número de colunas. (UNION ALL deixa as repetidas.)`,
     `Serve para juntar numa lista só coisas que vêm de filtros ou de lugares diferentes, como a lista de amigos da escola e a lista de amigos do prédio.`,
     `Escreva um SELECT completo, depois a palavra UNION e outro SELECT completo, cada um com o seu WHERE.`,
-    `1 coluna com os nomes das duas categorias juntas: 6 linhas (3 de Móveis e 3 de Papelaria).`],
+    `1 coluna com os nomes das duas categorias juntas: 6 linhas (3 de Moveis e 3 de Papelaria).`],
   'sql-2-18': [
     `EXCEPT quer dizer "exceto": devolve o que está no primeiro SELECT, mas NÃO aparece no segundo. É como tirar de uma lista tudo o que também está na outra.`,
     `Serve para achar diferenças entre duas listas, como os produtos cadastrados que nunca foram vendidos.`,
@@ -129,8 +129,8 @@ module.exports = {
   'sql-2-26': [
     `INSERT INTO quer dizer "insira em". Ele coloca uma linha nova dentro de uma tabela, como escrever mais um nome no fim de uma lista. Depois, um SELECT mostra como a lista ficou.`,
     `Serve para cadastrar coisas novas: um produto novo, um cliente novo, um pedido novo.`,
-    `Escreva INSERT INTO produtos VALUES (11, 'Fone', 120, 'Eletrônicos', 40); com os valores na mesma ordem das colunas. Termine o comando com ponto e vírgula e escreva o SELECT logo depois.`,
-    `A lista dos produtos Eletrônicos agora com o novo: 5 linhas em ordem alfabética (Fone, Monitor, Mouse, Notebook e Teclado).`],
+    `Escreva INSERT INTO produtos VALUES (11, 'Fone', 120, 'Eletronicos', 40); com os valores na mesma ordem das colunas. Termine o comando com ponto e vírgula e escreva o SELECT logo depois.`,
+    `A lista dos produtos Eletronicos agora com o novo: 5 linhas em ordem alfabética (Fone, Monitor, Mouse, Notebook e Teclado).`],
   'sql-2-27': [
     `UPDATE quer dizer "atualize". Ele muda linhas que já existem, como apagar um preço na etiqueta e escrever outro. Sempre use WHERE, senão ele muda a tabela INTEIRA!`,
     `Serve para corrigir ou atualizar dados: aumentar preços, mudar o status de um pedido.`,
@@ -144,11 +144,11 @@ module.exports = {
   'sql-2-29': [
     `CREATE TABLE quer dizer "crie uma tabela". Você dá um nome a uma lista nova e diz o tipo de cada coluna: TEXT para texto e REAL para números com vírgula.`,
     `Serve para guardar um conjunto novo de dados: metas, cadastros, qualquer lista só sua.`,
-    `Escreva CREATE TABLE metas(categoria TEXT, valor REAL); depois INSERT INTO metas VALUES ('Móveis', 2000), ('Papelaria', 300); e termine com um SELECT * FROM metas ORDER BY categoria.`,
-    `A tabela nova, em ordem de categoria: 2 linhas (Móveis, 2000 e Papelaria, 300).`],
+    `Escreva CREATE TABLE metas(categoria TEXT, valor REAL); depois INSERT INTO metas VALUES ('Moveis', 2000), ('Papelaria', 300); e termine com um SELECT * FROM metas ORDER BY categoria.`,
+    `A tabela nova, em ordem de categoria: 2 linhas (Moveis, 2000 e Papelaria, 300).`],
   'sql-2-30': [
     `É o projeto do nível: um relatório de verdade, que junta JOIN, GROUP BY, HAVING e ORDER BY numa consulta só.`,
     `Serve para treinar o que uma pessoa analista entrega ao chefe: uma análise pronta de quanto cada categoria rendeu.`,
     `Junte vendas e produtos, agrupe por p.categoria, calcule as duas somas (unidades e receita), escolha os grupos com HAVING e ordene pela receita do maior para o menor.`,
-    `3 colunas (categoria, unidades e receita) e 2 linhas: Eletrônicos (31 unidades, 16950) e Móveis (6 unidades, 4650).`]
+    `3 colunas (categoria, unidades e receita) e 2 linhas: Eletronicos (31 unidades, 16950) e Moveis (6 unidades, 4650).`]
 };

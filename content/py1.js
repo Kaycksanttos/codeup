@@ -2,13 +2,13 @@
 const mkH = require('./h');
 const { L } = mkH('python', 1, null, '');
 
-const FRUTAS = 'frutas = ["maçã", "banana", "uva"]';
+const FRUTAS = 'frutas = ["maca", "banana", "uva"]';
 const NOTAS = 'notas = [7, 9, 5, 10]';
 const NUMS = 'numeros = [3, 8, 12, 5, 6]';
 
 exports.lessons = [
   L('Primeiro print', 'A função print() mostra um texto na tela. Textos ficam entre aspas.', 'print("Oi!")',
-    'Exiba exatamente: Olá, mundo!', 'print("Olá, mundo!")', ['print'], 'Use print("...")'),
+    'Exiba exatamente: Ola, mundo!', 'print("Ola, mundo!")', ['print'], 'Use print("...")'),
   L('Vários prints', 'Cada print() escreve em uma linha nova. O Python executa de cima para baixo.', 'print("A")\nprint("B")',
     'Exiba duas linhas: "Bom dia" e, embaixo, "Vamos programar".', 'print("Bom dia")\nprint("Vamos programar")', ['print'], 'Use dois print, um embaixo do outro.'),
   L('Números e contas', 'Python faz contas: + soma, - subtrai, * multiplica e / divide.', 'print(2 + 3)',
@@ -23,8 +23,8 @@ exports.lessons = [
     'Imprima o tipo do valor 3.5.', 'print(type(3.5))', ['type'], 'print(type(3.5))'),
   L('Convertendo tipos', 'int() e float() transformam texto em número; str() transforma número em texto.', 'print(int("12") + 1)',
     'O texto "20" precisa virar número: imprima int("20") somado a 5.', 'print(int("20") + 5)', ['int'], 'int("20") + 5'),
-  L('Juntando textos', 'O + junta textos (concatenação).', 'print("Olá, " + "Ana")',
-    'Crie nome = "Ana" e imprima "Olá, " junto com a variável nome.', 'nome = "Ana"\nprint("Olá, " + nome)', ['+', 'nome'], 'print("Olá, " + nome)'),
+  L('Juntando textos', 'O + junta textos (concatenação).', 'print("Ola, " + "Ana")',
+    'Crie nome = "Ana" e imprima "Ola, " junto com a variável nome.', 'nome = "Ana"\nprint("Ola, " + nome)', ['+', 'nome'], 'print("Ola, " + nome)'),
   L('f-strings', 'Com f"..." você coloca variáveis dentro do texto usando chaves: f"{nome} tem {idade} anos".', 'nome = "Leo"\nprint(f"Oi, {nome}!")',
     'Crie nome = "Bia" e idade = 25 e imprima: Bia tem 25 anos', 'nome = "Bia"\nidade = 25\nprint(f"{nome} tem {idade} anos")', ['{'], 'print(f"{nome} tem {idade} anos")'),
   L('len() e upper()', 'len() conta os caracteres. .upper() devolve o texto em maiúsculas.', 'print(len("casa"))\nprint("casa".upper())',
@@ -42,9 +42,9 @@ exports.lessons = [
   L('if e else', 'O else roda quando a condição do if é falsa.', 'if 3 > 5:\n    print("A")\nelse:\n    print("B")',
     'Crie temperatura = 15. Se for >= 20 imprima Quente, senão imprima Frio.', 'temperatura = 15\nif temperatura >= 20:\n    print("Quente")\nelse:\n    print("Frio")', ['if', 'else'], 'if ...: print("Quente") else: print("Frio")'),
   L('elif: vários caminhos', 'elif testa outra condição quando as anteriores falharam.', 'n = 5\nif n > 10:\n    print("A")\nelif n > 3:\n    print("B")\nelse:\n    print("C")',
-    'Crie nota = 6.5. Se >= 7 imprima Aprovado; se >= 5 imprima Recuperação; senão Reprovado.', 'nota = 6.5\nif nota >= 7:\n    print("Aprovado")\nelif nota >= 5:\n    print("Recuperação")\nelse:\n    print("Reprovado")', ['elif'], 'Use if, elif e else, nessa ordem.'),
+    'Crie nota = 6.5. Se >= 7 imprima Aprovado; se >= 5 imprima Recuperacao; senão Reprovado.', 'nota = 6.5\nif nota >= 7:\n    print("Aprovado")\nelif nota >= 5:\n    print("Recuperacao")\nelse:\n    print("Reprovado")', ['elif'], 'Use if, elif e else, nessa ordem.'),
   L('Listas', 'Uma lista guarda vários valores entre colchetes, separados por vírgula.', 'cores = ["azul", "verde"]\nprint(cores)',
-    'Crie a lista frutas com "maçã", "banana" e "uva" e imprima.', FRUTAS + '\nprint(frutas)', ['frutas', '['], 'frutas = ["maçã", "banana", "uva"]'),
+    'Crie a lista frutas com "maca", "banana" e "uva" e imprima.', FRUTAS + '\nprint(frutas)', ['frutas', '['], 'frutas = ["maca", "banana", "uva"]'),
   L('Posições da lista', 'Também começam em 0. O índice -1 é o último item.', 'print(frutas[0])\nprint(frutas[-1])',
     'A lista frutas já existe. Imprima o primeiro item e, embaixo, o último.', 'print(frutas[0])\nprint(frutas[-1])', ['frutas['], 'frutas[0] e frutas[-1]', { prelude: FRUTAS, peek: 'print(frutas)' }),
   L('append: adicionando itens', '.append(x) coloca x no fim da lista.', 'letras = ["a"]\nletras.append("b")\nprint(letras)',

@@ -1,7 +1,7 @@
 // Bancos de treino usados nas atividades de SQL.
 exports.LOJA = `
 CREATE TABLE produtos(id INTEGER, nome TEXT, preco REAL, categoria TEXT, estoque INTEGER);
-INSERT INTO produtos VALUES (1,'Notebook',3500,'Eletrônicos',12),(2,'Mouse',80,'Eletrônicos',150),(3,'Cadeira',900,'Móveis',30),(4,'Mesa',650,'Móveis',18),(5,'Caneta',3,'Papelaria',900),(6,'Monitor',1200,'Eletrônicos',25),(7,'Caderno',18,'Papelaria',300),(8,'Teclado',250,'Eletrônicos',60),(9,'Estante',480,'Móveis',0),(10,'Lápis',2,'Papelaria',1200);
+INSERT INTO produtos VALUES (1,'Notebook',3500,'Eletronicos',12),(2,'Mouse',80,'Eletronicos',150),(3,'Cadeira',900,'Moveis',30),(4,'Mesa',650,'Moveis',18),(5,'Caneta',3,'Papelaria',900),(6,'Monitor',1200,'Eletronicos',25),(7,'Caderno',18,'Papelaria',300),(8,'Teclado',250,'Eletronicos',60),(9,'Estante',480,'Moveis',0),(10,'Lapis',2,'Papelaria',1200);
 CREATE TABLE vendas(id INTEGER, produto_id INTEGER, qtd INTEGER, data TEXT);
 INSERT INTO vendas VALUES (1,1,2,'2026-09-01'),(2,2,10,'2026-09-02'),(3,3,1,'2026-09-02'),(4,5,50,'2026-09-03'),(5,2,4,'2026-09-04'),(6,4,3,'2026-09-05'),(7,6,2,'2026-10-01'),(8,7,20,'2026-10-02'),(9,8,5,'2026-10-02'),(10,1,1,'2026-10-03'),(11,3,2,'2026-10-04'),(12,10,100,'2026-10-04'),(13,2,6,'2026-10-05'),(14,6,1,'2026-10-06');
 `;
@@ -9,7 +9,7 @@ exports.T_LOJA = 'Tabelas: produtos(id, nome, preco, categoria, estoque) e venda
 
 exports.RH = `
 CREATE TABLE departamentos(id INTEGER, nome TEXT, cidade TEXT);
-INSERT INTO departamentos VALUES (1,'Vendas','São Paulo'),(2,'TI','Recife'),(3,'RH','São Paulo'),(4,'Financeiro','Curitiba'),(5,'Marketing','Recife');
+INSERT INTO departamentos VALUES (1,'Vendas','Sao Paulo'),(2,'TI','Recife'),(3,'RH','Sao Paulo'),(4,'Financeiro','Curitiba'),(5,'Marketing','Recife');
 CREATE TABLE funcionarios(id INTEGER, nome TEXT, depto_id INTEGER, cargo TEXT, salario REAL, admissao TEXT, gerente_id INTEGER);
 INSERT INTO funcionarios VALUES
 (1,'Carlos',2,'Diretor de TI',15000,'2018-03-10',NULL),
@@ -21,15 +21,15 @@ INSERT INTO funcionarios VALUES
 (7,'Bruno',3,'Analista de RH',5800,'2020-11-30',NULL),
 (8,'Fernanda',4,'Contadora',7000,'2019-08-12',NULL),
 (9,'Diego',4,'Auxiliar',3200,'2023-04-03',8),
-(10,'Julia',2,'Estagiária',2200,'2024-02-19',2),
-(11,'Otávio',1,'Vendedor',4800,'2023-06-26',4),
+(10,'Julia',2,'Estagiaria',2200,'2024-02-19',2),
+(11,'Otavio',1,'Vendedor',4800,'2023-06-26',4),
 (12,'Camila',3,'Analista de RH',NULL,'2024-05-06',7);
 `;
 exports.T_RH = 'Tabelas: funcionarios(id, nome, depto_id, cargo, salario, admissao, gerente_id) e departamentos(id, nome, cidade).';
 
 exports.CLI = `
 CREATE TABLE clientes(id INTEGER, nome TEXT, cidade TEXT, estado TEXT, cadastro TEXT);
-INSERT INTO clientes VALUES (1,'Ana Souza','São Paulo','SP','2025-11-03'),(2,'Bruno Lima','Recife','PE','2025-12-14'),(3,'Carla Dias','São Paulo','SP','2026-01-20'),(4,'Diego Rocha','Curitiba','PR','2026-02-08'),(5,'Elisa Prado','Campinas','SP','2026-03-17'),(6,'Fábio Nunes','Recife','PE','2026-05-02'),(7,'Gabi Torres','Salvador','BA','2026-06-25'),(8,'Hugo Alves','Curitiba','PR','2026-08-30');
+INSERT INTO clientes VALUES (1,'Ana Souza','Sao Paulo','SP','2025-11-03'),(2,'Bruno Lima','Recife','PE','2025-12-14'),(3,'Carla Dias','Sao Paulo','SP','2026-01-20'),(4,'Diego Rocha','Curitiba','PR','2026-02-08'),(5,'Elisa Prado','Campinas','SP','2026-03-17'),(6,'Fabio Nunes','Recife','PE','2026-05-02'),(7,'Gabi Torres','Salvador','BA','2026-06-25'),(8,'Hugo Alves','Curitiba','PR','2026-08-30');
 CREATE TABLE pedidos(id INTEGER, cliente_id INTEGER, valor REAL, status TEXT, data TEXT);
 INSERT INTO pedidos VALUES (1,1,200,'pago','2026-09-02'),(2,1,350,'pago','2026-09-18'),(3,2,120,'cancelado','2026-09-05'),(4,3,900,'pago','2026-09-12'),(5,3,100,'pago','2026-10-01'),(6,4,50,'pendente','2026-10-03'),(7,5,640,'pago','2026-10-04'),(8,2,300,'pago','2026-10-06'),(9,6,75,'pago','2026-10-07'),(10,1,420,'pendente','2026-10-08'),(11,3,260,'pago','2026-10-10'),(12,5,180,'cancelado','2026-10-11'),(13,2,90,'pago','2026-10-12'),(14,6,510,'pago','2026-10-13');
 `;
@@ -47,7 +47,7 @@ exports.T_VM = 'Tabela: vendas_mes(vendedor, regiao, mes, valor) — 4 vendedore
 
 exports.WEB = `
 CREATE TABLE usuarios(id INTEGER, nome TEXT, plano TEXT, criado_em TEXT);
-INSERT INTO usuarios VALUES (1,'Ana','premium','2026-10-01'),(2,'Bruno','gratis','2026-10-01'),(3,'Carla','premium','2026-10-02'),(4,'Diego','gratis','2026-10-03'),(5,'Elisa','gratis','2026-10-03'),(6,'Fábio','premium','2026-10-05');
+INSERT INTO usuarios VALUES (1,'Ana','premium','2026-10-01'),(2,'Bruno','gratis','2026-10-01'),(3,'Carla','premium','2026-10-02'),(4,'Diego','gratis','2026-10-03'),(5,'Elisa','gratis','2026-10-03'),(6,'Fabio','premium','2026-10-05');
 CREATE TABLE acessos(usuario_id INTEGER, data TEXT);
 INSERT INTO acessos VALUES (1,'2026-10-01'),(1,'2026-10-02'),(1,'2026-10-03'),(1,'2026-10-05'),(2,'2026-10-01'),(2,'2026-10-04'),(3,'2026-10-02'),(3,'2026-10-03'),(3,'2026-10-04'),(3,'2026-10-05'),(3,'2026-10-06'),(4,'2026-10-03'),(5,'2026-10-03'),(5,'2026-10-04'),(6,'2026-10-05'),(6,'2026-10-06');
 `;

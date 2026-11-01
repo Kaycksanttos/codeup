@@ -5,12 +5,12 @@ const { code } = require('./pj');
 
 const DF = `import pandas as pd, io
 df = pd.read_csv(io.StringIO("""produto,categoria,qtd,preco,mes
-Notebook,Eletrônicos,2,3500,jan
-Mouse,Eletrônicos,10,80,jan
-Cadeira,Móveis,1,900,fev
+Notebook,Eletronicos,2,3500,jan
+Mouse,Eletronicos,10,80,jan
+Cadeira,Moveis,1,900,fev
 Caneta,Papelaria,50,3,fev
-Mouse,Eletrônicos,4,80,mar
-Mesa,Móveis,3,650,mar
+Mouse,Eletronicos,4,80,mar
+Mesa,Moveis,3,650,mar
 Caderno,Papelaria,20,18,mar
 """))
 `;
@@ -34,16 +34,16 @@ const out = [];
         'A ordem dos prints: print("Recibo da lanchonete"), print(salgado * qtd), print(suco) e, por último, print(salgado * qtd + suco).']),
 
     P('ficha da aluna',
-      'A escola de inglês precisa da ficha de uma aluna. As variáveis aluno, duracao (em minutos), valor_texto (o preço de UMA aula, em texto) e aulas_texto (quantas aulas, também em texto) já existem. Imprima 5 linhas: (1) Aluna: Bia (use uma f-string); (2) Duração: 2h15min (use // para as horas e % para os minutos que sobram); (3) Total: R$ 50.0 (converta com float() e int() e multiplique); (4) o tipo do total, usando type(); (5) Pontos: 8, que é 2 elevado a 3.',
-      'horas = duracao // 60\nminutos = duracao % 60\ntotal = float(valor_texto) * int(aulas_texto)\nprint(f"Aluna: {aluno}")\nprint(f"Duração: {horas}h{minutos}min")\nprint(f"Total: R$ {total}")\nprint(type(total))\nprint(f"Pontos: {2 ** 3}")',
+      'A escola de inglês precisa da ficha de uma aluna. As variáveis aluno, duracao (em minutos), valor_texto (o preço de UMA aula, em texto) e aulas_texto (quantas aulas, também em texto) já existem. Imprima 5 linhas: (1) Aluna: Bia (use uma f-string); (2) Duracao: 2h15min (use // para as horas e % para os minutos que sobram); (3) Total: R$ 50.0 (converta com float() e int() e multiplique); (4) o tipo do total, usando type(); (5) Pontos: 8, que é 2 elevado a 3.',
+      'horas = duracao // 60\nminutos = duracao % 60\ntotal = float(valor_texto) * int(aulas_texto)\nprint(f"Aluna: {aluno}")\nprint(f"Duracao: {horas}h{minutos}min")\nprint(f"Total: R$ {total}")\nprint(type(total))\nprint(f"Pontos: {2 ** 3}")',
       ['//', '%', 'float(', 'int(', 'type(', '**'],
       [`Um programa que monta a ficha de uma aluna. Ele usa o que você viu nas lições 6 a 10: divisão inteira, resto, potência, tipos de dados, conversão de texto em número, junção de textos e f-strings.`,
         `Dados chegam como texto o tempo todo (formulários, planilhas). Saber converter para número, fazer a conta e montar uma frase bonita é o dia a dia de quem programa.`,
         `Calcule horas = duracao // 60 e minutos = duracao % 60. Converta o preço com float() e a quantidade com int(), multiplique e use f-strings com {chaves} para montar cada frase.`,
-        `Cinco linhas: Aluna: Bia, Duração: 2h15min, Total: R$ 50.0, o tipo <class 'float'> e Pontos: 8.`],
+        `Cinco linhas: Aluna: Bia, Duracao: 2h15min, Total: R$ 50.0, o tipo <class 'float'> e Pontos: 8.`],
       ['As horas inteiras são duracao // 60 e os minutos que sobram são duracao % 60. Guarde os dois em variáveis.',
         'Para o total: float(valor_texto) * int(aulas_texto). O resultado é um número com vírgula (float), por isso o type() mostra float.',
-        'Monte as frases com f-string: print(f"Aluna: {aluno}") e print(f"Duração: {horas}h{minutos}min"). Os pontos são 2 ** 3.'],
+        'Monte as frases com f-string: print(f"Aluna: {aluno}") e print(f"Duracao: {horas}h{minutos}min"). Os pontos são 2 ** 3.'],
       { prelude: 'aluno = "Bia"\nduracao = 135\nvalor_texto = "12.50"\naulas_texto = "4"', peek: 'print(aluno, duracao, valor_texto, aulas_texto)' }),
 
     P('validador de cadastro',
@@ -60,8 +60,8 @@ const out = [];
       { prelude: 'usuario = "  MariaSilva  "\nsenha = "abc12345"\nidade = 17', peek: 'print(repr(usuario), senha, idade)' }),
 
     P('fechando o pedido',
-      'A loja virtual está fechando um pedido. A lista itens e o valor do pedido já existem. Imprima 4 linhas: (1) o primeiro item da lista; (2) o último item da lista; (3) o frete: se o valor for 200 ou mais, imprima Frete grátis; se for 100 ou mais, imprima Frete: R$ 15; senão, imprima Frete: R$ 30; (4) Pedido grande se a lista tem 3 itens ou mais, senão Pedido pequeno (use len).',
-      'print(itens[0])\nprint(itens[-1])\nif valor >= 200:\n    print("Frete grátis")\nelif valor >= 100:\n    print("Frete: R$ 15")\nelse:\n    print("Frete: R$ 30")\nif len(itens) >= 3:\n    print("Pedido grande")\nelse:\n    print("Pedido pequeno")',
+      'A loja virtual está fechando um pedido. A lista itens e o valor do pedido já existem. Imprima 4 linhas: (1) o primeiro item da lista; (2) o último item da lista; (3) o frete: se o valor for 200 ou mais, imprima Frete gratis; se for 100 ou mais, imprima Frete: R$ 15; senão, imprima Frete: R$ 30; (4) Pedido grande se a lista tem 3 itens ou mais, senão Pedido pequeno (use len).',
+      'print(itens[0])\nprint(itens[-1])\nif valor >= 200:\n    print("Frete gratis")\nelif valor >= 100:\n    print("Frete: R$ 15")\nelse:\n    print("Frete: R$ 30")\nif len(itens) >= 3:\n    print("Pedido grande")\nelse:\n    print("Pedido pequeno")',
       ['[0]', '[-1]', 'if ', 'elif', 'else', 'len('],
       [`Um programa que fecha um pedido de loja virtual. Ele usa as lições 16 a 20: if, if e else, elif (vários caminhos), listas e as posições de uma lista.`,
         `Calcular frete, desconto e classificação é decidir com if / elif / else. E ler itens de listas pelas posições é o jeito de acessar qualquer dado guardado em sequência.`,
@@ -73,26 +73,26 @@ const out = [];
       { prelude: 'itens = ["caneta", "caderno", "mochila"]\nvalor = 150', peek: 'print(itens, valor)' }),
 
     P('resumo da semana',
-      'A lanchonete anotou as vendas dos 5 primeiros dias da semana na lista vendas. Faltam o sábado (75) e o domingo (60): adicione os dois com append. Depois imprima 6 linhas: (1) Total: 715 (use sum); (2) Maior: 220; (3) Menor: 40; (4) Dias bons: 3 (quantos dias venderam mais de 100, contando com um for e um if); (5) Vendido nos dias bons: 450 (some só esses dias com um acumulador que começa em 0); (6) Média: 102 (o total dividido pela quantidade de dias, usando // e len).',
-      'vendas.append(75)\nvendas.append(60)\ntotal = sum(vendas)\ndias_bons = 0\nsoma_bons = 0\nfor v in vendas:\n    if v > 100:\n        dias_bons += 1\n        soma_bons += v\nprint(f"Total: {total}")\nprint(f"Maior: {max(vendas)}")\nprint(f"Menor: {min(vendas)}")\nprint(f"Dias bons: {dias_bons}")\nprint(f"Vendido nos dias bons: {soma_bons}")\nprint(f"Média: {total // len(vendas)}")',
+      'A lanchonete anotou as vendas dos 5 primeiros dias da semana na lista vendas. Faltam o sábado (75) e o domingo (60): adicione os dois com append. Depois imprima 6 linhas: (1) Total: 715 (use sum); (2) Maior: 220; (3) Menor: 40; (4) Dias bons: 3 (quantos dias venderam mais de 100, contando com um for e um if); (5) Vendido nos dias bons: 450 (some só esses dias com um acumulador que começa em 0); (6) Media: 102 (o total dividido pela quantidade de dias, usando // e len).',
+      'vendas.append(75)\nvendas.append(60)\ntotal = sum(vendas)\ndias_bons = 0\nsoma_bons = 0\nfor v in vendas:\n    if v > 100:\n        dias_bons += 1\n        soma_bons += v\nprint(f"Total: {total}")\nprint(f"Maior: {max(vendas)}")\nprint(f"Menor: {min(vendas)}")\nprint(f"Dias bons: {dias_bons}")\nprint(f"Vendido nos dias bons: {soma_bons}")\nprint(f"Media: {total // len(vendas)}")',
       ['append(', 'sum(', 'max(', 'min(', 'for ', 'if ', '//', 'len('],
       [`Um programa que resume as vendas de uma semana. Ele usa as lições 21 a 25: append, sum, max e min, o laço for, for com range e o acumulador (uma variável que vai somando).`,
         `Resumir uma lista de números (total, maior, menor, quantos passaram de uma meta) é a primeira coisa que se faz ao analisar vendas, notas ou qualquer série de valores.`,
         `Adicione os dois dias com vendas.append(...). Crie dois acumuladores começando em 0 (dias_bons e soma_bons) e use for v in vendas com um if dentro. Depois mostre tudo com f-strings.`,
-        `Seis linhas: Total: 715, Maior: 220, Menor: 40, Dias bons: 3, Vendido nos dias bons: 450 e Média: 102.`],
+        `Seis linhas: Total: 715, Maior: 220, Menor: 40, Dias bons: 3, Vendido nos dias bons: 450 e Media: 102.`],
       ['Primeiro adicione os dois dias que faltam: vendas.append(75) e vendas.append(60). Só depois some e conte.',
         'Crie dias_bons = 0 e soma_bons = 0 antes do laço. Dentro de for v in vendas, use if v > 100 para somar 1 em dias_bons e v em soma_bons.',
-        'Total: sum(vendas). Maior: max(vendas). Menor: min(vendas). Média: total // len(vendas). Mostre cada resultado com uma f-string.'],
+        'Total: sum(vendas). Maior: max(vendas). Menor: min(vendas). Media: total // len(vendas). Mostre cada resultado com uma f-string.'],
       { prelude: 'vendas = [120, 40, 90, 220, 110]', peek: 'print(vendas)' }),
 
     P('boletim do aluno',
-      'O professor quer o boletim do Caio. O dicionário aluno e a lista notas já existem. Crie a função media(lista), que soma os itens usando um while e devolve a soma dividida pela quantidade de itens, e a função situacao(m), que devolve Aprovado se m for 7 ou mais, Recuperação se for 5 ou mais e Reprovado nos outros casos. Depois imprima 4 linhas: (1) Caio (7B), usando o nome e a turma do dicionário; (2) Nota baixa: 4.5 (use for e if para achar as notas abaixo de 6 e imprima uma linha por nota); (3) Média: 6.625; (4) Situação: Recuperação.',
-      'def media(lista):\n    soma = 0\n    i = 0\n    while i < len(lista):\n        soma += lista[i]\n        i += 1\n    return soma / len(lista)\n\ndef situacao(m):\n    if m >= 7:\n        return "Aprovado"\n    elif m >= 5:\n        return "Recuperação"\n    return "Reprovado"\n\nprint(f\'{aluno["nome"]} ({aluno["turma"]})\')\nfor n in notas:\n    if n < 6:\n        print(f"Nota baixa: {n}")\nm = media(notas)\nprint(f"Média: {m}")\nprint(f"Situação: {situacao(m)}")',
+      'O professor quer o boletim do Caio. O dicionário aluno e a lista notas já existem. Crie a função media(lista), que soma os itens usando um while e devolve a soma dividida pela quantidade de itens, e a função situacao(m), que devolve Aprovado se m for 7 ou mais, Recuperacao se for 5 ou mais e Reprovado nos outros casos. Depois imprima 4 linhas: (1) Caio (7B), usando o nome e a turma do dicionário; (2) Nota baixa: 4.5 (use for e if para achar as notas abaixo de 6 e imprima uma linha por nota); (3) Media: 6.625; (4) Situacao: Recuperacao.',
+      'def media(lista):\n    soma = 0\n    i = 0\n    while i < len(lista):\n        soma += lista[i]\n        i += 1\n    return soma / len(lista)\n\ndef situacao(m):\n    if m >= 7:\n        return "Aprovado"\n    elif m >= 5:\n        return "Recuperacao"\n    return "Reprovado"\n\nprint(f\'{aluno["nome"]} ({aluno["turma"]})\')\nfor n in notas:\n    if n < 6:\n        print(f"Nota baixa: {n}")\nm = media(notas)\nprint(f"Media: {m}")\nprint(f"Situacao: {situacao(m)}")',
       ['def media', 'def situacao', 'while ', 'for ', 'if ', 'return'],
       [`O projeto final do Básico: um boletim completo. Ele junta o while, for com if, funções com return e dicionários, das lições 26 a 30.`,
         `Funções guardam um passo que você usa várias vezes (calcular média, decidir a situação) e dicionários guardam os dados de uma pessoa com nomes claros. É assim que programas de verdade são organizados.`,
         `Crie media() com um while (soma e índice começando em 0) e situacao() com if / elif. Leia o dicionário com aluno["nome"], percorra as notas com for e if e mostre tudo com f-strings.`,
-        `Quatro linhas: Caio (7B), Nota baixa: 4.5, Média: 6.625 e Situação: Recuperação.`],
+        `Quatro linhas: Caio (7B), Nota baixa: 4.5, Media: 6.625 e Situacao: Recuperacao.`],
       ['Dentro da media(), crie soma = 0 e i = 0. Enquanto i < len(lista), some lista[i] e aumente i em 1. No fim, devolva soma / len(lista).',
         'A situacao(m) usa if m >= 7, elif m >= 5 e um return final para Reprovado. O return encerra a função na hora.',
         'Para o título, leia o dicionário: aluno["nome"] e aluno["turma"]. As notas baixas saem de for n in notas com if n < 6. Chame media(notas) uma vez e guarde em m.'],
@@ -115,20 +115,20 @@ const out = [];
       ['Para os aprovados: [n for n, x in zip(nomes, notas) if x >= 6]. O zip entrega um par (nome, nota) de cada vez.',
         'Para numerar: for i, n in enumerate(aprovados, 1): e imprima com f"{i}. {n}". Os nomes das posições pares saem de nomes[i] com i vindo de range(0, len(nomes), 2).',
         'A última lista é [x + 0.5 for x in notas if x < 6]: o if dentro da compreensão escolhe só as notas menores que 6.'],
-      { prelude: 'nomes = ["Ana", "Bruno", "Carla", "Davi", "Eva", "Fábio"]\nnotas = [8, 5, 9, 4, 6, 7.5]', peek: 'print(nomes)\nprint(notas)' }),
+      { prelude: 'nomes = ["Ana", "Bruno", "Carla", "Davi", "Eva", "Fabio"]\nnotas = [8, 5, 9, 4, 6, 7.5]', peek: 'print(nomes)\nprint(notas)' }),
 
     P('placar do campeonato',
-      'O campeonato guarda a tabela em listas dentro de listas: cada linha é [nome, pontos]. A tabela e a lista apelidos já existem. Imprima 5 linhas: (1) os 3 maiores pontos, do maior para o menor (monte a lista pontos com uma compreensão, ordene com sorted e pegue os 3 primeiros com uma fatia); (2) Primeiro da tabela: Léo (12 pontos), desempacotando a primeira linha em nome e pts; (3) adicione ["Gui", 18] à tabela com append e imprima quantos jogadores há agora; (4) os apelidos ordenados pelo tamanho (sorted com key=len); (5) Soma dos 2 últimos: 26 (some os pontos das 2 últimas linhas da tabela, usando uma fatia).',
-      'pontos = [linha[1] for linha in tabela]\nprint(sorted(pontos, reverse=True)[:3])\nnome, pts = tabela[0]\nprint(f"Primeiro da tabela: {nome} ({pts} pontos)")\ntabela.append(["Gui", 18])\nprint(len(tabela))\nprint(sorted(apelidos, key=len))\nprint(f"Soma dos 2 últimos: {sum([l[1] for l in tabela[-2:]])}")',
+      'O campeonato guarda a tabela em listas dentro de listas: cada linha é [nome, pontos]. A tabela e a lista apelidos já existem. Imprima 5 linhas: (1) os 3 maiores pontos, do maior para o menor (monte a lista pontos com uma compreensão, ordene com sorted e pegue os 3 primeiros com uma fatia); (2) Primeiro da tabela: Leo (12 pontos), desempacotando a primeira linha em nome e pts; (3) adicione ["Gui", 18] à tabela com append e imprima quantos jogadores há agora; (4) os apelidos ordenados pelo tamanho (sorted com key=len); (5) Soma dos 2 ultimos: 26 (some os pontos das 2 últimas linhas da tabela, usando uma fatia).',
+      'pontos = [linha[1] for linha in tabela]\nprint(sorted(pontos, reverse=True)[:3])\nnome, pts = tabela[0]\nprint(f"Primeiro da tabela: {nome} ({pts} pontos)")\ntabela.append(["Gui", 18])\nprint(len(tabela))\nprint(sorted(apelidos, key=len))\nprint(f"Soma dos 2 ultimos: {sum([l[1] for l in tabela[-2:]])}")',
       ['sorted(', 'append(', 'key=len', 'for '],
       [`Um programa que organiza o placar de um campeonato. Ele usa as lições 6 a 10: métodos de lista, sorted com key, fatias, listas dentro de listas e tuplas com desempacotamento.`,
         `Tabelas viram listas de linhas o tempo todo. Saber pegar uma coluna, ordenar, cortar o Top 3 e somar um trecho é o básico de qualquer ranking.`,
         `Pegue a coluna dos pontos com [linha[1] for linha in tabela]. Ordene com sorted(..., reverse=True) e corte com [:3]. Desempacote com nome, pts = tabela[0]. Fatias negativas pegam o final: tabela[-2:].`,
-        `Cinco linhas: [30, 28, 25], Primeiro da tabela: Léo (12 pontos), 6, ['Zé', 'Tati', 'Dinho', 'Cacau'] e Soma dos 2 últimos: 26.`],
+        `Cinco linhas: [30, 28, 25], Primeiro da tabela: Leo (12 pontos), 6, ['Ze', 'Tati', 'Dinho', 'Cacau'] e Soma dos 2 ultimos: 26.`],
       ['A coluna dos pontos é [linha[1] for linha in tabela]. Ordene do maior para o menor com sorted(pontos, reverse=True) e corte os 3 primeiros com [:3].',
         'nome, pts = tabela[0] separa a primeira linha em duas variáveis. Depois tabela.append(["Gui", 18]) e len(tabela) mostra 6.',
         'Os apelidos ficam em ordem de tamanho com sorted(apelidos, key=len). Para os 2 últimos, use tabela[-2:] dentro de uma compreensão que pega o item 1 de cada linha, e some.'],
-      { prelude: 'tabela = [["Léo", 12], ["Ana", 30], ["Rui", 25], ["Bia", 28], ["Edu", 8]]\napelidos = ["Dinho", "Zé", "Cacau", "Tati"]', peek: 'print(tabela)\nprint(apelidos)' }),
+      { prelude: 'tabela = [["Leo", 12], ["Ana", 30], ["Rui", 25], ["Bia", 28], ["Edu", 8]]\napelidos = ["Dinho", "Ze", "Cacau", "Tati"]', peek: 'print(tabela)\nprint(apelidos)' }),
 
     P('quem comprou o quê',
       'A loja anotou os clientes que passaram de manhã e à tarde (um cliente pode aparecer várias vezes) e uma tabela de preços. As listas manha e tarde e o dicionário precos já existem. Imprima 6 linhas: (1) quantos clientes DIFERENTES vieram de manhã; (2) em ordem alfabética (sorted), quem veio de manhã E à tarde; (3) em ordem alfabética, todos que vieram em algum dos dois horários; (4) o preço do "Monitor" usando get com padrão 0; (5) se "Mouse" existe em precos (use in). Depois mude o Mouse para 90, adicione o Monitor por 1200 e (6) imprima um novo dicionário com 10% de desconto em cada preço, arredondado com round(valor, 2), feito com dict comprehension.',
@@ -144,17 +144,17 @@ const out = [];
       { prelude: 'manha = ["Ana", "Bia", "Caio", "Ana", "Davi"]\ntarde = ["Bia", "Eva", "Davi", "Eva"]\nprecos = {"Mouse": 80, "Teclado": 250, "Caneta": 5}', peek: 'print(manha)\nprint(tarde)\nprint(precos)' }),
 
     P('analisador de texto',
-      'Você vai analisar um texto. A variável texto já existe. Imprima: (1) quantas palavras o texto tem (use split); (2) as palavras que aparecem mais de uma vez, em ordem alfabética, uma por linha, no formato python: 3 (conte com um dicionário e get; antes de contar, deixe tudo em minúsculas e tire os pontos com replace); (3) a posição onde começa a palavra "fácil" (find); (4) crie a função destaque(palavra, simbolo="*") que devolve a palavra com o símbolo dos dois lados e imprima destaque("python") e destaque("python", "#"); (5) uma frase com a porcentagem de palavras que são "python", com 1 casa decimal: Python aparece em 30.0% das palavras.',
-      'palavras = texto.lower().replace(".", "").split()\nprint(len(palavras))\ncontagem = {}\nfor p in palavras:\n    contagem[p] = contagem.get(p, 0) + 1\nfor p in sorted(contagem):\n    if contagem[p] > 1:\n        print(f"{p}: {contagem[p]}")\nprint(texto.find("fácil"))\n\ndef destaque(palavra, simbolo="*"):\n    return f"{simbolo}{palavra}{simbolo}"\n\nprint(destaque("python"))\nprint(destaque("python", "#"))\nprint(f"Python aparece em {contagem[\'python\'] / len(palavras) * 100:.1f}% das palavras")',
+      'Você vai analisar um texto. A variável texto já existe. Imprima: (1) quantas palavras o texto tem (use split); (2) as palavras que aparecem mais de uma vez, em ordem alfabética, uma por linha, no formato python: 3 (conte com um dicionário e get; antes de contar, deixe tudo em minúsculas e tire os pontos com replace); (3) a posição onde começa a palavra "facil" (find); (4) crie a função destaque(palavra, simbolo="*") que devolve a palavra com o símbolo dos dois lados e imprima destaque("python") e destaque("python", "#"); (5) uma frase com a porcentagem de palavras que são "python", com 1 casa decimal: Python aparece em 30.0% das palavras.',
+      'palavras = texto.lower().replace(".", "").split()\nprint(len(palavras))\ncontagem = {}\nfor p in palavras:\n    contagem[p] = contagem.get(p, 0) + 1\nfor p in sorted(contagem):\n    if contagem[p] > 1:\n        print(f"{p}: {contagem[p]}")\nprint(texto.find("facil"))\n\ndef destaque(palavra, simbolo="*"):\n    return f"{simbolo}{palavra}{simbolo}"\n\nprint(destaque("python"))\nprint(destaque("python", "#"))\nprint(f"Python aparece em {contagem[\'python\'] / len(palavras) * 100:.1f}% das palavras")',
       ['split(', 'find(', 'get(', 'def destaque', 'replace('],
       [`Um programa que analisa um texto. Ele usa as lições 16 a 20: contar com dicionário, split e join, replace, find e count, formatação de números e parâmetros opcionais.`,
         `Contar palavras e achar trechos é a base da análise de textos: avaliações, comentários, mensagens. O que mais aparece costuma dizer o que mais importa.`,
         `Prepare o texto com texto.lower().replace(".", "").split(). Conte com contagem[p] = contagem.get(p, 0) + 1. Depois percorra sorted(contagem) e use if para mostrar só quem passou de 1. Formate a porcentagem com :.1f.`,
-        `Sete linhas: 10, python: 3, é: 3, 23 (a posição onde começa "fácil"), *python* e #python# e, por fim, a frase com 30.0%.`],
+        `Sete linhas: 10, e: 3, python: 3, 23 (a posição onde começa "facil"), *python* e #python# e, por fim, a frase com 30.0%.`],
       ['Primeiro limpe: palavras = texto.lower().replace(".", "").split(). O len(palavras) já responde quantas palavras existem.',
         'Conte: crie contagem = {} e, para cada palavra p, contagem[p] = contagem.get(p, 0) + 1. Depois percorra sorted(contagem) e imprima só os que têm contagem[p] > 1.',
         'A função fica def destaque(palavra, simbolo="*"): return f"{simbolo}{palavra}{simbolo}". A porcentagem é contagem["python"] / len(palavras) * 100, formatada com :.1f dentro da f-string.'],
-      { prelude: 'texto = "Python é bom. Python é fácil. Aprender Python é divertido"', peek: 'print(texto)' }),
+      { prelude: 'texto = "Python e bom. Python e facil. Aprender Python e divertido"', peek: 'print(texto)' }),
 
     P('limpando as leituras',
       'Um sensor mandou as leituras como texto e algumas vieram quebradas. A lista leituras já existe. Crie a função converter(texto) que tenta devolver float(texto) e, se der ValueError, devolve None. Depois imprima 5 linhas: (1) a lista numeros, com as leituras convertidas e sem os None (use map e filter com lambda); (2) se TODOS os números são maiores que 5 (all); (3) se ALGUM número passa de 15 (any); (4) os números do maior para o menor (sorted com reverse=True); (5) Descartadas: 2 (quantas leituras foram jogadas fora).',
@@ -170,13 +170,13 @@ const out = [];
       { prelude: 'leituras = ["12.5", "8", "abc", "15.2", "", "9.8"]', peek: 'print(leituras)' }),
 
     P('relatório do mês',
-      'Hora de fechar o mês. As variáveis vendas (dicionário com o total de cada produto), pedidos (lista com o produto de cada pedido) e inicio / fim (datas em texto) já existem. Crie a função parcela(total, vezes): se vezes for 0 ou menos, ela levanta ValueError("vezes deve ser positivo"); senão devolve total / vezes arredondado com round(..., 2). Imprima: (1) a mensagem do erro, chamando parcela(3600, 0) dentro de try / except; (2) parcela(3600, 7); (3) Caixas necessárias: 2 (com math.ceil, 4 pedidos por caixa); (4) Dias no mês: 31 (diferença entre as datas, mais 1, com datetime); (5) Mais pedido: Mouse (3 vezes), com Counter; (6) uma linha por produto no formato Mouse: R$ 960.00; (7) Total do mês: R$ 6110.00, usando uma função recursiva soma(lista) para somar os valores.',
-      'import math\nfrom collections import Counter\nfrom datetime import date\n\ndef parcela(total, vezes):\n    if vezes <= 0:\n        raise ValueError("vezes deve ser positivo")\n    return round(total / vezes, 2)\n\ntry:\n    parcela(3600, 0)\nexcept ValueError as e:\n    print(e)\nprint(parcela(3600, 7))\nprint(f"Caixas necessárias: {math.ceil(len(pedidos) / 4)}")\ndias = (date.fromisoformat(fim) - date.fromisoformat(inicio)).days + 1\nprint(f"Dias no mês: {dias}")\nnome, qtd = Counter(pedidos).most_common(1)[0]\nprint(f"Mais pedido: {nome} ({qtd} vezes)")\nfor produto, valor in vendas.items():\n    print(f"{produto}: R$ {valor:.2f}")\n\ndef soma(lista):\n    if not lista:\n        return 0\n    return lista[0] + soma(lista[1:])\n\nprint(f"Total do mês: R$ {soma(list(vendas.values())):.2f}")',
+      'Hora de fechar o mês. As variáveis vendas (dicionário com o total de cada produto), pedidos (lista com o produto de cada pedido) e inicio / fim (datas em texto) já existem. Crie a função parcela(total, vezes): se vezes for 0 ou menos, ela levanta ValueError("vezes deve ser positivo"); senão devolve total / vezes arredondado com round(..., 2). Imprima: (1) a mensagem do erro, chamando parcela(3600, 0) dentro de try / except; (2) parcela(3600, 7); (3) Caixas necessarias: 2 (com math.ceil, 4 pedidos por caixa); (4) Dias no mes: 31 (diferença entre as datas, mais 1, com datetime); (5) Mais pedido: Mouse (3 vezes), com Counter; (6) uma linha por produto no formato Mouse: R$ 960.00; (7) Total do mes: R$ 6110.00, usando uma função recursiva soma(lista) para somar os valores.',
+      'import math\nfrom collections import Counter\nfrom datetime import date\n\ndef parcela(total, vezes):\n    if vezes <= 0:\n        raise ValueError("vezes deve ser positivo")\n    return round(total / vezes, 2)\n\ntry:\n    parcela(3600, 0)\nexcept ValueError as e:\n    print(e)\nprint(parcela(3600, 7))\nprint(f"Caixas necessarias: {math.ceil(len(pedidos) / 4)}")\ndias = (date.fromisoformat(fim) - date.fromisoformat(inicio)).days + 1\nprint(f"Dias no mes: {dias}")\nnome, qtd = Counter(pedidos).most_common(1)[0]\nprint(f"Mais pedido: {nome} ({qtd} vezes)")\nfor produto, valor in vendas.items():\n    print(f"{produto}: R$ {valor:.2f}")\n\ndef soma(lista):\n    if not lista:\n        return 0\n    return lista[0] + soma(lista[1:])\n\nprint(f"Total do mes: R$ {soma(list(vendas.values())):.2f}")',
       ['raise', 'try', 'except', 'math.ceil', 'counter', 'def soma', 'items()'],
       [`O projeto final do Intermediário: um relatório do mês. Ele junta raise, os módulos math e datetime, Counter, recursão e o laço com .items(), das lições 26 a 30.`,
         `Relatórios mensais juntam várias contas: parcelas, datas, produtos mais vendidos e totais. Saber usar as ferramentas prontas do Python (módulos) economiza horas de trabalho.`,
         `Crie parcela() com if e raise ValueError. Teste o erro com try / except ValueError as e. Use math.ceil, date.fromisoformat e Counter(pedidos).most_common(1). Percorra vendas.items() e faça soma() chamar a si mesma com lista[1:].`,
-        `Dez linhas: a mensagem do erro, 514.29, Caixas necessárias: 2, Dias no mês: 31, Mais pedido: Mouse (3 vezes), quatro linhas de produtos e Total do mês: R$ 6110.00.`],
+        `Dez linhas: a mensagem do erro, 514.29, Caixas necessarias: 2, Dias no mes: 31, Mais pedido: Mouse (3 vezes), quatro linhas de produtos e Total do mes: R$ 6110.00.`],
       ['Em parcela(): if vezes <= 0: raise ValueError("vezes deve ser positivo"); depois return round(total / vezes, 2). Chame com 0 dentro de try e imprima o e no except ValueError as e.',
         'Caixas: math.ceil(len(pedidos) / 4). Dias: (date.fromisoformat(fim) - date.fromisoformat(inicio)).days + 1. O mais pedido é Counter(pedidos).most_common(1)[0], que devolve (nome, vezes).',
         'A soma recursiva: se a lista está vazia devolva 0; senão devolva lista[0] + soma(lista[1:]). Passe list(vendas.values()) e formate o total com :.2f.'],
@@ -250,17 +250,17 @@ const out = [];
       { prelude: DF, peek: 'print(df.to_string())' }),
 
     P('metas por categoria com Pandas',
-      'Um segundo projeto com Pandas. O DataFrame df e a tabela metas (categoria e meta) já existem. Crie a coluna total (qtd vezes preco) e imprima 5 linhas: (1) os 3 produtos com maior total, em lista (sort_values com ascending=False e head); (2) o número de vendas de cada categoria como dicionário (use groupby com agg e a função count, e pegue a coluna count com to_dict()); (3) a lista das categorias que bateram a meta (junte o total somado por categoria com a tabela metas usando merge e filtre as que somaram a meta ou mais); (4) quantas vendas aconteceram em mar (value_counts); (5) o total de Móveis em mar, vindo de uma pivot_table (index categoria, columns mes, values total, aggfunc sum, fill_value 0).',
-      'df["total"] = df["qtd"] * df["preco"]\nprint(df.sort_values("total", ascending=False).head(3)["produto"].tolist())\nresumo = df.groupby("categoria")["total"].agg(["sum", "count"])\nprint(resumo["count"].to_dict())\nr = resumo.reset_index().merge(metas, on="categoria")\nprint(r[r["sum"] >= r["meta"]]["categoria"].tolist())\nprint(df["mes"].value_counts()["mar"])\npiv = df.pivot_table(index="categoria", columns="mes", values="total", aggfunc="sum", fill_value=0)\nprint(piv.loc["Móveis", "mar"])',
+      'Um segundo projeto com Pandas. O DataFrame df e a tabela metas (categoria e meta) já existem. Crie a coluna total (qtd vezes preco) e imprima 5 linhas: (1) os 3 produtos com maior total, em lista (sort_values com ascending=False e head); (2) o número de vendas de cada categoria como dicionário (use groupby com agg e a função count, e pegue a coluna count com to_dict()); (3) a lista das categorias que bateram a meta (junte o total somado por categoria com a tabela metas usando merge e filtre as que somaram a meta ou mais); (4) quantas vendas aconteceram em mar (value_counts); (5) o total de Moveis em mar, vindo de uma pivot_table (index categoria, columns mes, values total, aggfunc sum, fill_value 0).',
+      'df["total"] = df["qtd"] * df["preco"]\nprint(df.sort_values("total", ascending=False).head(3)["produto"].tolist())\nresumo = df.groupby("categoria")["total"].agg(["sum", "count"])\nprint(resumo["count"].to_dict())\nr = resumo.reset_index().merge(metas, on="categoria")\nprint(r[r["sum"] >= r["meta"]]["categoria"].tolist())\nprint(df["mes"].value_counts()["mar"])\npiv = df.pivot_table(index="categoria", columns="mes", values="total", aggfunc="sum", fill_value=0)\nprint(piv.loc["Moveis", "mar"])',
       ['sort_values(', 'agg(', 'merge(', 'value_counts(', 'pivot_table('],
       [`O projeto final do curso de Python: um segundo relatório com Pandas. Ele usa as lições 26 a 30: sort_values, agg com várias métricas, merge, value_counts e pivot.`,
         `Ordenar, resumir com várias métricas, juntar duas tabelas e montar um cruzamento (linhas x colunas) é o que analistas fazem todo dia para responder se a meta foi batida e onde o dinheiro entra.`,
         `Crie a coluna total. Ordene com sort_values("total", ascending=False). Resuma com groupby("categoria")["total"].agg(["sum", "count"]). Junte com metas usando merge(..., on="categoria"). Conte meses com value_counts() e cruze com pivot_table.`,
-        `Cinco linhas: a lista dos 3 produtos mais vendidos, o dicionário da contagem por categoria, a lista das categorias que bateram a meta, o número 3 e o total de Móveis em mar (1950).`],
+        `Cinco linhas: a lista dos 3 produtos mais vendidos, o dicionário da contagem por categoria, a lista das categorias que bateram a meta, o número 3 e o total de Moveis em mar (1950).`],
       ['Depois de criar a coluna total, ordene com df.sort_values("total", ascending=False), pegue as 3 primeiras linhas com .head(3) e a coluna produto com .tolist().',
         'Resuma com resumo = df.groupby("categoria")["total"].agg(["sum", "count"]). Use resumo.reset_index().merge(metas, on="categoria") para trazer a meta de cada categoria e filtre r["sum"] >= r["meta"].',
-        'df["mes"].value_counts()["mar"] dá quantas vendas houve em mar. A pivot_table(index="categoria", columns="mes", values="total", aggfunc="sum", fill_value=0) vira uma tabela cruzada; .loc["Móveis", "mar"] pega uma célula.'],
-      { prelude: DF + 'metas = pd.DataFrame({"categoria": ["Eletrônicos", "Móveis", "Papelaria"], "meta": [8000, 3000, 500]})\n', peek: 'print(df.to_string())\nprint(metas.to_string())' })
+        'df["mes"].value_counts()["mar"] dá quantas vendas houve em mar. A pivot_table(index="categoria", columns="mes", values="total", aggfunc="sum", fill_value=0) vira uma tabela cruzada; .loc["Moveis", "mar"] pega uma célula.'],
+      { prelude: DF + 'metas = pd.DataFrame({"categoria": ["Eletronicos", "Moveis", "Papelaria"], "meta": [8000, 3000, 500]})\n', peek: 'print(df.to_string())\nprint(metas.to_string())' })
   );
 }
 

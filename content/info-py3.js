@@ -70,7 +70,7 @@ module.exports = {
     `Decorator é uma função que "embrulha" outra função, como papel de presente: acrescenta algo a ela sem mexer no código que está dentro.`,
     `Serve para repetir um comportamento (anotar um aviso, medir o tempo, conferir um dado) em várias funções com uma linha só: @nome_do_decorator.`,
     `Escreva uma função que recebe a função original, cria por dentro uma função nova que chama a original e muda o resultado (.upper()), e devolve a nova. Aplique escrevendo @em_maiusculas em cima de saudacao().`,
-    `O resultado da função embrulhada: OLÁ (o "olá" original passou pela regra do decorator).`],
+    `O resultado da função embrulhada: OLA (o "ola" original passou pela regra do decorator).`],
   'py-3-15': [
     `É um decorator para qualquer função. O *args e o **kwargs querem dizer "aceite quantos valores vierem", e assim o mesmo decorator serve para função com 1 ou com 10 parâmetros.`,
     `Serve para criar embrulhos reutilizáveis, que funcionam com qualquer função.`,
@@ -113,8 +113,8 @@ module.exports = {
     `Duas linhas: (7, 5), que quer dizer 7 linhas e 5 colunas, e a lista com os 3 primeiros produtos: ['Notebook', 'Mouse', 'Cadeira'].`],
   'py-3-23': [
     `df[condição] funciona como uma peneira: devolve só as linhas que passam na condição. Para usar duas condições juntas, use & (e) ou | (ou), com cada condição entre parênteses.`,
-    `Serve para recortar a tabela: só os eletrônicos, só as vendas acima de um valor, só um mês.`,
-    `Escreva df[(df["categoria"] == "Eletrônicos") & (df["qtd"] > 3)] e depois escolha a coluna ["produto"] e transforme em lista com .tolist().`,
+    `Serve para recortar a tabela: só os eletronicos, só as vendas acima de um valor, só um mês.`,
+    `Escreva df[(df["categoria"] == "Eletronicos") & (df["qtd"] > 3)] e depois escolha a coluna ["produto"] e transforme em lista com .tolist().`,
     `A lista dos produtos que passaram nas duas regras: ['Mouse', 'Mouse'] (o Mouse aparece duas vezes porque houve duas vendas dele).`],
   'py-3-24': [
     `Dá para criar uma coluna nova na tabela fazendo uma conta com as que já existem: df["total"] = df["qtd"] * df["preco"]. A conta é feita linha por linha, sozinha.`,
@@ -125,7 +125,7 @@ module.exports = {
     `groupby quer dizer "agrupe por": ele separa as linhas em montinhos (um para cada categoria, por exemplo) e depois você soma, conta ou tira a média de cada montinho. É o GROUP BY do SQL!`,
     `Serve para responder "quanto de cada categoria?" e "quantos em cada mês?": um resumo da tabela por grupo.`,
     `Escreva df.groupby("categoria")["qtd"].sum(): primeiro o agrupamento, depois a coluna e depois a conta. Coloque .to_dict() no final para ver como dicionário.`,
-    `Um dicionário com a soma de cada grupo: {'Eletrônicos': 16, 'Móveis': 4, 'Papelaria': 70}.`],
+    `Um dicionário com a soma de cada grupo: {'Eletronicos': 16, 'Moveis': 4, 'Papelaria': 70}.`],
   'py-3-26': [
     `sort_values("coluna", ascending=False) coloca a tabela em fila pela coluna que você escolher, do maior para o menor. É o ORDER BY ... DESC do SQL!`,
     `Serve para montar rankings: os produtos mais caros, os clientes que mais compraram.`,
@@ -135,7 +135,7 @@ module.exports = {
     `Dá para calcular uma conta diferente (soma, média, maior, menor) em cada grupo da tabela. Aqui você vai criar a coluna total, separar por categoria e pedir o maior total de cada uma.`,
     `Serve para tirar a soma, a média, o máximo e o mínimo de cada grupo, tudo com poucas linhas.`,
     `Crie a coluna total, agrupe por categoria e peça o máximo: df.groupby("categoria")["total"].max().to_dict().`,
-    `Um dicionário com a maior venda de cada categoria: {'Eletrônicos': 7000, 'Móveis': 1950, 'Papelaria': 360}.`],
+    `Um dicionário com a maior venda de cada categoria: {'Eletronicos': 7000, 'Moveis': 1950, 'Papelaria': 360}.`],
   'py-3-28': [
     `merge() cola duas tabelas usando uma coluna que aparece nas duas, igual ao JOIN do SQL. Aqui, a tabela de vendas se junta com a tabela de metas pela coluna categoria.`,
     `Serve para cruzar informações que estão em tabelas separadas: vendas com metas, pedidos com clientes.`,
@@ -150,5 +150,5 @@ module.exports = {
     `É o projeto final do nível: transformar dados soltos numa resposta de verdade, tipo "qual produto trouxe mais dinheiro?".`,
     `Serve para treinar o trabalho completo de uma pessoa analista de dados: calcular, agrupar, achar o melhor e mostrar o resultado numa frase.`,
     `Crie a coluna total, agrupe por produto e some com groupby. Use idxmax() para pegar o nome do campeão e max() para o valor dele, e monte a frase com uma f-string.`,
-    `Uma linha só: Campeão: Notebook com 7000.`]
+    `Uma linha só: Campeao: Notebook com 7000.`]
 };

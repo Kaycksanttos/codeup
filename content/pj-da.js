@@ -19,7 +19,7 @@ const MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out
 const med = a => { const s = [...a].sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
 
 // ---- dados dos casos
-const VEND = tab(['Dia', 'Produto', 'Qtd', 'Valor'], [['Sáb', 'Pão francês', 50, 25], ['Sáb', 'Bolo', 3, 45], ['Dom', 'Pão francês', 40, 20], ['Dom', 'Café', 20, 60], ['Dom', 'Bolo', 2, 30], ['Seg', 'Pão francês', 35, 17.5]], { title: 'Vendas da padaria (amostra)', fmt: { 3: 'moeda' } });
+const VEND = tab(['Dia', 'Produto', 'Qtd', 'Valor'], [['Sab', 'Pao francês', 50, 25], ['Sab', 'Bolo', 3, 45], ['Dom', 'Pao francês', 40, 20], ['Dom', 'Café', 20, 60], ['Dom', 'Bolo', 2, 30], ['Seg', 'Pao francês', 35, 17.5]], { title: 'Vendas da padaria (amostra)', fmt: { 3: 'moeda' } });
 const PESQ = tab(['ID', 'Cliente', 'Cidade', 'Nota'], [[1, 'Ana', 'Recife', 9], [2, 'Bruno', 'recife', 7], [3, 'Carla', 'Recife', null], [3, 'Carla', 'Recife', null], [4, 'Davi', 'Olinda', 8], [5, 'Eva', 'OLINDA', 10]], { title: 'Pesquisa de satisfação' });
 const FIL = tab(['Filial', 'Vendas', 'Funcionários', 'Vendas ano passado'], [['Centro', 120000, 12, 120000], ['Norte', 90000, 5, 80000], ['Sul', 90000, 6, 75000]], { title: 'Filiais da rede', fmt: { 1: 'moeda', 3: 'moeda' } });
 const MES_V = [100, 95, 98, 102, 105, 100, 104, 110, 108, 115, 140, 190];

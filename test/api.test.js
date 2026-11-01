@@ -27,8 +27,8 @@ test.after(() => srv && srv.kill());
 
 test('conferência ao vivo não grava progresso', async () => {
   const tk = await reg('live@teste.com');
-  let r = (await call('/api/check', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j; assert.equal(r.ok, true);
-  r = (await call('/api/check', { token: tk, body: { id: 'py-1-01', code: 'print("x")', out: 'x' } })).j; assert.equal(r.ok, false); assert.equal(r.expected, 'Olá, mundo!');
+  let r = (await call('/api/check', { token: tk, body: { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'Ola, mundo!' } })).j; assert.equal(r.ok, true);
+  r = (await call('/api/check', { token: tk, body: { id: 'py-1-01', code: 'print("x")', out: 'x' } })).j; assert.equal(r.ok, false); assert.equal(r.expected, 'Ola, mundo!');
   assert.equal((await call('/api/me', { token: tk })).j.xp, 0, 'check não pode dar XP');
   assert.equal((await call('/api/check', { token: tk, body: { id: 'py-1-03', code: 'print(42)', out: '42' } })).status, 409);
 });
@@ -37,7 +37,7 @@ test('confirmação de e-mail: dá para estudar sem confirmar e o link só vale 
   const j = (await call('/api/register', { body: { name: 'Vera', email: 'vera@teste.com', password: 'segredo1', accept: true } })).j;
   assert.ok(j.devVerifyLink, 'em modo de teste devolve o link'); const tk = j.token;
   assert.equal((await call('/api/me', { token: tk })).j.verified, false);
-  assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j.ok, true, 'pode estudar sem confirmar');
+  assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'Ola, mundo!' } })).j.ok, true, 'pode estudar sem confirmar');
   const bad = await fetch(U + '/verificar?token=errado', { redirect: 'manual' }); assert.match(bad.headers.get('location'), /verificado=0/);
   const ok = await confirm(j.devVerifyLink); assert.match(ok.headers.get('location'), /verificado=1/);
   assert.equal((await call('/api/me', { token: tk })).j.verified, true);
@@ -47,9 +47,9 @@ test('confirmação de e-mail: dá para estudar sem confirmar e o link só vale 
 
 test('Python: o servidor roda o código e ignora a saída enviada pelo navegador', async () => {
   const tk = await reg('forja@teste.com');
-  let r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'Olá, mundo!' } })).j;
-  assert.equal(r.ok, false, 'saída forjada não pode passar'); assert.equal(r.expected, 'Olá, mundo!', 'resposta errada mostra a saída esperada (igual ao /api/check)');
-  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'qualquer coisa' } })).j;
+  let r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'Ola, mundo!' } })).j;
+  assert.equal(r.ok, false, 'saída forjada não pode passar'); assert.equal(r.expected, 'Ola, mundo!', 'resposta errada mostra a saída esperada (igual ao /api/check)');
+  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'qualquer coisa' } })).j;
   assert.equal(r.ok, true, 'o servidor usa a própria execução'); assert.equal(r.next, 'r', 'a 1ª atividade acertou: falta a de ler');
   assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-02', code: 'print(1)', out: '1' } })).status, 409, 'a lição 2 só abre depois das 2 atividades da lição 1');
   assert.equal((await doRead(tk, lessons.find(l => l.id === 'py-1-01'))).j.ok, true);
@@ -131,9 +131,9 @@ test('gabarito não vaza, ordem das lições e correção no servidor', async ()
   const l1 = (await call('/api/lessons/py-1-01', { token: tk })).j;
   assert.ok(!('expectedSql' in l1) && !('need' in l1) && !('expectedOut' in l1) && !('expectedRows' in l1));
   // Python: certo, repetido (sem XP extra) e com saída forjada
-  let r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j;
+  let r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'Ola, mundo!' } })).j;
   assert.equal(r.ok, true); assert.equal(r.gained, 5, 'a 1ª atividade (executar) vale metade do XP da lição'); assert.equal(r.next, 'r');
-  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j; assert.equal(r.gained, 0, 'não pode ganhar XP duas vezes');
+  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'Ola, mundo!' } })).j; assert.equal(r.gained, 0, 'não pode ganhar XP duas vezes');
   assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-02', code: 'print(1)', out: '1' } })).status, 409, 'a lição 2 só abre com as 2 atividades da lição 1');
   r = (await doRead(tk, lessons.find(l => l.id === 'py-1-01'))).j; assert.equal(r.ok, true); assert.equal(r.gained, 5, 'a 2ª atividade (ler) vale a outra metade'); assert.ok(r.done['py-1-01']);
   assert.equal((await call('/api/submit', { token: tk, body: { id: 'py-1-02', code: 'preco=1\nqtd=1\nprint(preco*qtd)', out: '999' } })).j.ok, false);
@@ -532,7 +532,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
     assert.match(lg, /usando o resultado enviado pelo navegador/);
     r = await post('/api/read', { id: 'sql-1-01', a: L.read.ok }, tk); assert.equal(r.j.ok, true, 'a atividade de ler não depende do sql.js'); assert.ok(r.j.done['sql-1-01']);
     r = await post('/api/submit', { id: 'sql-1-02', code: 'SELECT nome, preco FROM produtos', out: 'não é json' }, tk); assert.equal(r.status, 503, 'sem resultado válido não há como corrigir');
-    r = await post('/api/submit', { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' }, tk); assert.equal(r.j.ok, true, 'Python não depende do sql.js');
+    r = await post('/api/submit', { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'Ola, mundo!' }, tk); assert.equal(r.j.ok, true, 'Python não depende do sql.js');
   } finally { if (p.exitCode === null) { p.kill(); await new Promise(r => p.once('exit', r)); } try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch { } }
 });
 
@@ -1386,7 +1386,7 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
   await call('/api/track', { token: tk, body: { track: 'python' } });
   let r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'errado' } })).j;
   assert.equal(r.ok, false); assert.equal(r.streakUp, undefined, 'errar não acende a sequência'); assert.equal(r.tries, 1);
-  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Olá, mundo!")', out: 'Olá, mundo!' } })).j;
+  r = (await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("Ola, mundo!")', out: 'Ola, mundo!' } })).j;
   assert.equal(r.ok, true); assert.equal(r.tries, 2, 'conta as tentativas (acerto de primeira = 1)'); assert.equal(r.streakUp, 1, 'primeiro dia de treino: sequência iniciada'); assert.equal(r.streak, 1);
   r = (await call('/api/submit', { token: tk, body: { id: 'py-1-02', code: 'print("Bom dia")\nprint("Vamos programar")', out: 'Bom dia\nVamos programar' } })).j;
   if (r.ok) { assert.equal(r.streakUp, undefined, 'no mesmo dia a sequência não sobe de novo'); assert.equal(r.tries, 1); }

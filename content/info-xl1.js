@@ -20,17 +20,17 @@ module.exports = {
     `Quando você escreve uma fórmula numa linha e a copia para a linha de baixo, o Excel é esperto: ele troca as linhas sozinho. A fórmula =B2*C2 copiada uma linha abaixo vira =B3*C3.`,
     `Serve para não escrever a mesma conta dezenas de vezes. Você faz uma vez e espalha para a coluna inteira em um segundo.`,
     `Escreva =B2*C2 em D2 e confirme. Depois toque na célula D2 e use o botão Preencher ↓ (ele copia a fórmula para as linhas de baixo da coluna).`,
-    `A coluna Total preenchida do Caneta até o Lápis: 25, 72, 120, 36 e 36.`],
+    `A coluna Total preenchida do Caneta até o Lapis: 25, 72, 120, 36 e 36.`],
   'xl-1-05': [
     `Parênteses são como uma caixinha: o que está dentro é feito primeiro. Sem eles, o Excel faz primeiro vezes e dividido e só depois soma e subtrai, igual na escola.`,
     `Serve para dizer ao Excel a ordem certa das contas. 2+3*4 dá 14, mas (2+3)*4 dá 20: o resultado muda!`,
     `Você quer somar o preço com o frete e só depois multiplicar pela quantidade. Escreva =(B2+C2)*D2 e copie para as outras linhas.`,
-    `Os totais: Camiseta 144, Boné 60 e Meia 78. Se esquecer os parênteses, os números ficam errados.`],
+    `Os totais: Camiseta 144, Bone 60 e Meia 78. Se esquecer os parênteses, os números ficam errados.`],
   'xl-1-06': [
     `Porcentagem é uma fração de 100: 10% é o mesmo que 0,1. Na planilha, a célula pode mostrar 10% mas guardar 0,1. Aumentar 10% é multiplicar por 1,10; por isso a conta usa (1 + o reajuste).`,
     `Serve para calcular aumentos, descontos, comissões e juros, coisas que aparecem em qualquer loja.`,
     `Escreva =B2*(1+C2) em D2 e copie para baixo. A célula C2 já guarda o reajuste como porcentagem; é só apontar para ela.`,
-    `Os novos preços: Arroz 22, Feijão 8,40 e Óleo 9.`],
+    `Os novos preços: Arroz 22, Feijao 8,40 e Oleo 9.`],
   'xl-1-07': [
     `O sinal ^ (acento circunflexo) eleva um número a uma potência. 2^3 quer dizer 2 vezes 2 vezes 2, que dá 8. É a conta que faz o dinheiro render com juros que crescem sobre juros.`,
     `Serve para calcular juros compostos: quanto um dinheiro vira depois de alguns anos, rendendo uma taxa a cada ano.`,
@@ -78,14 +78,14 @@ module.exports = {
     `Palavras em cada linha: Ana Aprovado, Bruno Reprovado, Carla Aprovado e Davi Reprovado.`],
   'xl-1-16': [
     `Dentro do SE, você pode comparar números e também textos. Os sinais de comparação são = (igual), <> (diferente), > (maior), < (menor), >= (maior ou igual) e <= (menor ou igual).`,
-    `Serve para tratar casos diferentes: quem é do Sul ganha bônus, quem é de outra região não.`,
-    `Em D2 escreva =SE(B2="Sul";C2*10%;0). Repare nas aspas em volta do Sul. Se a região for Sul, o bônus é 10% das vendas; se não, é 0.`,
-    `Bônus: Ana 100, Bruno 0, Carla 120 e Davi 0.`],
+    `Serve para tratar casos diferentes: quem é do Sul ganha bonus, quem é de outra região não.`,
+    `Em D2 escreva =SE(B2="Sul";C2*10%;0). Repare nas aspas em volta do Sul. Se a região for Sul, o bonus é 10% das vendas; se não, é 0.`,
+    `Bonus: Ana 100, Bruno 0, Carla 120 e Davi 0.`],
   'xl-1-17': [
     `E e OU juntam várias condições. E só dá "sim" se todas forem verdadeiras. OU dá "sim" se pelo menos uma for. Você usa os dois dentro do SE.`,
     `Serve para regras com mais de uma exigência: "nota alta E poucas faltas" ou "nota baixa OU muitas faltas".`,
-    `Em D2 escreva =SE(E(B2>=7;C2<=5);"Sim";"Não"). Em E2 escreva =SE(OU(B2<5;C2>8);"Sim";"Não"). Copie as duas para baixo.`,
-    `Duas colunas de Sim e Não. Só a Ana é aprovada; Bruno, Carla e Davi ficam em recuperação.`],
+    `Em D2 escreva =SE(E(B2>=7;C2<=5);"Sim";"Nao"). Em E2 escreva =SE(OU(B2<5;C2>8);"Sim";"Nao"). Copie as duas para baixo.`,
+    `Duas colunas de Sim e Nao. Só a Ana é aprovada; Bruno, Carla e Davi ficam em recuperação.`],
   'xl-1-18': [
     `Quando há mais de duas respostas, um SE pode ficar dentro do outro: se não for A, o Excel pergunta se é B; se não for B, pergunta se é C, e assim por diante.`,
     `Serve para classificar em faixas: conceito A, B, C ou D; preço barato, médio ou caro; pequeno, médio ou grande.`,
@@ -134,8 +134,8 @@ module.exports = {
   'xl-1-27': [
     `Quando uma fórmula não consegue responder, ela mostra um erro, como #N/D (não encontrado). SEERRO é uma rede de proteção: se a fórmula der erro, ela mostra o que você escolheu no lugar.`,
     `Serve para a planilha não ficar cheia de erros feios quando falta um dado.`,
-    `Em E2 escreva =SEERRO(PROCV(D2;$A$2:$B$4;2;FALSO);"Não encontrado"). O PROCV vai dentro do SEERRO. Copie para baixo.`,
-    `Os pedidos 103 e 101 acham Monitor e Mouse; os códigos 999 e 105 mostram "Não encontrado".`],
+    `Em E2 escreva =SEERRO(PROCV(D2;$A$2:$B$4;2;FALSO);"Nao encontrado"). O PROCV vai dentro do SEERRO. Copie para baixo.`,
+    `Os pedidos 103 e 101 acham Monitor e Mouse; os códigos 999 e 105 mostram "Nao encontrado".`],
   'xl-1-28': [
     `CORRESP diz em qual posição da lista está um valor (o terceiro da lista, por exemplo). ÍNDICE faz o contrário: dá uma posição e devolve o que está lá. Juntos, eles procuram até para a esquerda.`,
     `Serve quando o PROCV não dá conta: ele só devolve o que está à direita da coluna procurada. Aqui o preço está à esquerda do nome.`,
@@ -144,8 +144,8 @@ module.exports = {
   'xl-1-29': [
     `PROCX é o procurador novo do Excel. Você diz o que procurar, em que lista procurar, de qual lista devolver e o que mostrar se não achar. Não precisa contar colunas. Existe no Excel 365 e no Excel 2021 ou mais novo.`,
     `Serve para o mesmo que o PROCV, mas mais fácil e seguro: procura em qualquer direção e já trata o "não achei".`,
-    `Em F2 escreva =PROCX(E2;$A$2:$A$4;$B$2:$B$4;"Não encontrado"). Em G2, a mesma ideia devolvendo os preços ($C$2:$C$4) e 0 se não achar.`,
-    `O 999 mostra "Não encontrado" e preço 0; os outros códigos trazem nome e preço.`],
+    `Em F2 escreva =PROCX(E2;$A$2:$A$4;$B$2:$B$4;"Nao encontrado"). Em G2, a mesma ideia devolvendo os preços ($C$2:$C$4) e 0 se não achar.`,
+    `O 999 mostra "Nao encontrado" e preço 0; os outros códigos trazem nome e preço.`],
   'xl-1-30': [
     `É uma lição de revisão: você junta o PROCV (para achar a taxa de cada região), contas com células, SOMA, SOMASE e CONT.SE no mesmo relatório.`,
     `Serve para mostrar que as funções se combinam. Um relatório de verdade quase sempre usa várias delas juntas.`,

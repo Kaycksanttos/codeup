@@ -2,12 +2,12 @@
 const mkH = require('./h');
 const DF = `import pandas as pd, io
 df = pd.read_csv(io.StringIO("""produto,categoria,qtd,preco,mes
-Notebook,Eletrônicos,2,3500,jan
-Mouse,Eletrônicos,10,80,jan
-Cadeira,Móveis,1,900,fev
+Notebook,Eletronicos,2,3500,jan
+Mouse,Eletronicos,10,80,jan
+Cadeira,Moveis,1,900,fev
 Caneta,Papelaria,50,3,fev
-Mouse,Eletrônicos,4,80,mar
-Mesa,Móveis,3,650,mar
+Mouse,Eletronicos,4,80,mar
+Mesa,Moveis,3,650,mar
 Caderno,Papelaria,20,18,mar
 """))
 `;
@@ -42,7 +42,7 @@ exports.lessons = [
   L('Iteradores: next e iter', 'iter() cria um iterador e next() pega o próximo item.', 'it = iter([1, 2])\nprint(next(it))',
     'Crie um iterador de ["a","b","c"] e imprima os dois primeiros itens com next (uma linha cada).', 'it = iter(["a", "b", "c"])\nprint(next(it))\nprint(next(it))', ['iter', 'next'], 'next(it) duas vezes'),
   L('Decorators', 'Um decorator envolve uma função para acrescentar comportamento, sem mudar o código dela.', 'def deco(f):\n    def novo(*a):\n        return f(*a)\n    return novo',
-    'Crie o decorator em_maiusculas que transforma o texto devolvido pela função em maiúsculas. Aplique em saudacao() que devolve "olá" e imprima o resultado.', 'def em_maiusculas(f):\n    def novo():\n        return f().upper()\n    return novo\n@em_maiusculas\ndef saudacao():\n    return "olá"\nprint(saudacao())', ['def em_maiusculas', '@em_maiusculas'], '@em_maiusculas acima do def saudacao'),
+    'Crie o decorator em_maiusculas que transforma o texto devolvido pela função em maiúsculas. Aplique em saudacao() que devolve "ola" e imprima o resultado.', 'def em_maiusculas(f):\n    def novo():\n        return f().upper()\n    return novo\n@em_maiusculas\ndef saudacao():\n    return "ola"\nprint(saudacao())', ['def em_maiusculas', '@em_maiusculas'], '@em_maiusculas acima do def saudacao'),
   L('Decorator com argumentos', '*args e **kwargs deixam o decorator funcionar com qualquer função; functools.wraps preserva o nome original.', 'from functools import wraps',
     'Crie o decorator log que imprime "chamando soma" antes de executar a função com *args. Decore soma(a, b) e imprima soma(2, 3).', 'def log(f):\n    def novo(*args, **kwargs):\n        print("chamando " + f.__name__)\n        return f(*args, **kwargs)\n    return novo\n@log\ndef soma(a, b):\n    return a + b\nprint(soma(2, 3))', ['*args', '@log'], 'print dentro de novo(*args, **kwargs)'),
   L('Closures', 'Uma função interna lembra as variáveis da função externa, mesmo depois dela terminar.', 'def mult(n):\n    def f(x):\n        return x * n\n    return f',
@@ -60,7 +60,7 @@ exports.lessons = [
   L('Pandas: head e shape', 'df.head(n) mostra as primeiras linhas; df.shape devolve (linhas, colunas); df.describe() resume os números.', 'print(df.shape)',
     'Imprima o shape do df e, embaixo, a lista dos 3 primeiros produtos (df.head(3)["produto"].tolist()).', 'print(df.shape)\nprint(df.head(3)["produto"].tolist())', ['shape', 'head'], 'df.head(3)["produto"].tolist()', PD),
   L('Pandas: filtrando', 'df[condição] devolve só as linhas que atendem. Combine condições com & e | (cada uma entre parênteses).', 'print(df[df["qtd"] > 5].shape[0])',
-    'Imprima a lista dos produtos de Eletrônicos com qtd maior que 3.', 'print(df[(df["categoria"] == "Eletrônicos") & (df["qtd"] > 3)]["produto"].tolist())', ['df[', '&'], 'Duas condições entre parênteses ligadas por &.', PD),
+    'Imprima a lista dos produtos de Eletronicos com qtd maior que 3.', 'print(df[(df["categoria"] == "Eletronicos") & (df["qtd"] > 3)]["produto"].tolist())', ['df[', '&'], 'Duas condições entre parênteses ligadas por &.', PD),
   L('Pandas: nova coluna', 'Crie colunas com cálculos: df["total"] = df["qtd"] * df["preco"].', 'df["x"] = df["qtd"] * 2',
     'Crie a coluna total (qtd * preco) e imprima a lista df["total"].tolist().', 'df["total"] = df["qtd"] * df["preco"]\nprint(df["total"].tolist())', ['df["total"]'], 'df["total"] = df["qtd"] * df["preco"]', PD),
   L('Pandas: groupby', 'groupby agrupa linhas e permite somar, contar ou tirar a média de cada grupo.', 'df.groupby("categoria")["qtd"].sum()',
@@ -70,9 +70,9 @@ exports.lessons = [
   L('Pandas: agg com várias métricas', '.agg() calcula várias estatísticas de uma vez.', 'df.groupby("mes")["qtd"].agg(["sum", "mean"])',
     'Crie a coluna total (qtd * preco), agrupe por categoria, e imprima o dicionário da receita máxima por categoria (max do total).', 'df["total"] = df["qtd"] * df["preco"]\nprint(df.groupby("categoria")["total"].max().to_dict())', ['groupby', 'max'], 'Crie total antes, depois groupby("categoria")["total"].max()', PD),
   L('Pandas: merge', 'merge() junta duas tabelas por uma coluna em comum, como um JOIN do SQL.', 'pd.merge(a, b, on="chave")',
-    'Junte df com a tabela metas pela coluna categoria e imprima a lista das metas (coluna meta) na ordem das linhas do df.', 'r = pd.merge(df, metas, on="categoria")\nprint(r["meta"].tolist())', ['merge'], 'pd.merge(df, metas, on="categoria")', { prelude: DF + 'metas = pd.DataFrame({"categoria": ["Eletrônicos", "Móveis", "Papelaria"], "meta": [5000, 2000, 300]})\n', peek: 'print(df.to_string())\nprint(metas.to_string())' }),
+    'Junte df com a tabela metas pela coluna categoria e imprima a lista das metas (coluna meta) na ordem das linhas do df.', 'r = pd.merge(df, metas, on="categoria")\nprint(r["meta"].tolist())', ['merge'], 'pd.merge(df, metas, on="categoria")', { prelude: DF + 'metas = pd.DataFrame({"categoria": ["Eletronicos", "Moveis", "Papelaria"], "meta": [5000, 2000, 300]})\n', peek: 'print(df.to_string())\nprint(metas.to_string())' }),
   L('Pandas: value_counts e pivot', 'value_counts() conta quantas vezes cada valor aparece; pivot_table() resume em formato de tabela dinâmica.', 'df["mes"].value_counts()',
     'Imprima como dicionário a quantidade de vendas por mês (value_counts().to_dict()), e a seguir o total de qtd por mês com pivot_table (índice mes, values qtd, aggfunc sum) em dicionário.', 'print(df["mes"].value_counts().to_dict())\nprint(df.pivot_table(index="mes", values="qtd", aggfunc="sum")["qtd"].to_dict())', ['value_counts', 'pivot_table'], 'df.pivot_table(index="mes", values="qtd", aggfunc="sum")', PD),
   L('Projeto: produto campeão', 'Projeto final do nível: transforme dados brutos em uma resposta de negócio.', 'df["total"] = df["qtd"] * df["preco"]',
-    'Crie a coluna total (qtd * preco). Descubra qual produto gerou mais receita somando por produto e imprima: "Campeão: Notebook com 7000".', 'df["total"] = df["qtd"] * df["preco"]\nr = df.groupby("produto")["total"].sum()\nprint(f"Campeão: {r.idxmax()} com {r.max()}")', ['groupby', 'idxmax'], 'r.idxmax() devolve o nome; r.max() o valor.', PD),
+    'Crie a coluna total (qtd * preco). Descubra qual produto gerou mais receita somando por produto e imprima: "Campeao: Notebook com 7000".', 'df["total"] = df["qtd"] * df["preco"]\nr = df.groupby("produto")["total"].sum()\nprint(f"Campeao: {r.idxmax()} com {r.max()}")', ['groupby', 'idxmax'], 'r.idxmax() devolve o nome; r.max() o valor.', PD),
 ];

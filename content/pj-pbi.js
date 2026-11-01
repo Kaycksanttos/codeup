@@ -59,7 +59,7 @@ module.exports = [
       build('Monte uma SEGMENTAÇÃO para o usuário filtrar o relatório por cidade do cliente.', 'loja', FIELDS, MEAS, ['column', 'card', 'table', 'slicer'], { v: 'slicer', axis: 'Clientes[Cidade]' }, 'A **segmentação** recebe só o campo que será usado como filtro: a Cidade.'),
       mc('Você quer comparar o total de vendas de 3 categorias lado a lado. Qual visual escolhe?', 'Gráfico de colunas', ['Cartão', 'Segmentação', 'Tabela com 200 linhas'], 'Para **comparar poucas categorias**, colunas deixam a diferença óbvia. O cartão mostra só um número e a segmentação filtra, mas não mostra valores.'),
       mc('Esta fórmula é uma medida ou uma coluna calculada?', 'Coluna calculada', ['Medida', 'Segmentação', 'Relacionamento'], 'Ela tem o nome da tabela antes do nome (Vendas[Margem]) e faz a conta **linha a linha**: é uma coluna calculada.', { code: 'Vendas[Margem] = Vendas[Valor] - Vendas[Qtd] * RELATED(Produtos[Custo])', lang: 'dax' }),
-      mc('E esta, é uma medida ou uma coluna calculada?', 'Medida', ['Coluna calculada', 'Segmentação', 'Relacionamento'], 'Não tem tabela antes do nome e resume muitas linhas de uma vez (AVERAGE): é uma **medida**, que muda conforme os filtros.', { code: 'Venda Média = AVERAGE(Vendas[Valor])', lang: 'dax' }),
+      mc('E esta, é uma medida ou uma coluna calculada?', 'Medida', ['Coluna calculada', 'Segmentação', 'Relacionamento'], 'Não tem tabela antes do nome e resume muitas linhas de uma vez (AVERAGE): é uma **medida**, que muda conforme os filtros.', { code: 'Venda Media = AVERAGE(Vendas[Valor])', lang: 'dax' }),
       num('Quantos reais a loja física (Loja) vendeu a mais do que o canal Online?', 349, 'Loja (R$ 548,00) menos Online (R$ 199,00) = **R$ 349,00**.', { chart: col(CANAL, CANAL_V, { title: 'Vendas por canal', fmt: 'moeda' }), unit: 'reais', calc: () => CANAL_V[0] - CANAL_V[1] })
     ],
     [`O segundo projeto do Power BI: a página de vendas da lanchonete. Ele junta as lições 6 a 10: fato e dimensão, o primeiro visual de colunas, escolher o visual certo, cartão, tabela e segmentação, e medida × coluna calculada.`,
@@ -71,11 +71,11 @@ module.exports = [
       'No gráfico, compare as alturas das colunas e calcule a diferença com os valores mostrados.']),
 
   pjD('números do dia a dia',
-    'Crie as seis medidas básicas da lanchonete: Total Vendas (a soma do Valor), Qtd de Vendas (quantas vendas existem), Venda Média (a média do Valor), Maior Venda (o maior Valor), Clientes Atendidos (quantos clientes diferentes compraram) e Comissão (5% do total das vendas).',
+    'Crie as seis medidas básicas da lanchonete: Total Vendas (a soma do Valor), Qtd de Vendas (quantas vendas existem), Venda Media (a média do Valor), Maior Venda (o maior Valor), Clientes Atendidos (quantos clientes diferentes compraram) e Comissao (5% do total das vendas).',
     {
       model: 'loja',
-      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Total Vendas': 'moeda', 'Venda Média': 'moeda', 'Maior Venda': 'moeda', 'Comissão': 'moeda' } }, { by: ['Calendario[Ano]'], title: 'Por ano', fmt: { 'Total Vendas': 'moeda', 'Venda Média': 'moeda', 'Maior Venda': 'moeda', 'Comissão': 'moeda' } }],
-      answer: { 'Total Vendas': 'SUM(Vendas[Valor])', 'Qtd de Vendas': 'COUNTROWS(Vendas)', 'Venda Média': 'AVERAGE(Vendas[Valor])', 'Maior Venda': 'MAX(Vendas[Valor])', 'Clientes Atendidos': 'DISTINCTCOUNT(Vendas[ClienteID])', 'Comissão': 'SUM(Vendas[Valor]) * 0.05' },
+      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Total Vendas': 'moeda', 'Venda Media': 'moeda', 'Maior Venda': 'moeda', 'Comissao': 'moeda' } }, { by: ['Calendario[Ano]'], title: 'Por ano', fmt: { 'Total Vendas': 'moeda', 'Venda Media': 'moeda', 'Maior Venda': 'moeda', 'Comissao': 'moeda' } }],
+      answer: { 'Total Vendas': 'SUM(Vendas[Valor])', 'Qtd de Vendas': 'COUNTROWS(Vendas)', 'Venda Media': 'AVERAGE(Vendas[Valor])', 'Maior Venda': 'MAX(Vendas[Valor])', 'Clientes Atendidos': 'DISTINCTCOUNT(Vendas[ClienteID])', 'Comissao': 'SUM(Vendas[Valor]) * 0.05' },
       need: ['SUM', 'COUNTROWS', 'AVERAGE', 'MAX', 'DISTINCTCOUNT'], hint: 'x'
     },
     [`Suas primeiras medidas em DAX, todas de uma vez. O projeto usa as lições 11 a 15: SUM, COUNTROWS, AVERAGE / MIN / MAX, DISTINCTCOUNT e contas dentro da medida.`,
@@ -83,16 +83,16 @@ module.exports = [
       `Escreva uma medida por linha, no formato Nome = fórmula. Use SUM para somar, COUNTROWS(Vendas) para contar as linhas, AVERAGE e MAX para a média e o maior valor, DISTINCTCOUNT para clientes diferentes e uma conta simples para a comissão.`,
       `Seis medidas conferidas por categoria de produto e por ano. Se algum número não bater, a tela mostra o seu resultado ao lado do esperado.`],
     ['Comece pelas mais simples: Total Vendas = SUM(Vendas[Valor]) e Qtd de Vendas = COUNTROWS(Vendas). Cada medida fica numa linha, no formato Nome = fórmula.',
-      'Venda Média usa AVERAGE(Vendas[Valor]) e Maior Venda usa MAX(Vendas[Valor]). Para contar clientes sem repetir, DISTINCTCOUNT(Vendas[ClienteID]).',
+      'Venda Media usa AVERAGE(Vendas[Valor]) e Maior Venda usa MAX(Vendas[Valor]). Para contar clientes sem repetir, DISTINCTCOUNT(Vendas[ClienteID]).',
       'A comissão é uma conta dentro da medida: SUM(Vendas[Valor]) * 0.05 (5% é 0,05). Use ponto nos decimais, como no DAX.']),
 
   pjD('painel de indicadores',
-    'O Total Vendas e a Qtd de Vendas já estão prontos no modelo. Crie as cinco medidas do painel: Ticket Médio (Total Vendas dividido pela Qtd de Vendas, mostrando 0 se não houver vendas), Vendas Online (Total Vendas só do canal Online), % Online (Vendas Online dividido pelo Total Vendas), Online de Lanches (Total Vendas do canal Online e da categoria Lanches) e Vendas Grandes (quantas vendas têm Valor maior que 20).',
+    'O Total Vendas e a Qtd de Vendas já estão prontos no modelo. Crie as cinco medidas do painel: Ticket Medio (Total Vendas dividido pela Qtd de Vendas, mostrando 0 se não houver vendas), Vendas Online (Total Vendas só do canal Online), % Online (Vendas Online dividido pelo Total Vendas), Online de Lanches (Total Vendas do canal Online e da categoria Lanches) e Vendas Grandes (quantas vendas têm Valor maior que 20).',
     {
       model: 'loja', extra: { measures: { 'Total Vendas': 'SUM(Vendas[Valor])', 'Qtd de Vendas': 'COUNTROWS(Vendas)' } },
-      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Total Vendas': 'moeda', 'Ticket Médio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1', 'Online de Lanches': 'moeda' } }, { by: ['Calendario[Ano]'], title: 'Por ano', fmt: { 'Total Vendas': 'moeda', 'Ticket Médio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1', 'Online de Lanches': 'moeda' } }],
+      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Total Vendas': 'moeda', 'Ticket Medio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1', 'Online de Lanches': 'moeda' } }, { by: ['Calendario[Ano]'], title: 'Por ano', fmt: { 'Total Vendas': 'moeda', 'Ticket Medio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1', 'Online de Lanches': 'moeda' } }],
       answer: {
-        'Ticket Médio': 'DIVIDE([Total Vendas], [Qtd de Vendas], 0)', 'Vendas Online': 'CALCULATE([Total Vendas], Vendas[Canal] = "Online")', '% Online': 'DIVIDE([Vendas Online], [Total Vendas])',
+        'Ticket Medio': 'DIVIDE([Total Vendas], [Qtd de Vendas], 0)', 'Vendas Online': 'CALCULATE([Total Vendas], Vendas[Canal] = "Online")', '% Online': 'DIVIDE([Vendas Online], [Total Vendas])',
         'Online de Lanches': 'CALCULATE([Total Vendas], Vendas[Canal] = "Online", Produtos[Categoria] = "Lanches")', 'Vendas Grandes': 'CALCULATE(COUNTROWS(Vendas), Vendas[Valor] > 20)'
       },
       need: ['DIVIDE', 'CALCULATE'], hint: 'x'
@@ -101,16 +101,16 @@ module.exports = [
       `Ticket médio, participação de cada canal e vendas de um recorte específico (Online de Lanches) são indicadores que gestores acompanham toda semana.`,
       `Use as medidas prontas entre colchetes, como [Total Vendas]. DIVIDE(a, b, 0) divide sem dar erro. CALCULATE(medida, filtro1, filtro2) muda o filtro: cada filtro é uma coluna igual a um valor.`,
       `Cinco medidas conferidas por categoria e por ano. A tela mostra o seu resultado ao lado do esperado se algum número não bater.`],
-    ['Você já tem [Total Vendas] e [Qtd de Vendas]. O Ticket Médio é DIVIDE([Total Vendas], [Qtd de Vendas], 0). O último número é o que aparece se a divisão não puder ser feita.',
+    ['Você já tem [Total Vendas] e [Qtd de Vendas]. O Ticket Medio é DIVIDE([Total Vendas], [Qtd de Vendas], 0). O último número é o que aparece se a divisão não puder ser feita.',
       'Vendas Online = CALCULATE([Total Vendas], Vendas[Canal] = "Online"). O % Online usa a medida que você acabou de criar: DIVIDE([Vendas Online], [Total Vendas]).',
       'Com dois filtros: CALCULATE([Total Vendas], Vendas[Canal] = "Online", Produtos[Categoria] = "Lanches"). Para contar vendas grandes: CALCULATE(COUNTROWS(Vendas), Vendas[Valor] > 20).']),
 
   pjD('colunas da tabela de vendas',
-    'Na tabela Vendas, crie cinco colunas calculadas: Preço Pago (Valor dividido pela Qtd), Tipo de Venda ("Entrega" se o Canal for Online, senão "Balcão"), Tamanho do Pedido ("Grande" se a Qtd for 4 ou mais, "Médio" se for 2 ou mais, senão "Pequeno"), Categoria da Venda (a categoria do produto vendido) e Local (a cidade do cliente, " - " e o canal; por exemplo: São Paulo - Online).',
+    'Na tabela Vendas, crie cinco colunas calculadas: Preco Pago (Valor dividido pela Qtd), Tipo de Venda ("Entrega" se o Canal for Online, senão "Balcao"), Tamanho do Pedido ("Grande" se a Qtd for 4 ou mais, "Medio" se for 2 ou mais, senão "Pequeno"), Categoria da Venda (a categoria do produto vendido) e Local (a cidade do cliente, " - " e o canal; por exemplo: Sao Paulo - Online).',
     {
       model: 'loja', mode: 'column', table: 'Vendas',
       answer: {
-        'Preço Pago': 'DIVIDE(Vendas[Valor], Vendas[Qtd])', 'Tipo de Venda': 'IF(Vendas[Canal] = "Online", "Entrega", "Balcão")', 'Tamanho do Pedido': 'SWITCH(TRUE(), Vendas[Qtd] >= 4, "Grande", Vendas[Qtd] >= 2, "Médio", "Pequeno")',
+        'Preco Pago': 'DIVIDE(Vendas[Valor], Vendas[Qtd])', 'Tipo de Venda': 'IF(Vendas[Canal] = "Online", "Entrega", "Balcao")', 'Tamanho do Pedido': 'SWITCH(TRUE(), Vendas[Qtd] >= 4, "Grande", Vendas[Qtd] >= 2, "Medio", "Pequeno")',
         'Categoria da Venda': 'RELATED(Produtos[Categoria])', 'Local': 'RELATED(Clientes[Cidade]) & " - " & Vendas[Canal]'
       },
       need: ['IF', 'SWITCH', 'RELATED'], starter: '-- escreva as 5 colunas calculadas aqui, uma depois da outra\n', hint: 'x'
@@ -119,18 +119,18 @@ module.exports = [
       `Colunas calculadas criam informação nova para cada linha: um tipo de venda, um tamanho de pedido, a categoria que vem de outra tabela. Depois dá para usá-las em filtros e gráficos.`,
       `Cada coluna começa com Vendas[Nome da coluna] = fórmula. Use IF para dois caminhos, SWITCH(TRUE(), ...) para vários, RELATED(Tabela[Coluna]) para buscar em outra tabela e & para juntar textos.`,
       `Cinco colunas conferidas linha a linha, com os valores calculados para cada venda.`],
-    ['Cada coluna fica numa linha: Vendas[Preço Pago] = DIVIDE(Vendas[Valor], Vendas[Qtd]). Textos entre aspas duplas.',
+    ['Cada coluna fica numa linha: Vendas[Preco Pago] = DIVIDE(Vendas[Valor], Vendas[Qtd]). Textos entre aspas duplas.',
       'O IF tem 3 partes: IF(teste, se verdadeiro, se falso). Para vários casos, SWITCH(TRUE(), teste1, resultado1, teste2, resultado2, resultado se nenhum). Comece pelo maior limite.',
       'RELATED traz um valor da tabela do outro lado do relacionamento: RELATED(Produtos[Categoria]). Para o Local, junte com &: RELATED(Clientes[Cidade]) & " - " & Vendas[Canal].']),
 
   pjD('comparando os anos',
-    'O dono quer comparar 2023 com 2024. Crie as cinco medidas: Vendas 2023 (o total das vendas só do ano 2023), Vendas 2024 (o mesmo para 2024), Variação (Vendas 2024 menos Vendas 2023), % de Variação (a variação dividida pelas Vendas 2023, usando DIVIDE) e Maior Venda 2024 (o maior Valor de uma venda só em 2024).',
+    'O dono quer comparar 2023 com 2024. Crie as cinco medidas: Vendas 2023 (o total das vendas só do ano 2023), Vendas 2024 (o mesmo para 2024), Variacao (Vendas 2024 menos Vendas 2023), % de Variacao (a variação dividida pelas Vendas 2023, usando DIVIDE) e Maior Venda 2024 (o maior Valor de uma venda só em 2024).',
     {
       model: 'loja',
-      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Vendas 2023': 'moeda', 'Vendas 2024': 'moeda', 'Variação': 'moeda', '% de Variação': 'pct1', 'Maior Venda 2024': 'moeda' } }, { by: ['Vendas[Canal]'], title: 'Por canal', fmt: { 'Vendas 2023': 'moeda', 'Vendas 2024': 'moeda', 'Variação': 'moeda', '% de Variação': 'pct1', 'Maior Venda 2024': 'moeda' } }],
+      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Vendas 2023': 'moeda', 'Vendas 2024': 'moeda', 'Variacao': 'moeda', '% de Variacao': 'pct1', 'Maior Venda 2024': 'moeda' } }, { by: ['Vendas[Canal]'], title: 'Por canal', fmt: { 'Vendas 2023': 'moeda', 'Vendas 2024': 'moeda', 'Variacao': 'moeda', '% de Variacao': 'pct1', 'Maior Venda 2024': 'moeda' } }],
       answer: {
-        'Vendas 2023': 'CALCULATE(SUM(Vendas[Valor]), Calendario[Ano] = 2023)', 'Vendas 2024': 'CALCULATE(SUM(Vendas[Valor]), Calendario[Ano] = 2024)', 'Variação': '[Vendas 2024] - [Vendas 2023]',
-        '% de Variação': 'DIVIDE([Vendas 2024] - [Vendas 2023], [Vendas 2023])', 'Maior Venda 2024': 'CALCULATE(MAX(Vendas[Valor]), Calendario[Ano] = 2024)'
+        'Vendas 2023': 'CALCULATE(SUM(Vendas[Valor]), Calendario[Ano] = 2023)', 'Vendas 2024': 'CALCULATE(SUM(Vendas[Valor]), Calendario[Ano] = 2024)', 'Variacao': '[Vendas 2024] - [Vendas 2023]',
+        '% de Variacao': 'DIVIDE([Vendas 2024] - [Vendas 2023], [Vendas 2023])', 'Maior Venda 2024': 'CALCULATE(MAX(Vendas[Valor]), Calendario[Ano] = 2024)'
       },
       need: ['CALCULATE', 'DIVIDE'], hint: 'x'
     },
@@ -139,6 +139,6 @@ module.exports = [
       `Use a tabela Calendario para fixar o ano: CALCULATE(SUM(Vendas[Valor]), Calendario[Ano] = 2023). Depois monte a variação com as medidas que você criou, entre colchetes, e divida com DIVIDE.`,
       `Cinco medidas conferidas por categoria de produto e por canal. A tela mostra o seu resultado ao lado do esperado se algum número não bater.`],
     ['Para fixar o ano use o filtro na tabela Calendario: CALCULATE(SUM(Vendas[Valor]), Calendario[Ano] = 2023). Faça igual para 2024.',
-      'A Variação usa as duas medidas que você acabou de criar: [Vendas 2024] - [Vendas 2023]. A % de Variação divide essa diferença pelas Vendas 2023, com DIVIDE.',
+      'A Variacao usa as duas medidas que você acabou de criar: [Vendas 2024] - [Vendas 2023]. A % de Variacao divide essa diferença pelas Vendas 2023, com DIVIDE.',
       'A maior venda de 2024 troca o SUM por MAX dentro do CALCULATE: CALCULATE(MAX(Vendas[Valor]), Calendario[Ano] = 2024).'])
 ];

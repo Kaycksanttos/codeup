@@ -32,12 +32,12 @@ module.exports = [
       `Oito perguntas numa só tela. Passando, você libera as lições 11 a 20.`]),
 
   cp(2, 'Checkpoint: o painel da lanchonete',
-    'Crie as cinco medidas do painel: Total Vendas (soma do Valor), Clientes Atendidos (clientes diferentes que compraram), Ticket Médio (Total Vendas dividido pela quantidade de vendas, mostrando 0 se não houver vendas), Vendas Online (Total Vendas só do canal Online) e % Online (Vendas Online dividido pelo Total Vendas).',
+    'Crie as cinco medidas do painel: Total Vendas (soma do Valor), Clientes Atendidos (clientes diferentes que compraram), Ticket Medio (Total Vendas dividido pela quantidade de vendas, mostrando 0 se não houver vendas), Vendas Online (Total Vendas só do canal Online) e % Online (Vendas Online dividido pelo Total Vendas).',
     D('x', '', '', 'x', {
       model: 'loja',
-      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Total Vendas': 'moeda', 'Ticket Médio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1' } }, { by: ['Calendario[Ano]'], title: 'Por ano', fmt: { 'Total Vendas': 'moeda', 'Ticket Médio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1' } }],
+      views: [{ by: ['Produtos[Categoria]'], title: 'Por categoria', fmt: { 'Total Vendas': 'moeda', 'Ticket Medio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1' } }, { by: ['Calendario[Ano]'], title: 'Por ano', fmt: { 'Total Vendas': 'moeda', 'Ticket Medio': 'moeda', 'Vendas Online': 'moeda', '% Online': 'pct1' } }],
       answer: {
-        'Total Vendas': 'SUM(Vendas[Valor])', 'Clientes Atendidos': 'DISTINCTCOUNT(Vendas[ClienteID])', 'Ticket Médio': 'DIVIDE([Total Vendas], COUNTROWS(Vendas), 0)',
+        'Total Vendas': 'SUM(Vendas[Valor])', 'Clientes Atendidos': 'DISTINCTCOUNT(Vendas[ClienteID])', 'Ticket Medio': 'DIVIDE([Total Vendas], COUNTROWS(Vendas), 0)',
         'Vendas Online': 'CALCULATE([Total Vendas], Vendas[Canal] = "Online")', '% Online': 'DIVIDE([Vendas Online], [Total Vendas])'
       },
       need: ['SUM', 'DISTINCTCOUNT', 'DIVIDE', 'CALCULATE'], hint: 'Comece pelas simples (Total Vendas e Clientes Atendidos) e depois use os nomes entre colchetes, como [Total Vendas], nas outras.'
@@ -48,12 +48,12 @@ module.exports = [
       `Cinco medidas conferidas por categoria e por ano. Se algum número não bater, a tela mostra o seu resultado ao lado do esperado.`]),
 
   fin('Prova final: a tabela de vendas completa',
-    'Na tabela Vendas, crie seis colunas calculadas: Valor Unitário (Valor dividido pela Qtd), Lucro da Venda (Valor menos Qtd vezes o Custo do produto), Porte ("Grande" se o Valor for 20 ou mais, senão "Pequena"), Tamanho ("Uma" se a Qtd for 1, "Poucas" se for até 3, senão "Muitas"), Ano e Mês (a data no formato 2024-03) e Etiqueta (as 3 primeiras letras do Canal em maiúsculas, " - " e o nome do produto; por exemplo: LOJ - Pastel).',
+    'Na tabela Vendas, crie seis colunas calculadas: Valor Unitario (Valor dividido pela Qtd), Lucro da Venda (Valor menos Qtd vezes o Custo do produto), Porte ("Grande" se o Valor for 20 ou mais, senão "Pequena"), Tamanho ("Uma" se a Qtd for 1, "Poucas" se for até 3, senão "Muitas"), Ano e Mes (a data no formato 2024-03) e Etiqueta (as 3 primeiras letras do Canal em maiúsculas, " - " e o nome do produto; por exemplo: LOJ - Pastel).',
     D('x', '', '', 'x', {
       model: 'loja', mode: 'column', table: 'Vendas',
       answer: {
-        'Valor Unitário': 'DIVIDE(Vendas[Valor], Vendas[Qtd])', 'Lucro da Venda': 'Vendas[Valor] - Vendas[Qtd] * RELATED(Produtos[Custo])', 'Porte': 'IF(Vendas[Valor] >= 20, "Grande", "Pequena")',
-        'Tamanho': 'SWITCH(TRUE(), Vendas[Qtd] = 1, "Uma", Vendas[Qtd] <= 3, "Poucas", "Muitas")', 'Ano e Mês': 'FORMAT(Vendas[Data], "yyyy-mm")', 'Etiqueta': 'UPPER(LEFT(Vendas[Canal], 3)) & " - " & RELATED(Produtos[Produto])'
+        'Valor Unitario': 'DIVIDE(Vendas[Valor], Vendas[Qtd])', 'Lucro da Venda': 'Vendas[Valor] - Vendas[Qtd] * RELATED(Produtos[Custo])', 'Porte': 'IF(Vendas[Valor] >= 20, "Grande", "Pequena")',
+        'Tamanho': 'SWITCH(TRUE(), Vendas[Qtd] = 1, "Uma", Vendas[Qtd] <= 3, "Poucas", "Muitas")', 'Ano e Mes': 'FORMAT(Vendas[Data], "yyyy-mm")', 'Etiqueta': 'UPPER(LEFT(Vendas[Canal], 3)) & " - " & RELATED(Produtos[Produto])'
       },
       need: ['RELATED', 'IF', 'SWITCH', 'FORMAT', 'UPPER', 'LEFT'], starter: '-- escreva as 6 colunas calculadas aqui, uma depois da outra\n', hint: 'Cada coluna começa com Vendas[Nome da coluna] = fórmula. O Custo e o nome do produto estão em Produtos: busque com RELATED.'
     }),

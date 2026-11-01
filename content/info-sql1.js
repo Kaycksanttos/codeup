@@ -25,27 +25,27 @@ module.exports = {
     `Quando a regra usa uma palavra (um texto) em vez de um número, a palavra vai entre aspas simples, assim: 'Papelaria'. As aspas avisam o computador: "isto aqui é um texto".`,
     `Serve para pegar tudo de um grupo: os produtos de uma categoria, as pessoas de uma cidade, os pedidos de um tipo.`,
     `Escreva WHERE categoria = 'Papelaria'. Use aspas simples (') e escreva a palavra igualzinha à da tabela, com a mesma letra maiúscula e o mesmo acento. Fica assim: SELECT nome FROM produtos WHERE categoria = 'Papelaria'.`,
-    `Os nomes dos produtos de Papelaria: 3 linhas (Caneta, Caderno e Lápis).`],
+    `Os nomes dos produtos de Papelaria: 3 linhas (Caneta, Caderno e Lapis).`],
   'sql-1-06': [
     `O sinal <> quer dizer "diferente de". Ele pega tudo que NÃO é igual ao que você escreveu. É o contrário do sinal de igual.`,
-    `Serve para deixar um grupo de fora: "todos os produtos, menos os eletrônicos".`,
-    `Escreva a coluna, o sinal <> (um menor e um maior colados) e o valor entre aspas: WHERE categoria <> 'Eletrônicos'. Fica assim: SELECT nome, categoria FROM produtos WHERE categoria <> 'Eletrônicos'.`,
-    `2 colunas (nome e categoria) e 6 linhas: todos os produtos, menos os Eletrônicos.`],
+    `Serve para deixar um grupo de fora: "todos os produtos, menos os eletronicos".`,
+    `Escreva a coluna, o sinal <> (um menor e um maior colados) e o valor entre aspas: WHERE categoria <> 'Eletronicos'. Fica assim: SELECT nome, categoria FROM produtos WHERE categoria <> 'Eletronicos'.`,
+    `2 colunas (nome e categoria) e 6 linhas: todos os produtos, menos os Eletronicos.`],
   'sql-1-07': [
     `AND quer dizer "e". Ele junta duas regras, e a linha só passa se cumprir as DUAS ao mesmo tempo. É como "só entra no parque quem tem ingresso E está de pulseira".`,
-    `Serve para procurar com mais capricho: "eletrônicos E baratos", "pedidos pagos E de hoje".`,
-    `Escreva uma regra, a palavra AND e a outra regra: WHERE categoria = 'Eletrônicos' AND preco < 300. Fica assim: SELECT nome FROM produtos WHERE categoria = 'Eletrônicos' AND preco < 300.`,
+    `Serve para procurar com mais capricho: "eletronicos E baratos", "pedidos pagos E de hoje".`,
+    `Escreva uma regra, a palavra AND e a outra regra: WHERE categoria = 'Eletronicos' AND preco < 300. Fica assim: SELECT nome FROM produtos WHERE categoria = 'Eletronicos' AND preco < 300.`,
     `Só os nomes dos produtos que passaram nas duas regras: 2 linhas (Mouse e Teclado).`],
   'sql-1-08': [
     `OR quer dizer "ou". Ele junta duas regras, e a linha passa se cumprir PELO MENOS UMA delas. É como "pode brincar quem trouxe bola OU quem trouxe corda".`,
-    `Serve para aceitar mais de uma possibilidade: "móveis ou coisas bem baratas", "clientes de SP ou do RJ".`,
-    `Escreva uma regra, a palavra OR e a outra regra: WHERE categoria = 'Móveis' OR preco < 10. Fica assim: SELECT nome FROM produtos WHERE categoria = 'Móveis' OR preco < 10.`,
-    `Os nomes dos produtos que cumprem uma das regras (ou as duas): 5 linhas (Cadeira, Mesa, Caneta, Estante e Lápis).`],
+    `Serve para aceitar mais de uma possibilidade: "moveis ou coisas bem baratas", "clientes de SP ou do RJ".`,
+    `Escreva uma regra, a palavra OR e a outra regra: WHERE categoria = 'Moveis' OR preco < 10. Fica assim: SELECT nome FROM produtos WHERE categoria = 'Moveis' OR preco < 10.`,
+    `Os nomes dos produtos que cumprem uma das regras (ou as duas): 5 linhas (Cadeira, Mesa, Caneta, Estante e Lapis).`],
   'sql-1-09': [
     `Parênteses são como uma caixinha que diz "resolva isto primeiro". Quando você mistura AND e OR na mesma frase, eles evitam confusão.`,
     `Serve para o computador entender exatamente o que você quer. Sem parênteses, o AND é resolvido antes do OR e o resultado pode ficar errado sem você perceber.`,
-    `Coloque a parte do OR dentro de parênteses e depois ligue o resto com AND: WHERE (categoria = 'Móveis' OR categoria = 'Papelaria') AND preco < 100. Quer dizer: "é Móveis ou Papelaria, e além disso custa menos de 100".`,
-    `Só os nomes dos itens baratos dessas duas categorias: 3 linhas (Caneta, Caderno e Lápis).`],
+    `Coloque a parte do OR dentro de parênteses e depois ligue o resto com AND: WHERE (categoria = 'Moveis' OR categoria = 'Papelaria') AND preco < 100. Quer dizer: "é Moveis ou Papelaria, e além disso custa menos de 100".`,
+    `Só os nomes dos itens baratos dessas duas categorias: 3 linhas (Caneta, Caderno e Lapis).`],
   'sql-1-10': [
     `IN quer dizer "está dentro de". Você escreve uma lista de opções entre parênteses, e passa quem estiver na lista.`,
     `Serve para escolher vários de uma vez sem repetir OR, OR, OR. Por exemplo: "os produtos número 1, 3 e 5" ou "clientes de SP, RJ e MG".`,
@@ -70,12 +70,12 @@ module.exports = {
     `ORDER BY quer dizer "ordene por". Ele arruma as linhas do resultado em fila, como organizar os alunos por altura. Se você não disser nada, a fila vai do menor para o maior.`,
     `Serve para deixar a lista arrumada: do mais barato ao mais caro, em ordem alfabética, da data mais antiga à mais nova.`,
     `O ORDER BY fica sempre no final, com a coluna que manda na fila: ORDER BY preco. Fica assim: SELECT nome, preco FROM produtos ORDER BY preco.`,
-    `Os 10 produtos em fila, do mais barato para o mais caro (o Lápis primeiro e o Notebook por último).`],
+    `Os 10 produtos em fila, do mais barato para o mais caro (o Lapis primeiro e o Notebook por último).`],
   'sql-1-15': [
     `DESC quer dizer "decrescente": a fila vai do maior para o menor. É o contrário do jeito normal.`,
     `Serve para fazer ranking, como "quem tem mais", "o que mais vendeu", "o mais novo".`,
     `Escreva DESC logo depois da coluna: ORDER BY estoque DESC. Fica assim: SELECT nome, estoque FROM produtos ORDER BY estoque DESC.`,
-    `Os 10 produtos com o maior estoque lá em cima (o Lápis, com 1200, aparece primeiro).`],
+    `Os 10 produtos com o maior estoque lá em cima (o Lapis, com 1200, aparece primeiro).`],
   'sql-1-16': [
     `Dá para ordenar por duas coisas. A primeira manda na fila, e a segunda só entra para desempatar quando a primeira for igual. É como arrumar a turma: primeiro por sala e, dentro de cada sala, por altura.`,
     `Serve para listas organizadas em grupos, como "cada categoria junta e, dentro dela, do mais caro ao mais barato".`,
@@ -95,12 +95,12 @@ module.exports = {
     `DISTINCT quer dizer "diferente, sem repetir". Ele tira as repetições do resultado e deixa cada valor aparecer uma vez só.`,
     `Serve para saber quais opções existem: quais categorias, quais cidades, quais tipos. Sem ele, cada categoria apareceria uma vez para cada produto.`,
     `Escreva DISTINCT logo depois do SELECT: SELECT DISTINCT categoria FROM produtos.`,
-    `Cada categoria uma vez só: 3 linhas (Eletrônicos, Móveis e Papelaria).`],
+    `Cada categoria uma vez só: 3 linhas (Eletronicos, Moveis e Papelaria).`],
   'sql-1-20': [
     `COUNT quer dizer "conte". Ele junta várias linhas e devolve só um número: quantas linhas existem. É como uma calculadora que conta pra você.`,
     `Serve para responder "quantos?": quantos produtos, quantos clientes, quantos pedidos.`,
-    `Escreva COUNT(*) no lugar das colunas. Se quiser contar só uma parte, use o WHERE que você já aprendeu. Fica assim: SELECT COUNT(*) FROM produtos WHERE categoria = 'Móveis'.`,
-    `Uma tabelinha com 1 linha e 1 coluna, só com o número: 3 (os produtos de Móveis).`],
+    `Escreva COUNT(*) no lugar das colunas. Se quiser contar só uma parte, use o WHERE que você já aprendeu. Fica assim: SELECT COUNT(*) FROM produtos WHERE categoria = 'Moveis'.`,
+    `Uma tabelinha com 1 linha e 1 coluna, só com o número: 3 (os produtos de Moveis).`],
   'sql-1-21': [
     `SUM quer dizer "soma". Ele pega todos os números de uma coluna e soma, como somar todas as notas de uma prova.`,
     `Serve para responder "quanto deu no total?": total vendido, total em estoque, total arrecadado.`,
@@ -109,8 +109,8 @@ module.exports = {
   'sql-1-22': [
     `AVG quer dizer "média" (do inglês "average"). A média é o valor do meio do caminho: você soma tudo e divide pela quantidade de itens.`,
     `Serve para saber o valor "normal" de uma coisa: o preço médio, a nota média da turma.`,
-    `Escreva AVG(preco). Para fazer a média só de um grupo, junte um WHERE. Fica assim: SELECT AVG(preco) FROM produtos WHERE categoria = 'Eletrônicos'.`,
-    `1 linha e 1 coluna com a média de preço dos eletrônicos: 1257.5.`],
+    `Escreva AVG(preco). Para fazer a média só de um grupo, junte um WHERE. Fica assim: SELECT AVG(preco) FROM produtos WHERE categoria = 'Eletronicos'.`,
+    `1 linha e 1 coluna com a média de preço dos eletronicos: 1257.5.`],
   'sql-1-23': [
     `MIN é o menor valor e MAX é o maior. Dá para pedir os dois ao mesmo tempo no mesmo SELECT.`,
     `Serve para achar os extremos: o produto mais barato e o mais caro, a menor e a maior nota.`,
@@ -125,7 +125,7 @@ module.exports = {
     `GROUP BY quer dizer "agrupe por". Ele separa as linhas em montinhos (um montinho para cada categoria, por exemplo), e a conta de contar ou somar trabalha dentro de cada montinho.`,
     `Serve para fazer resumos por grupo: quantos produtos em cada categoria, quanto vendeu cada mês, quanto cada cliente gastou.`,
     `Escreva a coluna do grupo no SELECT e também depois do GROUP BY, e ponha a conta ao lado. Fica assim: SELECT categoria, COUNT(*) FROM produtos GROUP BY categoria.`,
-    `Uma linha para cada categoria, com o total de produtos dela: Eletrônicos (4), Móveis (3) e Papelaria (3).`],
+    `Uma linha para cada categoria, com o total de produtos dela: Eletronicos (4), Moveis (3) e Papelaria (3).`],
   'sql-1-26': [
     `Em cada montinho do GROUP BY você pode fazer várias contas ao mesmo tempo, como somar uma coisa e tirar a média de outra.`,
     `Serve para montar um resumo completo de cada grupo numa consulta só, como o boletim de cada turma.`,
@@ -149,6 +149,6 @@ module.exports = {
   'sql-1-30': [
     `Funções prontas mexem no valor antes de mostrar: ROUND arredonda o número, UPPER deixa o texto em LETRAS MAIÚSCULAS e LENGTH conta quantas letras ele tem.`,
     `Serve para mostrar os dados bonitinhos: uma média com só 2 casas depois da vírgula, nomes todos no mesmo formato.`,
-    `Envolva a coluna (ou outra função) com a função: ROUND(AVG(preco), 2). O número depois da vírgula é quantas casas você quer. Fica assim: SELECT ROUND(AVG(preco), 2) AS media FROM produtos WHERE categoria = 'Móveis'.`,
-    `1 linha e 1 coluna chamada media: 676.67 (o preço médio dos móveis, arredondado).`]
+    `Envolva a coluna (ou outra função) com a função: ROUND(AVG(preco), 2). O número depois da vírgula é quantas casas você quer. Fica assim: SELECT ROUND(AVG(preco), 2) AS media FROM produtos WHERE categoria = 'Moveis'.`,
+    `1 linha e 1 coluna chamada media: 676.67 (o preço médio dos moveis, arredondado).`]
 };

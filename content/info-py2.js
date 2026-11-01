@@ -85,7 +85,7 @@ module.exports = {
     `.split() corta um texto em pedaços e devolve uma lista de palavras. O .join() faz o contrário: cola os pedaços de uma lista num texto só, com o que você escolher no meio.`,
     `Serve para separar as palavras de uma frase ou os campos de uma linha de dados, e para montar um texto a partir de uma lista.`,
     `frase.split() separa nos espaços. "-".join(palavras) cola as palavras usando o hífen no meio. Use len(palavras) para contar quantas são.`,
-    `Duas linhas: 3 (o número de palavras) e dados-contam-histórias (as palavras coladas com hífen).`],
+    `Duas linhas: 3 (o número de palavras) e dados-contam-historias (as palavras coladas com hífen).`],
   'py-2-18': [
     `Três ferramentas de texto: .replace(a, b) troca um pedaço por outro, .find(x) diz em que posição x aparece e .count(x) conta quantas vezes x aparece.`,
     `Serve para consertar, procurar e contar dentro de textos: trocar vírgula por ponto, achar uma palavra, contar letras.`,
@@ -97,10 +97,10 @@ module.exports = {
     `Depois do nome da variável, ponha dois-pontos e o formato: print(f"Total: {total:.2f}"). O .2f quer dizer "2 casas decimais".`,
     `Uma linha com o número arrumado: Total: 1234.50 (repare que o zero no final aparece).`],
   'py-2-20': [
-    `Um parâmetro pode ter um valor padrão, como texto="Olá": se quem chamar a função não disser nada, vale o padrão. É como o tamanho médio que vem de brinde se você não escolher.`,
+    `Um parâmetro pode ter um valor padrão, como texto="Ola": se quem chamar a função não disser nada, vale o padrão. É como o tamanho médio que vem de brinde se você não escolher.`,
     `Serve para criar funções flexíveis: a mesma função funciona com ou sem a informação extra.`,
-    `Na criação da função, escreva o parâmetro com = e o valor padrão: def saudacao(nome, texto="Olá"). Ao chamar, o segundo valor é opcional: saudacao("Ana") ou saudacao("Bia", "Oi").`,
-    `Duas linhas: Olá, Ana! (usou o padrão) e Oi, Bia! (usou o valor que você mandou).`],
+    `Na criação da função, escreva o parâmetro com = e o valor padrão: def saudacao(nome, texto="Ola"). Ao chamar, o segundo valor é opcional: saudacao("Ana") ou saudacao("Bia", "Oi").`,
+    `Duas linhas: Ola, Ana! (usou o padrão) e Oi, Bia! (usou o valor que você mandou).`],
   'py-2-21': [
     `Argumento nomeado é quando você diz o nome do parâmetro ao chamar a função: desconto=0.1. Assim ninguém se confunde com a ordem dos valores.`,
     `Serve para deixar a chamada fácil de entender e para pular parâmetros opcionais sem errar a ordem.`,
@@ -124,8 +124,8 @@ module.exports = {
   'py-2-25': [
     `try quer dizer "tente". O Python tenta rodar o código, e se algo der errado, o except ("exceto se der erro") pega o problema e segue em frente, sem o programa quebrar.`,
     `Serve para lidar com dados bagunçados ou digitados errado: transformar em número um texto que talvez não seja número.`,
-    `Escreva try: com o código arriscado (print(int(texto))) e except ValueError: com o que fazer se der erro (print("Valor inválido")). Cada parte tem 4 espaços na frente.`,
-    `A sua mensagem, no lugar daquele erro vermelho feio: Valor inválido. (O texto "abc" não vira número.)`],
+    `Escreva try: com o código arriscado (print(int(texto))) e except ValueError: com o que fazer se der erro (print("Valor invalido")). Cada parte tem 4 espaços na frente.`,
+    `A sua mensagem, no lugar daquele erro vermelho feio: Valor invalido. (O texto "abc" não vira número.)`],
   'py-2-26': [
     `raise quer dizer "levante": ele cria um erro de propósito, para barrar valores que não fazem sentido, como o professor que não aceita uma resposta absurda.`,
     `Serve para proteger suas funções: recusar um número negativo, um campo vazio, uma idade impossível.`,

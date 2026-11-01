@@ -203,3 +203,40 @@ test('SQL: exemplo completo e executável em cada lição, com a tabela do resul
   }
   assert.ok(!tests.some(t => 'exampleOut' in t) && !projects.some(t => 'exampleOut' in t), 'as provas e os projetos não têm exemplo nem resultado dele');
 });
+
+// Dados que o aluno digita ou vê nas atividades (tabelas, textos, resultados, nomes de colunas e medidas) ficam SEM acento e sem símbolos especiais.
+// As explicações continuam em português normal, e os nomes reais de funções do Excel (MÉDIA, ÍNDICE…) continuam com acento.
+test('dados das lições, provas e projetos: sem acento (tabelas, textos, resultados, nomes de colunas e medidas)', () => {
+  const seeds = require('../content/seeds.js'), DD = require('../public/daxdata.js');
+  const NA = /[^\x00-\x7f]/, bad = [];
+  const chk = (where, s) => { if (typeof s === 'string' && NA.test(s)) bad.push(where + ': ' + (s.match(/.{0,30}[^\x00-\x7f]+.{0,30}/) || [s])[0].replace(/\n/g, '\\n')); };
+  const deep = (where, v) => { if (v == null) return; if (typeof v === 'string') chk(where, v); else if (typeof v === 'object') for (const [k, x] of Object.entries(v)) deep(where + '.' + k, x); };
+  // fórmula do Excel: o nome da função pode ter acento (é o nome oficial), mas o texto entre aspas não
+  const formula = (where, f) => { if (typeof f !== 'string') return; if (f[0] !== '=') return chk(where, f); chk(where, f.replace(/[A-ZÀ-Ý.]+(?=\()/g, '')); };
+  const semComentario = (s, re) => String(s).split('\n').map(l => l.replace(re, '')).join('\n');
+  for (const [k, v] of Object.entries(seeds)) if (!k.startsWith('T_')) chk('seeds.' + k, v);
+  for (const l of [...lessons, ...tests, ...projects]) {
+    if (l.track === 'dados') continue;   // Análise de Dados: exemplos de conceito, em português normal
+    const id = l.id;
+    chk(id + '.expectedOut', l.expectedOut); chk(id + '.prelude', l.prelude);
+    if (l.exampleOut) deep(id + '.exampleOut', { cols: l.exampleOut.cols, rows: l.exampleOut.rows });
+    deep(id + '.expectedRows', l.expectedRows);
+    if (l.track === 'python' || l.track === 'sql') {
+      (l.need || []).forEach(n => chk(id + '.need', n));
+      chk(id + '.solution', semComentario(l.solution, l.track === 'python' ? /\s*#.*$/ : /\s*--.*$/));
+    }
+    if (l.track === 'excel') {
+      for (const r of (l.sheet && l.sheet.rows) || []) for (const c of r) formula(id + '.sheet', c);
+      if (typeof l.answer === 'string') formula(id + '.answer', l.answer);
+      else deep(id + '.answer', Object.fromEntries(Object.entries(l.answer || {}).filter(([, x]) => typeof x !== 'string' || x[0] !== '=')));
+      for (const f of Object.values(l.targets || {})) formula(id + '.targets', typeof f === 'string' ? f : JSON.stringify(f));
+    }
+    if (l.track === 'powerbi') {
+      for (const f of ['extra', 'answer', 'names', 'table', 'model', 'views', 'forbid', 'peek']) deep(id + '.' + f, l[f]);
+      (l.need || []).forEach(n => chk(id + '.need', n));
+      for (const f of ['solution', 'starter']) chk(id + '.' + f, semComentario(l[f], /\s*(\/\/|--).*$/));
+    }
+  }
+  deep('daxdata', JSON.parse(JSON.stringify(DD, (k, v) => typeof v === 'function' ? undefined : v)));
+  assert.deepEqual(bad, [], 'dados com acento ou símbolo especial:\n' + bad.slice(0, 30).join('\n'));
+});

@@ -5,8 +5,8 @@ module.exports = {
   'py-1-01': [
     `Programar é dar ordens para o computador, escrevendo numa língua que ele entende. Python é uma dessas línguas. A ordem print() quer dizer "escreva isto na tela". O texto que você quer escrever vai entre aspas.`,
     `Serve para o programa "falar" com você: mostrar resultados, avisos e mensagens. Quase todo programa começa assim.`,
-    `Escreva a palavra print, abra um parêntese, coloque o texto entre aspas e feche o parêntese. Fica assim: print("Olá, mundo!").`,
-    `A mensagem aparece na área de saída (é o lugar onde o programa mostra o que ele fez), sem as aspas: Olá, mundo!`],
+    `Escreva a palavra print, abra um parêntese, coloque o texto entre aspas e feche o parêntese. Fica assim: print("Ola, mundo!").`,
+    `A mensagem aparece na área de saída (é o lugar onde o programa mostra o que ele fez), sem as aspas: Ola, mundo!`],
   'py-1-02': [
     `Um programa é uma lista de ordens. O Python lê a lista de cima para baixo, uma ordem de cada vez, como você segue uma receita de bolo.`,
     `Serve para mostrar várias coisas em ordem, uma embaixo da outra.`,
@@ -45,8 +45,8 @@ module.exports = {
   'py-1-09': [
     `O sinal + entre dois textos cola um no outro e forma um texto só. Isso se chama concatenar (é como juntar dois vagões de trem).`,
     `Serve para montar mensagens, nomes completos e frases usando pedaços separados.`,
-    `Ligue os textos e as variáveis com +, assim: "Olá, " + nome. Cuidado com os espaços: o espaço depois da vírgula está dentro das aspas.`,
-    `Uma frase só, com os pedaços colados: Olá, Ana`],
+    `Ligue os textos e as variáveis com +, assim: "Ola, " + nome. Cuidado com os espaços: o espaço depois da vírgula está dentro das aspas.`,
+    `Uma frase só, com os pedaços colados: Ola, Ana`],
   'py-1-10': [
     `f-string é um texto com a letra f antes das aspas. Dentro dele, o que estiver entre chaves { } vira o valor da variável: f"{nome} tem {idade} anos". É como uma frase com lacunas que o Python preenche.`,
     `Serve para montar frases com dados que mudam, de um jeito limpo, sem ficar emendando tudo com +.`,
@@ -91,17 +91,17 @@ module.exports = {
     `O elif é um "senão, se...". Ele testa uma nova pergunta quando a anterior deu falso, e assim você consegue mais de dois caminhos.`,
     `Serve para colocar em faixas: aprovado, recuperação ou reprovado.`,
     `A ordem é: if, depois um ou mais elif e, no final, o else para o que sobrou. O Python para na primeira condição que for verdadeira.`,
-    `Aparece só uma mensagem. Com nota 6.5 não vale >= 7, mas vale >= 5: Recuperação.`],
+    `Aparece só uma mensagem. Com nota 6.5 não vale >= 7, mas vale >= 5: Recuperacao.`],
   'py-1-19': [
     `Lista é uma fila de coisas guardadas numa caixinha só, dentro de colchetes e separadas por vírgula, como uma lista de compras.`,
     `Serve para trabalhar com vários dados juntos: nomes, notas, preços, itens de um pedido.`,
-    `Escreva o nome da lista, o sinal = e os itens entre colchetes: frutas = ["maçã", "banana", "uva"]. Textos levam aspas; números não.`,
-    `A lista inteira, com colchetes e aspas simples: ['maçã', 'banana', 'uva']`],
+    `Escreva o nome da lista, o sinal = e os itens entre colchetes: frutas = ["maca", "banana", "uva"]. Textos levam aspas; números não.`,
+    `A lista inteira, com colchetes e aspas simples: ['maca', 'banana', 'uva']`],
   'py-1-20': [
     `Cada item da lista tem uma posição, e a contagem começa no 0: o primeiro é o 0, o segundo é o 1. A posição -1 é um truque para pegar o último item.`,
     `Serve para pegar um item específico: o primeiro, o último, o terceiro.`,
     `Escreva o nome da lista e a posição entre colchetes: print(frutas[0]) e print(frutas[-1]). A lista frutas já está pronta para você.`,
-    `Duas linhas: maçã (o primeiro) e uva (o último).`],
+    `Duas linhas: maca (o primeiro) e uva (o último).`],
   'py-1-21': [
     `.append() quer dizer "acrescente no final". Ele coloca um item novo no fim da lista.`,
     `Serve para ir montando uma lista aos poucos: novos pedidos, novos alunos, resultados de contas.`,
@@ -116,7 +116,7 @@ module.exports = {
     `O for é um repetidor: ele faz a mesma coisa para cada item de uma lista, um de cada vez. "Para cada fruta da lista, faça isto."`,
     `Serve para tratar todos os itens sem copiar e colar o mesmo código várias vezes.`,
     `Escreva for fruta in frutas: e, na linha de baixo com 4 espaços na frente, o que fazer com cada um: print(fruta.upper()).`,
-    `Uma linha para cada fruta, já em maiúsculas: MAÇÃ, BANANA e UVA.`],
+    `Uma linha para cada fruta, já em maiúsculas: MACA, BANANA e UVA.`],
   'py-1-24': [
     `range(1, 6) cria os números de 1 até 5. O último número que você escreve (o 6) NÃO entra.`,
     `Serve para repetir algo um número exato de vezes, ou para andar por uma sequência de números.`,

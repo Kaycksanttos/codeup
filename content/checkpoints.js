@@ -35,12 +35,12 @@ const factory = (track, lv, defSeed) => {
 
 const DF = `import pandas as pd, io
 df = pd.read_csv(io.StringIO("""produto,categoria,qtd,preco,mes
-Notebook,Eletrônicos,2,3500,jan
-Mouse,Eletrônicos,10,80,jan
-Cadeira,Móveis,1,900,fev
+Notebook,Eletronicos,2,3500,jan
+Mouse,Eletronicos,10,80,jan
+Cadeira,Moveis,1,900,fev
 Caneta,Papelaria,50,3,fev
-Mouse,Eletrônicos,4,80,mar
-Mesa,Móveis,3,650,mar
+Mouse,Eletronicos,4,80,mar
+Mesa,Moveis,3,650,mar
 Caderno,Papelaria,20,18,mar
 """))
 `;
@@ -51,8 +51,8 @@ const out = [];
 {
   const P = factory('sql', 1, LOJA);
   out.push(
-    P.cp('Checkpoint: filtros', "Mostre o nome e o preço (com o apelido valor) dos produtos das categorias 'Eletrônicos' ou 'Móveis' que custam menos de 1000, exceto o produto de id 4.",
-      "SELECT nome, preco AS valor FROM produtos WHERE categoria IN ('Eletrônicos', 'Móveis') AND preco < 1000 AND id <> 4", ['where', 'as valor', 'and'],
+    P.cp('Checkpoint: filtros', "Mostre o nome e o preço (com o apelido valor) dos produtos das categorias 'Eletronicos' ou 'Moveis' que custam menos de 1000, exceto o produto de id 4.",
+      "SELECT nome, preco AS valor FROM produtos WHERE categoria IN ('Eletronicos', 'Moveis') AND preco < 1000 AND id <> 4", ['where', 'as valor', 'and'],
       [`É a sua primeira provinha! Você vai escrever uma consulta completa usando o que aprendeu nas lições 1 a 10: escolher colunas, dar um apelido com AS e peneirar as linhas com WHERE, AND, OR/IN e "diferente de".`,
         `Serve para mostrar que você já consegue pedir ao banco de dados exatamente o que precisa, sozinho, sem ter um exemplo pronto para copiar.`,
         `Monte a frase na ordem: SELECT (as colunas e o apelido), FROM (a tabela) e WHERE com todas as regras ligadas por AND. Se usar OR, lembre dos parênteses!`,
@@ -140,15 +140,15 @@ const out = [];
         `Transforme cada valor (float(preco) e int(qtd)), guarde o total numa variável e monte a frase com uma f-string: f"...{variavel}...".`,
         `Uma única linha de texto, exatamente assim: 4 x Caneta = R$ 14.0`],
       { prelude: 'produto = "Caneta"\npreco = "3.5"\nqtd = "4"', peek: 'print(produto, preco, qtd)' }),
-    P.cp('Checkpoint: boletim', 'A variável nome tem espaços sobrando nas pontas e notas é uma lista de 3 notas. Na 1ª linha, imprima o nome sem os espaços e em maiúsculas. Na 2ª linha, calcule a média (some as 3 notas e divida por 3) e imprima Aprovado se for 7 ou mais, Recuperação se for 5 ou mais, e Reprovado nos outros casos.',
-      'print(nome.strip().upper())\nmedia = (notas[0] + notas[1] + notas[2]) / 3\nif media >= 7:\n    print("Aprovado")\nelif media >= 5:\n    print("Recuperação")\nelse:\n    print("Reprovado")', ['strip(', 'upper(', 'if ', 'elif', 'print('],
+    P.cp('Checkpoint: boletim', 'A variável nome tem espaços sobrando nas pontas e notas é uma lista de 3 notas. Na 1ª linha, imprima o nome sem os espaços e em maiúsculas. Na 2ª linha, calcule a média (some as 3 notas e divida por 3) e imprima Aprovado se for 7 ou mais, Recuperacao se for 5 ou mais, e Reprovado nos outros casos.',
+      'print(nome.strip().upper())\nmedia = (notas[0] + notas[1] + notas[2]) / 3\nif media >= 7:\n    print("Aprovado")\nelif media >= 5:\n    print("Recuperacao")\nelse:\n    print("Reprovado")', ['strip(', 'upper(', 'if ', 'elif', 'print('],
       [`Um programa que limpa um texto, lê itens de uma lista e toma uma decisão. Vale tudo das lições 1 a 20: textos, listas, comparações e if / elif / else.`,
         `Todo sistema que classifica alguém ou alguma coisa (aprovado, VIP, atrasado) faz isto: calcula um número e decide pelo valor dele.`,
         `Use nome.strip().upper() para limpar o nome. Pegue cada nota pela posição (notas[0], notas[1]...), calcule a média e faça if / elif / else, começando pelo limite maior.`,
         `Duas linhas: o nome limpo, MARIANA, e embaixo a classificação da média.`],
       { prelude: 'nome = "  mariana  "\nnotas = [8, 5.5, 6]', peek: 'print(repr(nome))\nprint(notas)' }),
-    P.fin('Prova final: semana de vendas', 'A lista vendas guarda quanto se vendeu em cada dia da semana. Use um laço para contar os "dias bons" (vendas acima de 100) e somar o que foi vendido nesses dias. Imprima na 1ª linha, exatamente neste formato: Dias bons: 3 | Total: 450 | Maior: 220 | Menor: 40 (o maior e o menor valem para TODOS os dias). Na 2ª linha, imprima Semana ótima se o total dos dias bons passar de 400, senão Semana normal.',
-      'dias_bons = 0\ntotal = 0\nfor v in vendas:\n    if v > 100:\n        dias_bons += 1\n        total += v\nprint(f"Dias bons: {dias_bons} | Total: {total} | Maior: {max(vendas)} | Menor: {min(vendas)}")\nif total > 400:\n    print("Semana ótima")\nelse:\n    print("Semana normal")', ['for ', 'if ', 'max(', 'min(', 'print('],
+    P.fin('Prova final: semana de vendas', 'A lista vendas guarda quanto se vendeu em cada dia da semana. Use um laço para contar os "dias bons" (vendas acima de 100) e somar o que foi vendido nesses dias. Imprima na 1ª linha, exatamente neste formato: Dias bons: 3 | Total: 450 | Maior: 220 | Menor: 40 (o maior e o menor valem para TODOS os dias). Na 2ª linha, imprima Semana otima se o total dos dias bons passar de 400, senão Semana normal.',
+      'dias_bons = 0\ntotal = 0\nfor v in vendas:\n    if v > 100:\n        dias_bons += 1\n        total += v\nprint(f"Dias bons: {dias_bons} | Total: {total} | Maior: {max(vendas)} | Menor: {min(vendas)}")\nif total > 400:\n    print("Semana otima")\nelse:\n    print("Semana normal")', ['for ', 'if ', 'max(', 'min(', 'print('],
       [`É a PROVA FINAL do nível Básico: um programa de verdade que anda por uma lista, vai somando e contando, toma decisões e usa funções prontas. Usa tudo o que você aprendeu desde a lição 1.`,
         `Resumir uma lista de números (contar, somar, achar o maior e o menor) é o dia a dia de quem analisa dados. Passando aqui, você abre o nível Intermediário!`,
         `Crie os "cofrinhos" que começam em 0, ande pela lista com for, use um if dentro do repetidor e depois mostre tudo com uma f-string, usando max() e min(). Termine com if / else.`,
@@ -201,8 +201,8 @@ const out = [];
         `Decorators acrescentam comportamento (como anotar um aviso, medir o tempo ou guardar respostas) sem mexer no código da função original.`,
         `Escreva registrar(f) com uma função de dentro que recebe *args e **kwargs, mostra o aviso e devolve f(*args, **kwargs). Depois use @registrar em cima da função e sum(x * x for x in range(...)) dentro dela.`,
         `Quatro linhas: chamou soma_quadrados, 14, chamou soma_quadrados e 30.`]),
-    P.fin('Prova final: relatório com pandas', 'O DataFrame df tem as colunas produto, categoria, qtd, preco e mes. Crie a coluna total (qtd vezes preco). Imprima uma linha por categoria, da maior receita para a menor, no formato Eletrônicos: R$ 8120 em 3 vendas (receita da categoria e número de linhas dela). Na última linha imprima Melhor mês: seguido do mês com maior receita.',
-      'df["total"] = df["qtd"] * df["preco"]\nr = df.groupby("categoria")["total"].agg(["sum", "count"]).sort_values("sum", ascending=False)\nfor cat, linha in r.iterrows():\n    print(f"{cat}: R$ {int(linha[\'sum\'])} em {int(linha[\'count\'])} vendas")\npor_mes = df.groupby("mes")["total"].sum()\nprint(f"Melhor mês: {por_mes.idxmax()}")', ['groupby(', 'print('],
+    P.fin('Prova final: relatório com pandas', 'O DataFrame df tem as colunas produto, categoria, qtd, preco e mes. Crie a coluna total (qtd vezes preco). Imprima uma linha por categoria, da maior receita para a menor, no formato Eletronicos: R$ 8120 em 3 vendas (receita da categoria e número de linhas dela). Na última linha imprima Melhor mes: seguido do mês com maior receita.',
+      'df["total"] = df["qtd"] * df["preco"]\nr = df.groupby("categoria")["total"].agg(["sum", "count"]).sort_values("sum", ascending=False)\nfor cat, linha in r.iterrows():\n    print(f"{cat}: R$ {int(linha[\'sum\'])} em {int(linha[\'count\'])} vendas")\npor_mes = df.groupby("mes")["total"].sum()\nprint(f"Melhor mes: {por_mes.idxmax()}")', ['groupby(', 'print('],
       [`É a PROVA FINAL do nível Avançado: uma análise de dados completa com pandas, que cria colunas, agrupa, ordena e resume uma tabela. Usa tudo o que você aprendeu desde a lição 1.`,
         `É o trabalho de uma pessoa analista: transformar uma tabela solta em respostas de verdade (qual categoria rende mais? qual mês foi o melhor?). Passando aqui, você conclui o curso de Python!`,
         `Crie a coluna total, agrupe por categoria com groupby e agg (soma e contagem), ordene com sort_values, percorra com iterrows() e mostre com f-string. Para o mês, use groupby("mes") e idxmax().`,

@@ -13,7 +13,7 @@
   const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const pick = (r, a) => a[Math.floor(r() * a.length)];
   const dec = (n, k = 2) => Math.round(n * Math.pow(10, k)) / Math.pow(10, k);
-  const SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
   // calendário diário de 2023 a 2024
   function calendario(y0 = 2023, y1 = 2024) {
@@ -23,8 +23,8 @@
   }
 
   // ---------------------------------------------------------------- LOJA: lanchonete (Produtos, Clientes, Calendario, Vendas)
-  const PRODUTOS = [[1, 'Suco de Laranja', 'Bebidas', 6, 3.5], [2, 'Refrigerante', 'Bebidas', 5, 3], [3, 'Água Mineral', 'Bebidas', 3, 1], [4, 'Sanduíche', 'Lanches', 12, 7], [5, 'Pizza Fatia', 'Lanches', 9, 5], [6, 'Pastel', 'Lanches', 7, 3.5], [7, 'Brigadeiro', 'Doces', 4, 1.5], [8, 'Pudim', 'Doces', 8, 3.5]];
-  const CLIENTES = [[1, 'Ana Souza', 'São Paulo'], [2, 'Bruno Lima', 'Rio de Janeiro'], [3, 'Carla Dias', 'São Paulo'], [4, 'Diego Alves', 'Belo Horizonte'], [5, 'Elisa Costa', 'Rio de Janeiro'], [6, 'Fábio Rocha', 'São Paulo']];
+  const PRODUTOS = [[1, 'Suco de Laranja', 'Bebidas', 6, 3.5], [2, 'Refrigerante', 'Bebidas', 5, 3], [3, 'Agua Mineral', 'Bebidas', 3, 1], [4, 'Sanduiche', 'Lanches', 12, 7], [5, 'Pizza Fatia', 'Lanches', 9, 5], [6, 'Pastel', 'Lanches', 7, 3.5], [7, 'Brigadeiro', 'Doces', 4, 1.5], [8, 'Pudim', 'Doces', 8, 3.5]];
+  const CLIENTES = [[1, 'Ana Souza', 'Sao Paulo'], [2, 'Bruno Lima', 'Rio de Janeiro'], [3, 'Carla Dias', 'Sao Paulo'], [4, 'Diego Alves', 'Belo Horizonte'], [5, 'Elisa Costa', 'Rio de Janeiro'], [6, 'Fabio Rocha', 'Sao Paulo']];
   function vendas() {
     const r = rng(2024), rows = [];
     for (let i = 0; i < 48; i++) {
@@ -49,7 +49,7 @@
 
   // ---------------------------------------------------------------- RH: funcionários e departamentos
   const FUNC = [
-    [1, 'Marta Pires', 1, 'Analista', 5200, serial(2019, 3, 4), 'F'], [2, 'João Mota', 1, 'Gerente', 9800, serial(2016, 7, 18), 'M'], [3, 'Lívia Reis', 2, 'Analista', 4800, serial(2021, 1, 11), 'F'],
+    [1, 'Marta Pires', 1, 'Analista', 5200, serial(2019, 3, 4), 'F'], [2, 'Joao Mota', 1, 'Gerente', 9800, serial(2016, 7, 18), 'M'], [3, 'Livia Reis', 2, 'Analista', 4800, serial(2021, 1, 11), 'F'],
     [4, 'Pedro Gomes', 2, 'Assistente', 3100, serial(2022, 5, 2), 'M'], [5, 'Sara Neves', 3, 'Gerente', 10500, serial(2015, 9, 21), 'F'], [6, 'Tiago Luz', 3, 'Analista', 5600, serial(2020, 10, 5), 'M'],
     [7, 'Vera Costa', 3, 'Assistente', 3300, serial(2023, 2, 13), 'F'], [8, 'Caio Barros', 4, 'Analista', 5000, serial(2018, 6, 25), 'M'], [9, 'Dora Lins', 4, 'Gerente', 9200, serial(2017, 4, 3), 'F'], [10, 'Hugo Sales', 2, 'Analista', 4900, serial(2022, 11, 14), 'M']
   ];
