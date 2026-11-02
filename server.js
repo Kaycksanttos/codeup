@@ -146,6 +146,10 @@ const ACT_NAME = { x: 'executar o código', r: 'ler o código', e: 'explicar o c
 const ACT_FLAG = { x: 'ex', r: 'ler', e: 'exp' };
 const actDone = (u, l, a) => !!(u.done[l.id] || (u[ACT_FLAG[a]] || {})[l.id]);
 const exDone = (u, l) => actDone(u, l, 'x');
+// "Como funciona" é a 1ª parte (arco) do círculo de toda lição com exemplo e vem sempre antes das outras atividades. Não dá XP, não trava nenhuma atividade e não entra na conclusão da lição:
+// só guarda que o aluno já viu (`u.cf[id]`). Quem já tinha feito qualquer atividade (ou concluído a lição) antes disso existir conta como "já viu".
+const hasIntro = l => !!(l && l.example && !l.cp && !l.fin && !l.proj);
+const introDone = (u, l) => !!(u.done[l.id] || (u.cf || {})[l.id] || ['ex', 'ler', 'exp'].some(f => (u[f] || {})[l.id]));
 const FIXED_ORDER = process.env.FIXED_ACT_ORDER === '1' && !PROD;                      // só nos testes automáticos: ordem fixa (executar, ler, explicar) em vez de sorteada
 const ordOf = (u, l) => { const a = actsOf(l); return a.length > 1 && !FIXED_ORDER ? shuffled(a, u.id + ':ord:' + l.id) : a; };      // a ordem sorteada das atividades desta lição para esta pessoa
 const nextAct = (u, l) => ordOf(u, l).find(a => !actDone(u, l, a)) || null;           // a próxima atividade que falta (null = lição completa)
@@ -193,7 +197,7 @@ const PJ_AT = new Map(projects.map(p => [`${p.track}-${p.lv}-${p.after}`, p])); 
 const pjDone = (u, track, lv, n) => { const p = PJ_AT.get(`${track}-${lv}-${n}`); return !p || !!(u.cpdone || {})[p.id]; };   // o projeto feito fica guardado junto com os checkpoints (cpdone)
 const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
 const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
-const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
+const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cf ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
 const key = (track, lv) => `${track}-${lv}`;
@@ -626,7 +630,7 @@ app.post('/api/track', auth, (req, res) => {
 });
 
 app.get('/api/lessons', auth, (req, res) =>
-  res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, rd: hasRead(l) ? 1 : 0, ord: ordOf(req.u, l).join('') || undefined, dn: actsOf(l).filter(a => actDone(req.u, l, a)).join('') || undefined, lock: lockOf(req.u, l) }))));
+  res.json(lessons.map(l => ({ id: l.id, title: l.title, type: l.type, track: l.track, lv: l.lv, n: l.n, xp: l.xp, rd: hasRead(l) ? 1 : 0, ord: ordOf(req.u, l).join('') || undefined, dn: actsOf(l).filter(a => actDone(req.u, l, a)).join('') || undefined, cf: hasIntro(l) ? 1 : undefined, cd: hasIntro(l) && introDone(req.u, l) ? 1 : undefined, lock: lockOf(req.u, l) }))));
 
 // provas: os 2 checkpoints de cada nível (depois das lições 10 e 20) e a prova final (depois da 30), com as chances que ainda restam
 app.get('/api/checkpoints', auth, (req, res) =>
@@ -644,6 +648,15 @@ app.get('/api/lessons/:id', auth, (req, res) => {
   const qz = l.type === 'quiz' ? { qz: quizcheck.pub(l, req.u.id) } : {};              // quiz: as perguntas sem gabarito (opções embaralhadas do mesmo jeito para a mesma pessoa)
   if (isTest(l)) return res.json({ ...stripExam(l), ...qz, left: chancesLeft(req.u, l) });    // prova: sem solução, sem dica e sem teoria
   res.json({ ...strip(l), ...qz });
+});
+// o aluno viu o "Como funciona" desta lição (1ª parte do círculo): só marca; não dá XP e não trava nada
+app.post('/api/lessons/:id/intro', auth, limit(240 * RELAX, 60e3), (req, res) => {
+  const l = actOf(req.params.id);
+  if (!l || !hasIntro(l)) return res.sendStatus(404);
+  const lock = lockOf(req.u, l);
+  if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
+  if (!introDone(req.u, l)) { (req.u.cf ??= {})[l.id] = new Date().toISOString(); save(); }
+  res.json({ ok: true });
 });
 
 // Correção feita NO SERVIDOR. SQL é reexecutado aqui, num worker isolado com limite de tempo/memória.

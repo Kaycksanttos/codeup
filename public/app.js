@@ -481,9 +481,9 @@ async function go(t) {
 const done = l => S.me.done[l.id];
 // As atividades de cada lição (x executar · r ler o código · e explicar o código, só Python/SQL Intermediário e Avançado): a ORDEM é sorteada pelo servidor para cada lição
 // e vem em `l.ord` (ex.: 'rxe'); `l.dn` diz quais já estão feitas. A próxima atividade é sempre a primeira da ordem que ainda falta.
-const ACT_NM = { x: 'Executar o código', r: 'Ler o código', e: 'Explicar o código' }, ACT_SH = { x: 'executar', r: 'ler', e: 'explicar' };
-const actOrd = l => String(l && l.ord || '').split('').filter(Boolean);
-const actDn = (l, a) => !!(l && (S.me.done[l.id] || String(l.dn || '').includes(a)));
+const ACT_NM = { c: 'Como funciona', x: 'Executar o código', r: 'Ler o código', e: 'Explicar o código' }, ACT_SH = { c: 'ver como funciona', x: 'executar', r: 'ler', e: 'explicar' };
+const actOrd = l => (l && l.cf ? ['c'] : []).concat(String(l && l.ord || '').split('').filter(Boolean));      // 'c' = "Como funciona": 1ª parte do círculo, sempre antes das outras
+const actDn = (l, a) => !!(l && (S.me.done[l.id] || (a == 'c' ? l.cd : String(l.dn || '').includes(a))));
 const actNext = l => actOrd(l).find(a => !actDn(l, a)) || null;
 const actPos = (l, a) => actOrd(l).indexOf(a) + 1;
 const rowOf = id => (S.ls || []).find(x => x.id == id);
@@ -491,7 +491,7 @@ const rowOf = id => (S.ls || []).find(x => x.id == id);
 const ACT_BY = { dax: { x: ['Escrever a fórmula', 'escrever a fórmula', 'Hora de escrever uma fórmula DAX por conta própria: primeiro uma explicação rápida, depois a prática.'], r: ['Ler a fórmula', 'ler a fórmula', 'Você vai ver uma fórmula pronta e dizer o que ela devolve. Ler bem é metade de escrever bem.'] },
   quiz: { x: ['Praticar com perguntas', 'praticar', 'Hora de responder umas perguntas sobre o que você acabou de aprender: primeiro uma explicação rápida, depois a prática.'], r: ['Ler e interpretar', 'ler e interpretar', 'Você vai olhar um gráfico, uma tabela ou uma fórmula e responder o que ela mostra.'] } };
 const actNm = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[0] || ACT_NM[a], actSh = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[1] || ACT_SH[a];
-const actTag = (l, a) => { const m = rowOf(l.id); return m && m.rd ? `Atividade ${actPos(m, a)} de ${actOrd(m).length} · ${actNm(l, a)}` : actNm(l, a); };
+const actTag = (l, a) => { const m = rowOf(l.id); return m && (m.rd || m.cf) ? `Atividade ${actPos(m, a)} de ${actOrd(m).length} · ${actNm(l, a)}` : actNm(l, a); };
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
 const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
 const COURSES = ['python', 'sql', 'excel', 'powerbi', 'dados'];                                   // ordem dos cursos na tela Cursos
@@ -603,7 +603,7 @@ function render() {
     S.rw = innerWidth;
     const WL = document.body.classList.contains('wild'), Wm = Math.min(488, innerWidth - 32), lcard = (k, kick, title) => `<div class=lc style="--lw:${Math.max(96, Math.round((X[k] > 50.5 ? X[k] : 100 - X[k]) * Wm / 100 - 58))}px"><small>${kick}</small><b>${esc(String(title).replace(/^(Checkpoint|Projeto):\s*/i, ''))}</b><em class=lcb>INICIAR</em></div>`;
     const pips = l => {                                                           // o ANEL em volta do círculo: um arco por atividade, na ordem sorteada (2 arcos, ou 3 no Intermediário/Avançado). Arco cheio = atividade feita; anel inteiro = lição completa
-      if (!l.rd) return ''; const ord = actOrd(l), dn = !!done(l), nx = dn ? null : actNext(l), nd = ord.filter(a => actDn(l, a)).length;
+      if (!l.rd && !l.cf) return ''; const ord = actOrd(l), dn = !!done(l), nx = dn ? null : actNext(l), nd = ord.filter(a => actDn(l, a)).length;
       const cls = ord.map((a, i) => `r${i + 1}${actDn(l, a) ? 'ok' : a == nx && !l.lock ? 'cur' : ''}`).join(' ');
       return `<i class="rdr-ring n${ord.length} ${cls}" role=img aria-label="${dn ? `As ${ord.length} atividades feitas` : `${nd} de ${ord.length} atividades feitas. Falta ${actSh(l, nx) || ''}`}"></i>`;
     };
@@ -612,7 +612,7 @@ function render() {
       : (c => { const need = !cpOk(c) && !c.lock && !done(ls.find(l => l.n == c.after + 1) || {}); return `<div class="ti cp ${cpOk(c) ? 'ok' : c.lock ? 'lk' : 'av'}${need ? ' cur' : ''}${X[k] > 50.5 ? ' rs' : ''}" style="--i:${k};--x:${X[k]}%" onclick="openTest('${c.id}')"><div class=rail>${need && !WL ? '<span class=start>COMEÇAR</span>' : ''}<span class=nd>${cpOk(c) ? ic('check', 28) : c.lock ? ic('lock', 24) : ic('flag', 28)}</span>${need ? walker() + lcard(k, 'Checkpoint', c.title) : ''}</div><div class=tb><b>${esc(c.title)}</b><small>${cpOk(c) ? 'Checkpoint concluído' : c.lock ? 'Checkpoint · depois da lição ' + c.after : 'Checkpoint · ' + chTxt(c) + ' · +' + c.xp + ' XP'}</small></div></div>`; })(r.c);
     const prog = `<div class=cprog><div class=ph><span>Progresso em ${TN[T]}</span><b>${pct}%</b></div><div class=segs>${lvs(T).map(x => `<div class=seg><i style="width:${lvPct(T, x)}%"></i></div>`).join('')}</div><div class=sl>${lvs(T).map(x => `<span>${LV[x - 1]}</span>`).join('')}</div></div>`;
     const cont = nx ? (nx.cp ? `<div class="card cont" onclick="openTest('${nx.cp.id}')">${tg(T, 44)}<div class=bd><small class=up>${nx.cp.proj ? 'Projeto · obrigatório' : nx.cp.fin ? 'Prova final · libera o próximo nível' : 'Checkpoint · obrigatório'}</small><b>${esc(nx.cp.title)}</b><small>${TN[T]} · ${LV[nx.cp.lv - 1]} · ${nx.cp.proj ? (nx.cp.after < 30 ? 'libera a lição ' + (nx.cp.after + 1) : 'libera a prova final') : nx.cp.fin ? 'todas as 30 lições' : 'libera a lição ' + (nx.cp.after + 1)}</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`
-      : `<div class="card cont" onclick="openL('${nx.id}')">${tg(T, 44)}<div class=bd><small class=up>Continuar</small><b>${esc(nx.title)}</b><small>${TN[T]} · ${LV[nx.lv - 1]} · lição ${nx.n} de 30${nx.rd && actNext(nx) ? ` · atividade ${actPos(nx, actNext(nx))} de ${actOrd(nx).length}: ${ACT_SH[actNext(nx)]}` : ''}</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`) : '';
+      : `<div class="card cont" onclick="openL('${nx.id}')">${tg(T, 44)}<div class=bd><small class=up>Continuar</small><b>${esc(nx.title)}</b><small>${TN[T]} · ${LV[nx.lv - 1]} · lição ${nx.n} de 30${(nx.rd || nx.cf) && actNext(nx) ? ` · atividade ${actPos(nx, actNext(nx))} de ${actOrd(nx).length}: ${actSh(nx, actNext(nx))}` : ''}</small></div><span class=go>${ic('arrow', 20)}</span>${prog}</div>`) : '';
     const trk = `<div class="card cont tkc"${nx ? ` onclick="${nx.cp ? `openTest('${nx.cp.id}')` : `openL('${nx.id}')`}"` : ''}>${tg(T, 58)}<div class=bd><b>${TN[T]}</b><small>Nível ${lv} · ${LV[lv - 1]}</small><div class=tkb><i style="width:${Math.round(nd / 30 * 100)}%"></i></div></div><div class=tkn><b>${nd}</b>/30</div>${nx ? `<span class=go>${ic('arrow', 20)}</span>` : ''}</div>`;
     h = `${head}${an}${vb}
     ${document.body.classList.contains('wild') ? trk : cont || `<div class=panel>${prog}</div>`}
@@ -987,14 +987,18 @@ function lockToast(m) {
 async function openL(id) {
   const m = S.ls.find(l => l.id == id); if (!m) return;
   if (lockToast(m)) return;
-  const nx = m.rd && !S.me.done[id] ? actNext(m) : null;
+  const nx = !S.me.done[id] ? actNext(m) : null;   // a lição ainda não feita abre na próxima parte do círculo: o "Como funciona" vem sempre primeiro
   openAct(id, nx || 'x');
 }
-const openAct = (id, a) => a == 'r' ? openR(id) : a == 'e' ? openE(id) : openX(id);
+const openAct = (id, a) => a == 'c' ? openC(id) : a == 'r' ? openR(id) : a == 'e' ? openE(id) : openX(id);
+const resetLs = () => { S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false; };
+async function openC(id) {   // 1ª parte: para que serve e como funciona (animado)
+  try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
+  resetLs(); intro();
+}
 async function openX(id) {
   try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
-  S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false;
-  hwOn(S.cur) && !S.me.done[id] ? intro() : lesson();   // lição ainda não feita: começa por "Como funciona"; quem já fez vai direto para a teoria
+  resetLs(); lesson();
 }
 const isTest = l => !!(l && (l.cp || l.fin));
 // Enunciado em passos: parágrafos, listas ("- item" e "1. item"), `código`, **negrito** e destaque para "Dica:" / "Atenção:" (o texto vem de content/enunciados.txt; enunciado curto de lição é um parágrafo só)
@@ -1203,7 +1207,6 @@ async function labPeek() {
 // ============================================================ PARTE 1 DA LIÇÃO: COMO FUNCIONA
 // Antes da teoria: "Para que serve" (cartão) e "Como funciona" (animado, em 3 passos): 1) o exemplo é escrito na tela; 2) cada pedaço dele acende, um por vez, com uma explicação curta;
 // 3) aparece o que ele devolve. As explicações vêm de content/como-*.js (l.como já traz o trecho [a, b) de cada pedaço no código). Tocar num passo ou num pedaço para o autoplay.
-const hwOn = l => !!l && !l.proj && !isTest(l) && !!l.example;
 const HW_LB = { sql: ['Você pede', 'O banco procura', 'A tabela aparece'], python: ['Você escreve', 'O Python lê', 'A saída aparece'], excel: ['Você escreve', 'O Excel calcula', 'O resultado aparece'], dax: ['Você escreve', 'O Power BI calcula', 'O valor aparece'], quiz: ['Você olha', 'Você pensa', 'Você vê o porquê'] };
 const HW_FN = { sql: 'consulta.sql', python: 'main.py', excel: 'formula', dax: 'medida.dax', quiz: 'exemplo' };
 const hwCode = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
@@ -1230,23 +1233,86 @@ const hwResHtml = l => {
   if (l.type == 'python' && o && o.out != null) return `<div class=exr><div class=exh>${ic('out', 16)}<small>O que aparece na tela</small></div><pre class=inl>${esc(o.out) || '(sem saída)'}</pre></div>`;
   return '';
 };
+// ---- "Como funciona" visual: o mecanismo animado em tabelas e setas (JOIN, WHERE, ORDER BY, GROUP BY, if, for, PROCV). Cada animação tem 4 passos; o texto de cada passo vem em `cap`.
+// Marcas no HTML: data-s="n" (aparece a partir do passo n) · data-a="n:classe" (ganha a classe a partir do passo n) · data-a="n=classe" (só no passo n).
+const vzT = (title, cols, rows, at) => `<div class=vzb ${at || ''}><small>${title}</small><table class=vzt><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(([cs, a]) => `<tr ${a || ''}>${cs.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const VZ = {
+  inner: { t: 'Duas tabelas se encaixando', cap: ['<b>Duas tabelas separadas.</b> A de vendas só anota o <i>número</i> do produto, não o nome.', 'O <code>ON</code> liga as duas: onde <b>produto_id</b> é igual ao <b>id</b>. Cada par ganha uma cor.', 'O <code>JOIN</code> mantém só as linhas que têm par nas duas tabelas. As sem par saem.', '<b>Resultado:</b> cada venda agora mostra o nome do produto.'],
+    h: () => `<div class=vzr>${vzT('vendas', ['produto_id', 'qtd'], [[['1', '3'], 'data-a="2:k1 3:out"'], [['2', '5'], 'data-a="2:k2"'], [['4', '2'], 'data-a="2:nop 3:gone"']])}<span class=vzl data-s=2>⇄</span>${vzT('produtos', ['id', 'nome'], [[['1', 'Caneta'], 'data-a="2:k1"'], [['2', 'Caderno'], 'data-a="2:k2"'], [['3', 'Mochila'], 'data-a="2:nop 3:gone"']])}</div><div class=vzd data-s=2><i>🟦 produto 1</i><i>🟩 produto 2</i><i>⬜ sem par</i></div><div class=vzr1 data-s=4>${vzT('resultado', ['nome', 'qtd'], [[['Caneta', '3'], 'class=k1'], [['Caderno', '5'], 'class=k2']])}</div>` },
+  left: { t: 'LEFT JOIN: ninguém fica de fora', cap: ['<b>Duas tabelas.</b> A de produtos é a da <b>esquerda</b>: ela é a que vamos manter inteira.', 'O <code>ON</code> liga as duas pelo número do produto. A Mochila não tem nenhuma venda.', 'O <code>LEFT JOIN</code> mantém <b>todos</b> os produtos, mesmo os que não têm par.', '<b>Resultado:</b> a Mochila aparece com a quantidade <b>vazia</b> (NULL).'],
+    h: () => `<div class=vzr>${vzT('produtos (esquerda)', ['id', 'nome'], [[['1', 'Caneta'], 'data-a="2:k1"'], [['2', 'Caderno'], 'data-a="2:k2"'], [['3', 'Mochila'], 'data-a="2:nop 3=keep"']])}<span class=vzl data-s=2>⇄</span>${vzT('vendas', ['produto_id', 'qtd'], [[['1', '3'], 'data-a="2:k1"'], [['2', '5'], 'data-a="2:k2"']])}</div><div class=vzd data-s=2><i>🟦 produto 1</i><i>🟩 produto 2</i><i>⬜ sem par</i></div><div class=vzr1 data-s=4>${vzT('resultado', ['nome', 'qtd'], [[['Caneta', '3'], 'class=k1'], [['Caderno', '5'], 'class=k2'], [['Mochila', '<em>vazio</em>'], 'class=nop']])}</div>` },
+  where: { t: 'O WHERE é uma peneira', cap: ['<b>A tabela inteira</b>, com todas as linhas.', 'O <code>WHERE preco &gt; 50</code> testa a regra em <b>cada linha</b>: passa (✓) ou não passa (✗).', 'As linhas que não passam na regra saem do resultado.', '<b>Resultado:</b> só ficaram as linhas que passaram.'],
+    h: () => `<div class=vzr1>${vzT('produtos', ['nome', 'preco', 'regra'], [[['Caneta', '3', '<b data-s=2>✗</b>'], 'data-a="3:gone"'], [['Caderno', '12', '<b data-s=2>✗</b>'], 'data-a="3:gone"'], [['Mochila', '90', '<b data-s=2>✓</b>'], 'data-a="2:k2"'], [['Fone', '120', '<b data-s=2>✓</b>'], 'data-a="2:k2"']])}</div>` },
+  order: { t: 'ORDER BY coloca em fila', cap: ['<b>Antes:</b> as linhas estão fora de ordem.', 'O <code>ORDER BY preco</code> compara os preços e dá uma posição a cada linha: do menor para o maior.', 'As linhas vão para a posição que ganharam.', '<b>Depois:</b> do mais barato para o mais caro. Com <code>DESC</code> seria o contrário.'],
+    h: () => `<div class=vzr>${vzT('antes', ['nome', 'preco', 'pos'], [[['Mochila', '90', '<b data-s=2>3º</b>']], [['Caneta', '3', '<b data-s=2>1º</b>']], [['Fone', '120', '<b data-s=2>4º</b>']], [['Caderno', '12', '<b data-s=2>2º</b>']]])}<span class=vzl data-s=3>➜</span><div data-s=3 class=vzb2>${vzT('depois', ['nome', 'preco'], [[['Caneta', '3'], 'class=k1'], [['Caderno', '12'], 'class=k2'], [['Mochila', '90'], 'class=k3'], [['Fone', '120'], 'class=k4']])}</div></div>` },
+  group: { t: 'GROUP BY junta em grupos', cap: ['<b>A tabela:</b> cada linha é um produto com a sua categoria.', 'O <code>GROUP BY categoria</code> separa as linhas por categoria. Cada categoria ganha uma cor.', 'As linhas da mesma cor vão para o <b>mesmo grupo</b>.', '<b>Resultado:</b> uma linha por grupo, e o <code>COUNT(*)</code> conta quantas linhas há em cada um.'],
+    h: () => `<div class=vzr>${vzT('produtos', ['nome', 'categoria'], [[['Caneta', 'Papelaria'], 'data-a="2:k1"'], [['Mesa', 'Moveis'], 'data-a="2:k2"'], [['Lapis', 'Papelaria'], 'data-a="2:k1"'], [['Cadeira', 'Moveis'], 'data-a="2:k2"'], [['Caderno', 'Papelaria'], 'data-a="2:k1"']])}<div class=vzg data-s=3><div class=k1><b>Papelaria</b><span>Caneta</span><span>Lapis</span><span>Caderno</span></div><div class=k2><b>Moveis</b><span>Mesa</span><span>Cadeira</span></div></div></div><div class=vzr1 data-s=4>${vzT('resultado', ['categoria', 'COUNT(*)'], [[['Papelaria', '3'], 'class=k1'], [['Moveis', '2'], 'class=k2']])}</div>` },
+  if: { t: 'O if decide o caminho', cap: ['<b>O Python guarda</b> o valor: <code>nota = 8</code>.', 'Chega no <code>if</code> e faz a pergunta: <code>nota &gt;= 7</code>?', '8 é maior ou igual a 7: a resposta é <b>verdadeira</b>, então segue pelo caminho do <b>sim</b>.', 'O que está dentro do <code>if</code> roda e aparece na tela. O caminho do <b>não</b> é pulado.'],
+    h: () => `<div class=vzf><div class="vzx" data-a="1=e">nota = 8</div><div class=vzar>↓</div><div class="vzx q" data-a="2=e 3=e">nota &gt;= 7 ?</div><div class=vzy><div class=vzbr data-a="3:yes"><b>sim</b><div class=vzx data-a="4=e">print("Aprovado")</div></div><div class=vzbr data-a="3:no"><b>não</b><div class=vzx>(pula)</div></div></div><div class=vzo data-s=4>Aprovado</div></div>` },
+  for: { t: 'O for repete para cada item', cap: ['<b>Uma lista</b> com 3 itens e um bloco para repetir.', 'O <code>for</code> pega o <b>1º item</b> e roda o bloco com ele.', 'Volta e pega o <b>2º item</b>. Roda o bloco de novo.', 'Pega o <b>3º item</b>. Os itens acabaram: o <code>for</code> termina. Foram 3 voltas.'],
+    h: () => `<div class=vzf><code class=vzcd>for fruta in ["maca", "banana", "uva"]:<br>&nbsp;&nbsp;print(fruta)</code><div class=vzch><i data-a="2=e 3:ok 4:ok">maca</i><i data-a="3=e 4:ok">banana</i><i data-a="4=e">uva</i></div><div class=vzo2><b>Tela:</b><span data-s=2>maca</span><span data-s=3>banana</span><span data-s=4>uva</span></div></div>` },
+  procv: { t: 'PROCV procura numa tabela', cap: ['<b>A tabela:</b> a 1ª coluna tem os códigos dos produtos.', 'Na célula você escreveu <code>=PROCV(102; tabela; 2; FALSO)</code>. Ele desce pela 1ª coluna procurando o <b>102</b>.', 'Achou o 102! Agora anda até a <b>coluna 2</b>, que foi o número que você pediu.', '<b>Resposta:</b> a célula mostra <b>Caderno</b>.'],
+    h: () => `<div class=vzr1>${vzT('tabela', ['código', 'produto', 'preço'], [[['101', 'Caneta', '3']], [['102', '<span data-a="3:cel">Caderno</span>', '12'], 'data-a="2:k2"'], [['103', 'Mochila', '90']]])}<div class=vzo3 data-s=4>=PROCV(102; …; 2; FALSO) → <b>Caderno</b></div></div>` }
+};
+const VIZ_OF = { ...Object.fromEntries(['04', '05', '06', '07', '08', '10', '11', '12', '13'].map(n => ['sql-1-' + n, 'where'])), ...Object.fromEntries(['14', '15', '16', '18'].map(n => ['sql-1-' + n, 'order'])), ...Object.fromEntries(['25', '26', '27'].map(n => ['sql-1-' + n, 'group'])), ...Object.fromEntries(['01', '03', '04', '09', '12'].map(n => ['sql-2-' + n, 'inner'])), ...Object.fromEntries(['07', '08', '13'].map(n => ['sql-2-' + n, 'left'])), 'sql-2-05': 'group', 'sql-2-10': 'group',
+  ...Object.fromEntries(['16', '17', '18'].map(n => ['py-1-' + n, 'if'])), ...Object.fromEntries(['23', '24', '25'].map(n => ['py-1-' + n, 'for'])), 'xl-1-26': 'procv' };
+const vizOf = l => VZ[VIZ_OF[l && l.id]] ? VIZ_OF[l.id] : null;
+function vzApply(root, n) {
+  root.dataset.n = n;
+  root.querySelectorAll('[data-s]').forEach(e => e.classList.toggle('show', n >= +e.dataset.s));
+  root.querySelectorAll('[data-a]').forEach(e => {   // cada classe fica ligada se QUALQUER regra dela valer neste passo
+    const on = {}; String(e.dataset.a).split(' ').forEach(r => { const m = r.match(/^(\d)([:=])(.+)$/); if (m) on[m[3]] = on[m[3]] || (m[2] == ':' ? n >= +m[1] : n == +m[1]); });
+    Object.keys(on).forEach(c => e.classList.toggle(c, on[c]));
+  });
+}
+const vzAlive = () => S.step == 'intro' && !!S.vz && !!S.cur && S.vz.id == S.cur.id && !!$('#vzBox');
+function vzGo(n, auto) {
+  if (!vzAlive()) return; const v = S.vz, k = VZ[v.kind]; clearTimeout(v.t); v.gen++; const g = v.gen; v.n = n; if (!auto) v.auto = false;
+  vzApply($('#vzBox'), n);
+  document.querySelectorAll('.vzdot').forEach((d, i) => { d.classList.toggle('on', i + 1 == n); d.classList.toggle('ok', i + 1 < n); });
+  $('#vzCap').innerHTML = `<small>Passo ${n} de 4</small><p>${k.cap[n - 1]}</p>`;
+  const p = $('#vzPrev'), q = $('#vzNext'); if (p) p.disabled = n <= 1; if (q) q.disabled = n >= 4;
+  if (v.auto && !hwReduce()) v.t = setTimeout(() => { if (!vzAlive() || v.gen != g || !v.auto) return; if (n < 4) vzGo(n + 1, true); else vzEnd(); }, n == 4 ? 3200 : 2800);
+}
+function vzEnd() { const v = S.vz; v.auto = false; if (hwAlive() && S.hw.gen == 0) hwGo(0, !hwReduce()); }   // terminou a animação visual: começa o código passo a passo
+function vzPlay() { if (!vzAlive()) return; S.vz.auto = !hwReduce(); vzGo(1, true); }
+function vzManual(n) { if (!vzAlive()) return; const v = S.vz; v.auto = false; vzGo(Math.max(1, Math.min(4, n))); if (hwAlive() && S.hw.gen == 0) hwGo(0, false); }
+// ---- "Quando usar" e "Como usar" (molde para preencher) de cada lição (l.usar vem do servidor)
+function usarHtml(l) {
+  const u = l.usar; if (!u) return '';
+  const code = hwCode(l), steps = hwHas(l) ? l.como.map(c => `<li><code>${esc(code.slice(c.a, c.b).replace(/\s+/g, ' ').trim())}</code><span>${esc(c.d)}</span></li>`).join('') : '';
+  return `<div class=infos><div class="inf oque"><div class=ih><span class=ii>${ic('bulb', 17)}</span><b>Quando usar</b></div><p>${esc(u.q)}</p>${u.c ? `<p class=hwcu><b>Cuidado:</b> ${esc(u.c)}</p>` : ''}</div>
+  <div class="inf como"><div class=ih><span class=ii>${ic('pencil', 17)}</span><b>Como usar</b></div><p>Este é o molde. Troque as palavras em minúsculas pelo que você precisa:</p><pre class=hwm>${hl(u.m, lang(l))}</pre>${steps ? `<details class=hwdt><summary>Ver o passo a passo do exemplo</summary><ol class=hwol>${steps}</ol></details>` : ''}</div></div>`;
+}
+// a atividade que vem depois do "Como funciona": a próxima do círculo que falta (lição já feita ou só a de executar: a teoria)
+const introNext = l => { const m = rowOf(l.id); return S.me.done[l.id] || !m ? 'x' : actOrd(m).find(a => a != 'c' && !actDn(m, a)) || 'x'; };
+async function introGo() {   // "Entendi": marca a 1ª parte do círculo como vista e segue para a próxima atividade
+  const l = S.cur, m = rowOf(l.id), nx = introNext(l); if (S.step != 'intro' || S.hw && S.hw.busy) return;
+  if (S.hw) { S.hw.busy = true; clearTimeout(S.hw.t); S.hw.gen++; }
+  if (m && m.cf && !actDn(m, 'c')) { try { await api('lessons/' + l.id + '/intro', { method: 'POST' }); m.cd = 1; } catch { } }   // sem internet: segue mesmo assim e marca na próxima vez
+  nx == 'x' ? lesson() : openAct(l.id, nx);
+}
 function intro() {   // parte 1: para que serve e como funciona
   delete document.body.dataset.calm;
   const l = S.cur; theme(l.track); S.step = 'intro'; clearTimeout(LT); if (S.hw) { clearTimeout(S.hw.t); S.hw.gen = (S.hw.gen || 0) + 1; }
   const T = HW_LB[l.type] || HW_LB.quiz, code = hwCode(l), nl = code.split('\n').length;
-  S.hw = { id: l.id, step: 0, i: 0, gen: 0, t: 0, auto: !hwReduce() };
+  S.hw = { id: l.id, step: 0, i: 0, gen: 0, t: 0, auto: !hwReduce(), busy: false };
+  if (S.vz) clearTimeout(S.vz.t); const kind = vizOf(l); S.vz = kind ? { id: l.id, kind, n: 1, gen: 0, t: 0, auto: !hwReduce() } : null;
+  const m = rowOf(l.id), nx = introNext(l), nm = nx == 'x' ? '' : actNm(l, nx).toLowerCase();
   A.innerHTML = `<div class="c itr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
-  ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
+  ${nx == 'x' ? steps(1) : ''}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div>${m && m.cf ? `<div class=hwtag>${esc(actTag(l, 'c'))}</div>` : ''}<h2 class=ttl>${esc(l.title)}</h2>
   <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>Antes da teoria, veja <b>para que isso serve</b> e <b>como funciona</b>. Toque nos passos ou deixe rodar sozinho.</div></div>
   ${infoCards(l.info, ['serve'])}
-  <div class=hw id=hw><div class=hwh><span>${ic('play', 15)}Como funciona</span><button class=hwre onclick=hwPlay()>${ic('swap', 15)}Ver de novo</button></div>
+  ${kind ? `<div class="hw vz"><div class=hwh><span>${ic('play', 15)}Como funciona</span><button class=hwre onclick="vzPlay()">${ic('swap', 15)}Ver de novo</button></div><div class=vzt0>${esc(VZ[kind].t)}</div><div class=vzbox id=vzBox data-n=1>${VZ[kind].h()}</div><div class=vzdots>${[1, 2, 3, 4].map(i => `<button class=vzdot onclick="vzManual(${i})" aria-label="Passo ${i}"><i>${i}</i></button>`).join('')}</div><div class=hwn><div class=hws id=vzCap></div><div class=hwnav><button class="btn ghost" id=vzPrev onclick="vzManual(S.vz.n-1)">${ic('back', 15)}Antes</button><button class="btn ghost" id=vzNext onclick="vzManual(S.vz.n+1)">Depois${ic('arrow', 15)}</button></div></div></div>` : ''}
+  <div class=hw id=hw><div class=hwh><span>${ic('play', 15)}${kind ? 'O código, parte por parte' : 'Como funciona'}</span><button class=hwre onclick=hwPlay()>${ic('swap', 15)}Ver de novo</button></div>
     <div class=hwtabs role=tablist>${T.map((t, i) => `<button class=hwtb id=hwt${i} role=tab onclick="hwGo(${i})"><i>${i + 1}</i><span>${esc(t)}</span></button>`).join('')}</div>
     <div class=hwc><div class=edh><i></i><i></i><i></i><span>${HW_FN[l.type] || 'exemplo'}</span></div><pre class=hwpre id=hwPre style="min-height:${nl * 24 + 28}px"></pre></div>
     <div class=hwn id=hwNote aria-live=polite></div><div class=hwres id=hwRes></div></div>
-  <button class="btn pri block" onclick=lesson()>Entendi, ir para a teoria ${ic('arrow', 16)}</button>
-  <p class=tn style="text-align:center">Na próxima etapa você lê a teoria${l.type == 'sql' || l.type == 'python' ? ' e pode mexer neste exemplo' : ''}; depois vai para a prática.</p></div>`;
+  ${usarHtml(l)}
+  <button class="btn pri block" onclick=introGo()>Entendi, ir para ${nx == 'x' ? 'a teoria' : esc(nm)} ${ic('arrow', 16)}</button>
+  <p class=tn style="text-align:center">${nx == 'x' ? `Na próxima etapa você lê a teoria${l.type == 'sql' || l.type == 'python' ? ' e pode mexer neste exemplo' : ''}; depois vai para a prática.` : `Depois vem a atividade ${actPos(m, nx)}: ${esc(nm)}.`}</p></div>`;
   window.scrollTo(0, 0);
-  setTimeout(() => { if (hwAlive() && S.hw.gen == 0) hwGo(0, !hwReduce()); }, hwReduce() ? 0 : 450);
+  setTimeout(() => { if (!hwAlive()) return; if (kind) { vzGo(1, !hwReduce()); if (hwReduce() && S.hw.gen == 0) hwGo(0, false); } else if (S.hw.gen == 0) hwGo(0, !hwReduce()); }, hwReduce() ? 0 : 450);
 }
 function hwPlay() { if (hwAlive()) { S.hw.auto = !hwReduce(); hwGo(0, true); } }
 function hwType(g, done) {   // o código aparece sendo digitado

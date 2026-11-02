@@ -51,6 +51,9 @@ lessons.forEach(x => {
   if (!COMO[x.id] || !x.example) return;
   try { x.como = comoMatch(x.type === 'sql' ? FMT.fmtSql(x.example) : String(x.example), COMO[x.id]).map(({ a, b, d }) => ({ a, b, d })); } catch (e) { console.error(`como de ${x.id}: ${e.message}`); }
 });
+// "Quando usar" e "Como usar" (o molde para preencher) da mesma tela: content/usar-*.js
+const USAR = require('./content/usar');
+lessons.forEach(x => { const u = USAR[x.id]; if (u && x.example) x.usar = { q: u[0], m: u[1], c: u[2] || undefined }; });
 
 // 2ª ATIVIDADE DE CADA LIÇÃO: "ler o código". A lição tem duas atividades: 1) executar (teoria + prática: o aluno escreve e roda) e
 // 2) ler (o aluno vê um código pronto e diz o que ele faz). Os itens ficam em content/rd-*.js (um por lição, pelo id) e são conferidos

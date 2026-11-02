@@ -1408,12 +1408,37 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
   for (const c of ['.fxo{', '.fxo .rays', '.trophy', '.flw', '.sn .n', '.wk{', '.spk{', '.fb .fbc', '@keyframes fxSpark', '@keyframes fxTrophy', '@keyframes fxFl']) assert.ok(css.includes(c), 'css ' + c);
 });
 
+test('Como funciona: 1ª parte do círculo de toda lição; o servidor só guarda que o aluno viu, sem XP e sem travar nada', async () => {
+  const tk = await reg('como@teste.com'), l1 = lessons.find(x => x.id === 'py-1-01'), l2 = lessons.find(x => x.id === 'py-1-02');
+  let row = await rowOfL(tk, l1); assert.equal(row.cf, 1, 'a lição tem a parte Como funciona'); assert.equal(row.cd, undefined, 'ainda não viu');
+  const xp0 = (await call('/api/me', { token: tk })).j.xp;
+  assert.equal((await call('/api/lessons/py-1-01/intro', { token: tk, body: {} })).status, 200);
+  assert.equal((await call('/api/lessons/py-1-01/intro', { token: tk, body: {} })).status, 200, 'marcar duas vezes não dá erro');
+  row = await rowOfL(tk, l1); assert.equal(row.cd, 1, 'agora viu'); assert.equal((await call('/api/me', { token: tk })).j.xp, xp0, 'não dá XP');
+  assert.equal(row.dn, undefined, 'não conta como atividade de executar/ler/explicar'); assert.ok(!(row.ord || '').includes('c'), 'a ordem sorteada do servidor não muda');
+  // lição bloqueada e lição que não existe
+  assert.equal((await call('/api/lessons/py-1-02/intro', { token: tk, body: {} })).status, 409, 'lição 2 ainda bloqueada');
+  assert.equal((await call('/api/lessons/nao-existe/intro', { token: tk, body: {} })).status, 404);
+  assert.equal((await call('/api/lessons/py-1-01/intro', { body: {} })).status, 401, 'precisa estar logado');
+  // quem faz a atividade sem ter marcado o Como funciona (ex.: antes dessa parte existir) conta como "já viu"
+  const r1 = await doLesson(tk, l1); assert.equal(r1.j.ok, true);
+  const tk2 = await reg('como2@teste.com'); assert.equal((await rowOfL(tk2, l1)).cd, undefined);
+  assert.equal((await doLesson(tk2, l1)).j.ok, true); const done2 = await rowOfL(tk2, l1); assert.equal(done2.cd, 1, 'lição concluída conta como Como funciona visto');
+  assert.equal((await rowOfL(tk2, l2)).cd, undefined, 'a lição seguinte ainda não foi vista');
+  // provas e projetos não têm essa parte
+  const ls = (await call('/api/lessons', { token: tk })).j; assert.ok(ls.every(x => x.cf === 1), 'as 270 lições têm a parte Como funciona'); assert.equal(ls.length, 270);
+});
+
 test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo animado), em 3 etapas clicáveis', () => {
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8');
-  for (const f of ['const hwOn = l =>', 'function intro()', 'function hwGo(', 'function hwFocus(', 'function hwType(', 'function hwPlay()', 'const hwRet = l =>', 'const hwMarks = ']) assert.ok(ui.includes(f), f);
-  // a lição ainda não feita abre pelo "Como funciona"; quem já fez vai direto para a teoria; projetos, provas e lições sem exemplo não têm essa parte
-  assert.match(ui, /hwOn\(S\.cur\) && !S\.me\.done\[id\] \? intro\(\) : lesson\(\)/, 'openX começa por intro() quando a lição ainda não foi feita');
-  assert.match(ui, /const hwOn = l => !!l && !l\.proj && !isTest\(l\) && !!l\.example/, 'só lições com exemplo, sem projeto nem prova');
+  for (const f of ['function intro()', 'function introGo()', 'const introNext = l =>', 'async function openC(id)', 'function hwGo(', 'function hwFocus(', 'function hwType(', 'function hwPlay()', 'const hwRet = l =>', 'const hwMarks = ']) assert.ok(ui.includes(f), f);
+  // "Como funciona" é a 1ª parte (arco) do círculo: vem sempre antes das outras atividades e a lição ainda não feita abre nela; quem já fez a lição vai direto para a teoria
+  assert.match(ui, /const actOrd = l => \(l && l\.cf \? \['c'\] : \[\]\)\.concat\(/, 'a ordem das atividades começa pelo "c" (Como funciona)');
+  assert.match(ui, /a == 'c' \? l\.cd :/, 'o "c" usa o cd do servidor');
+  assert.match(ui, /const nx = !S\.me\.done\[id\] \? actNext\(m\) : null;/, 'openL abre a próxima parte do círculo (a primeira é o Como funciona)');
+  assert.match(ui, /a == 'c' \? openC\(id\)/, 'openAct abre o Como funciona');
+  assert.match(ui, /if \(!l\.rd && !l\.cf\) return ''/, 'toda lição com Como funciona tem o anel no mapa');
+  assert.match(ui, /api\('lessons\/' \+ l\.id \+ '\/intro', \{ method: 'POST' \}\)/, 'o "Entendi" salva que o aluno viu o Como funciona');
   // o indicador tem 3 pílulas clicáveis (Como funciona, Teoria, Prática); projeto e prática de projeto ficam com 2
   assert.match(ui, /const steps = \(n, proj, two\)/, 'steps(n, proj, two)');
   assert.ok(ui.includes("[['Como funciona', 'intro'], ['Teoria', 'lesson'], ['Prática', 'practice']]") && ui.includes('onclick="${f}()"'), 'as 3 pílulas levam a intro(), lesson() e practice()');
@@ -1423,7 +1448,13 @@ test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo
   const g = ui.slice(ui.indexOf('function hwGo('), ui.indexOf('function hwFocus('));
   assert.ok(!/info\.retorno|info\.como/.test(g), 'passos do Como funciona não usam os textos do exercício');
   assert.ok(ui.includes('class=hdm>') && !/<span class=hd>/.test(ui), 'partes apagadas usam .hdm');
-  for (const c of ['.hw{', '.hwtabs', '.hwtb.on', '.hwpre', '.hm.on', '.hdm{', '.hwnav', '.hwres', '.steps.st3']) assert.ok(css.includes(c), 'estilo ' + c);
+  // "como funciona um JOIN, quando usar e como usar": animação do mecanismo (4 passos), "Quando usar" e "Como usar" com o molde, nesta ordem na tela
+  for (const f of ['const VZ = {', 'const VIZ_OF = {', 'function vzGo(', 'function vzApply(', 'function usarHtml(']) assert.ok(ui.includes(f), f);
+  for (const k of ['inner', 'left', 'where', 'order', 'group', 'if', 'for', 'procv']) assert.ok(new RegExp(`\\n  ${k}: \\{ t: `).test(ui), 'animação ' + k);
+  const iv = ui.slice(ui.indexOf('function intro()'), ui.indexOf('function hwPlay()'));
+  assert.ok(iv.indexOf("infoCards(l.info, ['serve'])") < iv.indexOf('id=vzBox') && iv.indexOf('id=vzBox') < iv.indexOf('id=hw>') && iv.indexOf('id=hw>') < iv.indexOf('${usarHtml(l)}') && iv.indexOf('${usarHtml(l)}') < iv.indexOf('onclick=introGo()'), 'ordem: para que serve, animação, código, quando e como usar, botão');
+  for (const c of ['.hwm{', '.hwdt', '.vzbox', '.vzt tr.k1', '.vzdot.on']) assert.ok(css.includes(c), 'estilo ' + c);
+  for (const c of ['.hw{', '.hwtabs', '.hwtb.on', '.hwpre', '.hm.on', '.hdm{', '.hwnav', '.hwres', '.steps.st3', '.rdr-ring.n4', '.hwtag']) assert.ok(css.includes(c), 'estilo ' + c);
   assert.match(css, /prefers-reduced-motion[^{]*\{[^}]*\.hw/s, 'modo sem animação para o Como funciona');
 });
 

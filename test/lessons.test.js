@@ -304,3 +304,11 @@ test('como funciona: toda lição com exemplo (SQL, Python, Excel e DAX) traz as
   const ids = new Set(lessons.map(l => l.id));
   for (const id of Object.keys(COMO)) assert.ok(ids.has(id), `explicação de ${id} não aponta para nenhuma lição`);
 });
+
+test('quando usar e como usar: toda lição com exemplo (SQL, Python, Excel e DAX) tem o "use quando", o molde para preencher e, se houver, o cuidado', () => {
+  const { n, erros } = require('../tools/check-usar')();
+  assert.equal(n, 225, 'esperava 225 lições com exemplo');
+  assert.deepEqual(erros, []);
+  for (const l of lessons.filter(x => ['sql', 'python', 'excel', 'dax'].includes(x.type) && x.example)) assert.ok(l.usar && l.usar.q && l.usar.m, `${l.id}: o servidor precisa mandar l.usar`);
+  assert.equal(lessons.filter(x => x.type === 'quiz').every(x => !x.usar), true, 'lição de quiz não tem molde');
+});

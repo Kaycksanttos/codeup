@@ -17,7 +17,8 @@
     "check:ler": "node tools/check-ler.js",
     "check:explicar": "node tools/check-explicar.js",
     "check:tente": "node tools/check-tente.js",
-    "check:como": "node tools/check-como.js"
+    "check:como": "node tools/check-como.js",
+    "check:usar": "node tools/check-usar.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
