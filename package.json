@@ -16,7 +16,8 @@
     "check:pbi": "node tools/check-pbi.js",
     "check:ler": "node tools/check-ler.js",
     "check:explicar": "node tools/check-explicar.js",
-    "check:tente": "node tools/check-tente.js"
+    "check:tente": "node tools/check-tente.js",
+    "check:como": "node tools/check-como.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

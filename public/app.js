@@ -993,7 +993,8 @@ async function openL(id) {
 const openAct = (id, a) => a == 'r' ? openR(id) : a == 'e' ? openE(id) : openX(id);
 async function openX(id) {
   try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
-  S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false; lesson();
+  S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false;
+  hwOn(S.cur) && !S.me.done[id] ? intro() : lesson();   // lição ainda não feita: começa por "Como funciona"; quem já fez vai direto para a teoria
 }
 const isTest = l => !!(l && (l.cp || l.fin));
 // Enunciado em passos: parágrafos, listas ("- item" e "1. item"), `código`, **negrito** e destaque para "Dica:" / "Atenção:" (o texto vem de content/enunciados.txt; enunciado curto de lição é um parágrafo só)
@@ -1066,7 +1067,12 @@ const edBox = (q, value) => `<div class=ed><div class=edh><i></i><i></i><i></i><
 const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em <b>Concluído</b>.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', OUT0D = 'Escreva a fórmula e toque em <b>Concluído</b>: o corretor calcula a sua medida e compara com o resultado esperado.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta · "Dados" mostra as tabelas</div>', OUT0Q = 'Responda as perguntas e toque em <b>Concluído</b> para conferir. Errou? A explicação aparece e você pode tentar de novo.', OUT0X = 'Escreva as fórmulas nas células <b>verdes</b> e toque em <b>Concluído</b> para conferir.<div class=tn>Toque numa célula para escolher · Enter confirma · depois de = ou ( toque nas células para apontar</div>', DONE_BTN = `${ic('check', 18)} Concluído`;
 const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : S.cur.type == 'excel' || S.cur.type == 'quiz' ? 'Ajuda' : S.cur.type == 'dax' ? 'Conferência' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
 
-const steps = (n, proj) => `<div class=steps><span class="${n == 1 ? 'on' : 'ok'}">${n == 1 ? '1' : ic('check', 14)} ${proj ? 'Projeto' : 'Teoria'}</span><i></i><span class="${n == 2 ? 'on' : ''}">2 Prática</span></div>`;
+// as etapas da lição: 1 Como funciona · 2 Teoria · 3 Prática (projetos têm só Projeto · Prática). Tocar numa etapa vai até ela.
+const steps = (n, proj, two) => {
+  if (proj || two) return `<div class=steps><span class="${n == 1 ? 'on' : 'ok'}">${n == 1 ? '1' : ic('check', 14)} ${proj ? 'Projeto' : 'Teoria'}</span><i></i><span class="${n == 2 ? 'on' : ''}">2 Prática</span></div>`;
+  const P = [['Como funciona', 'intro'], ['Teoria', 'lesson'], ['Prática', 'practice']];
+  return `<div class="steps st3">${P.map(([t, f], i) => `${i ? '<i></i>' : ''}<span class="${n == i + 1 ? 'on' : n > i + 1 ? 'ok' : ''}" role=button tabindex=0 onclick="${f}()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();${f}()}">${n > i + 1 ? ic('check', 14) : i + 1} ${t}</span>`).join('')}</div>`;
+};
 // As 4 explicações de cada atividade (em linguagem de criança de 10 anos): o que é, para que serve, como você vai usar aqui e o que vai aparecer na tela
 const INFO_K = { oque: ['O que é', 'info'], serve: ['Para que serve', 'target'], como: ['Como você vai usar aqui', 'pencil'], retorno: ['O que vai aparecer na tela', 'out'] };
 const infoCards = (info, keys, title) => { const ks = (keys || Object.keys(INFO_K)).filter(k => info && info[k]); return ks.length ? `${title ? `<div class=infot>${title}</div>` : ''}<div class=infos>${ks.map(k => `<div class="inf ${k}"><div class=ih><span class=ii>${ic(INFO_K[k][1], 17)}</span><b>${INFO_K[k][0]}</b></div><p>${esc(info[k])}</p></div>`).join('')}</div>` : ''; };
@@ -1194,6 +1200,90 @@ async function labPeek() {
     if (t) t.textContent = 'Os dados desta lição';
   } catch (e) { showErr(e); }
 }
+// ============================================================ PARTE 1 DA LIÇÃO: COMO FUNCIONA
+// Antes da teoria: "Para que serve" (cartão) e "Como funciona" (animado, em 3 passos): 1) o exemplo é escrito na tela; 2) cada pedaço dele acende, um por vez, com uma explicação curta;
+// 3) aparece o que ele devolve. As explicações vêm de content/como-*.js (l.como já traz o trecho [a, b) de cada pedaço no código). Tocar num passo ou num pedaço para o autoplay.
+const hwOn = l => !!l && !l.proj && !isTest(l) && !!l.example;
+const HW_LB = { sql: ['Você pede', 'O banco procura', 'A tabela aparece'], python: ['Você escreve', 'O Python lê', 'A saída aparece'], excel: ['Você escreve', 'O Excel calcula', 'O resultado aparece'], dax: ['Você escreve', 'O Power BI calcula', 'O valor aparece'], quiz: ['Você olha', 'Você pensa', 'Você vê o porquê'] };
+const HW_FN = { sql: 'consulta.sql', python: 'main.py', excel: 'formula', dax: 'medida.dax', quiz: 'exemplo' };
+const hwCode = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
+const hwReduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hwAlive = () => S.step == 'intro' && !!S.hw && !!S.cur && S.hw.id == S.cur.id && !!$('#hwPre');
+const hwHas = l => !!(l.como && l.como.length);
+const hwMarks = (code, tp, como, on) => {   // o código com os pedaços marcados (o resto fica apagado)
+  let out = '', pos = 0;
+  como.forEach((c, j) => { out += `<span class=hdm>${hl(code.slice(pos, c.a), tp)}</span><mark class="hm${j == on ? ' on' : ''}" onclick="hwFocus(${j},1)">${hl(code.slice(c.a, c.b), tp)}</mark>`; pos = c.b; });
+  return out + `<span class=hdm>${hl(code.slice(pos), tp)}</span>`;
+};
+// o texto do passo 3 vem do próprio exemplo (info.retorno é do exercício da prática, não deste exemplo)
+const hwRet = l => {
+  const o = l.exampleOut, t = l.type;
+  if (t == 'sql' && o && o.rows) { const n = o.total != null ? o.total : o.rows.length, c = (o.cols || []).length; return `Voltaram ${n} ${n == 1 ? 'linha' : 'linhas'} e ${c} ${c == 1 ? 'coluna' : 'colunas'}: é só o que você pediu, nada a mais.`; }
+  if (t == 'python' && o && o.out != null) return 'Isto é o que o programa escreveu na tela. Cada print faz uma linha aparecer.';
+  if (t == 'excel') return 'A célula mostra só o resultado da conta, não a fórmula. Se um número de que ela depende mudar, o resultado muda sozinho.';
+  if (t == 'dax') return 'A medida vira um número no relatório e se recalcula sozinha conforme os filtros da página.';
+  return 'Na prática você escolhe a resposta. Se errar, o app explica o porquê e você tenta de novo.';
+};
+const hwResHtml = l => {
+  const o = l.exampleOut;
+  if (l.type == 'sql' && o && o.cols && o.rows) return `<div class=exr><div class=exh>${ic('out', 16)}<small>${esc(o.label || 'O que aparece')}</small></div>${labTbl(o.cols, o.rows, o.total)}</div>`;
+  if (l.type == 'python' && o && o.out != null) return `<div class=exr><div class=exh>${ic('out', 16)}<small>O que aparece na tela</small></div><pre class=inl>${esc(o.out) || '(sem saída)'}</pre></div>`;
+  return '';
+};
+function intro() {   // parte 1: para que serve e como funciona
+  delete document.body.dataset.calm;
+  const l = S.cur; theme(l.track); S.step = 'intro'; clearTimeout(LT); if (S.hw) { clearTimeout(S.hw.t); S.hw.gen = (S.hw.gen || 0) + 1; }
+  const T = HW_LB[l.type] || HW_LB.quiz, code = hwCode(l), nl = code.split('\n').length;
+  S.hw = { id: l.id, step: 0, i: 0, gen: 0, t: 0, auto: !hwReduce() };
+  A.innerHTML = `<div class="c itr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b></div>
+  ${steps(1)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · Lição ${l.n} de 30</span></div><h2 class=ttl>${esc(l.title)}</h2>
+  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>Antes da teoria, veja <b>para que isso serve</b> e <b>como funciona</b>. Toque nos passos ou deixe rodar sozinho.</div></div>
+  ${infoCards(l.info, ['serve'])}
+  <div class=hw id=hw><div class=hwh><span>${ic('play', 15)}Como funciona</span><button class=hwre onclick=hwPlay()>${ic('swap', 15)}Ver de novo</button></div>
+    <div class=hwtabs role=tablist>${T.map((t, i) => `<button class=hwtb id=hwt${i} role=tab onclick="hwGo(${i})"><i>${i + 1}</i><span>${esc(t)}</span></button>`).join('')}</div>
+    <div class=hwc><div class=edh><i></i><i></i><i></i><span>${HW_FN[l.type] || 'exemplo'}</span></div><pre class=hwpre id=hwPre style="min-height:${nl * 24 + 28}px"></pre></div>
+    <div class=hwn id=hwNote aria-live=polite></div><div class=hwres id=hwRes></div></div>
+  <button class="btn pri block" onclick=lesson()>Entendi, ir para a teoria ${ic('arrow', 16)}</button>
+  <p class=tn style="text-align:center">Na próxima etapa você lê a teoria${l.type == 'sql' || l.type == 'python' ? ' e pode mexer neste exemplo' : ''}; depois vai para a prática.</p></div>`;
+  window.scrollTo(0, 0);
+  setTimeout(() => { if (hwAlive() && S.hw.gen == 0) hwGo(0, !hwReduce()); }, hwReduce() ? 0 : 450);
+}
+function hwPlay() { if (hwAlive()) { S.hw.auto = !hwReduce(); hwGo(0, true); } }
+function hwType(g, done) {   // o código aparece sendo digitado
+  const h = S.hw, l = S.cur, pre = $('#hwPre'), code = hwCode(l), tp = lang(l), n = code.length;
+  if (hwReduce() || l.type == 'quiz') { pre.innerHTML = hl(code, tp); return done && done(); }
+  const k = Math.max(1, Math.ceil(n / 55)); let at = 0;
+  const tick = () => { if (!hwAlive() || h.gen != g) return; at = Math.min(n, at + k); pre.innerHTML = hl(code.slice(0, at), tp) + (at < n ? '<span class=hcur></span>' : ''); if (at < n) h.t = setTimeout(tick, 30); else if (done) done(); };
+  tick();
+}
+function hwGo(k, auto) {
+  if (!hwAlive()) return;
+  const h = S.hw, l = S.cur, pre = $('#hwPre'), note = $('#hwNote'), res = $('#hwRes'), code = hwCode(l), tp = lang(l), como = hwHas(l) ? l.como : [], info = l.info || {}, rdc = hwReduce();
+  clearTimeout(h.t); const g = ++h.gen; h.step = k; if (!auto) h.auto = false;
+  document.querySelectorAll('.hwtb').forEach((b, i) => { b.classList.toggle('on', i == k); b.classList.toggle('ok', i < k); b.setAttribute('aria-selected', i == k ? 'true' : 'false'); });
+  res.innerHTML = ''; res.classList.remove('on');
+  const nxt = (fn, ms) => { if (h.auto && !rdc) h.t = setTimeout(() => { if (hwAlive() && h.gen == g && h.auto) fn(); }, ms); };
+  if (k == 0) {
+    note.innerHTML = `<div class=hws><small>${esc((HW_LB[l.type] || HW_LB.quiz)[0])}</small><p>${esc(info.oque || l.explain || '')}</p></div>`;
+    hwType(g, () => nxt(() => hwGo(1, true), 1100));
+  } else if (k == 1) {
+    if (como.length) { pre.innerHTML = hwMarks(code, tp, como, -1); hwFocus(0); }
+    else { pre.innerHTML = hl(code, tp); note.innerHTML = `<div class=hws><small>${esc((HW_LB[l.type] || HW_LB.quiz)[1])}</small><p>${l.type == 'quiz' ? 'Leia o exemplo e pense em como as partes se ligam. Não precisa decorar: na prática você escolhe a resposta.' : esc(l.explain || '')}</p></div>`; nxt(() => hwGo(2, true), 3200); }
+  } else {
+    pre.innerHTML = hl(code, tp); const r = hwResHtml(l);
+    note.innerHTML = `<div class=hws><small>${esc((HW_LB[l.type] || HW_LB.quiz)[2])}</small><p>${esc(hwRet(l))}</p>${l.type == 'sql' || l.type == 'python' ? '<p class=hwtip>Na teoria você pode mudar este código e rodar de verdade.</p>' : ''}</div>`;
+    res.innerHTML = r; requestAnimationFrame(() => res.classList.add('on')); h.auto = false;
+  }
+}
+function hwFocus(i, manual) {   // acende o pedaço i do código e mostra o que ele faz
+  if (!hwAlive()) return; const h = S.hw, l = S.cur, como = hwHas(l) ? l.como : [], c = como[i]; if (!c) return;
+  if (manual) { h.auto = false; clearTimeout(h.t); h.gen++; }
+  h.i = i; document.querySelectorAll('.hm').forEach((m, j) => m.classList.toggle('on', j == i));
+  const last = i == como.length - 1;
+  $('#hwNote').innerHTML = `<div class=hws><small>Parte ${i + 1} de ${como.length}</small><p>${inlTxt(c.d)}</p></div>
+  <div class=hwnav><button class="btn ghost" onclick="hwFocus(${i - 1},1)"${i ? '' : ' disabled'}>${ic('back', 15)}Antes</button><button class="btn ghost" onclick="${last ? 'hwGo(2)' : `hwFocus(${i + 1},1)`}">${last ? 'Ver o resultado' : 'Depois'}${ic('arrow', 15)}</button></div>`;
+  if (h.auto && !hwReduce()) { const g = h.gen; h.t = setTimeout(() => { if (!hwAlive() || h.gen != g || !h.auto) return; last ? hwGo(2, true) : hwFocus(i + 1); }, 2300 + c.d.length * 30); }
+}
 // "Na atividade de prática": a tabela em que o aluno vai trabalhar (só aqui, longe do exemplo) e as explicações de como usar e do que vai aparecer na tela
 const praticaInfo = l => { const t = tblFor(l, 'A tabela desta lição'), c = infoCards(l.info, ['como', 'retorno']); return t || c ? `<div class=infot>Na atividade de prática</div>${t}${c}` : ''; };
 // ler / explicar o código: as tabelas que o código usa (o servidor já separa) e onde estão os dados
@@ -1216,7 +1306,7 @@ function tutSteps(l) {
     r: 'Nesta atividade você <b>lê um código que já está pronto</b> e responde o que ele faz. Vou mostrar onde fica cada coisa. Dá para rever depois no botão <b>?</b> do topo.',
     e: 'Nesta atividade você <b>explica com as suas palavras</b> o que um código faz. Vou mostrar onde fica cada coisa. Dá para rever depois no botão <b>?</b> do topo.' }[id] };
   const top = { sel: '.c .top', t: 'Seu progresso', p: `O <b>X</b> fecha a lição e volta ao mapa. A barra mostra quanto do curso você já andou, e o número é a lição em que você está: <b>${l.n} de 30</b>.` };
-  const stp = { sel: '.steps', t: 'Teoria e prática', p: id == 't' ? 'Toda lição tem duas etapas: primeiro a <b>Teoria</b> (onde você está agora) e depois a <b>Prática</b>, onde você escreve e confere.' : 'Toda lição tem duas etapas: a <b>Teoria</b>, que você já leu, e a <b>Prática</b>, onde você está agora. O botão <b>Teoria</b>, logo abaixo, leva de volta se precisar relembrar.' };
+  const stp = { sel: '.steps', t: 'Teoria e prática', p: id == 't' ? 'Toda lição tem três etapas: <b>Como funciona</b> (que você já viu), a <b>Teoria</b> (onde você está agora) e a <b>Prática</b>, onde você escreve e confere. Tocar numa etapa leva até ela.' : 'Toda lição tem três etapas: <b>Como funciona</b> e <b>Teoria</b>, que você já viu, e a <b>Prática</b>, onde você está agora. O botão <b>Teoria</b>, logo abaixo, leva de volta se precisar relembrar.' };
   const task = { sel: '.task', t: id == 'x' ? 'O desafio' : 'A pergunta', p: id == 'x' ? 'Aqui fica o que você precisa fazer. Leia com calma antes de começar a escrever.' : 'Aqui está o que querem saber sobre o código. Leia com calma antes de responder.' };
   const names = [...document.querySelectorAll('.tbc .tbn')].map(n => `<b>${esc(n.textContent)}</b>`);   // as tabelas que o cartão da tela está mostrando
   const tbl = { sel: '.tbc', t: names.length > 1 ? 'As tabelas' : 'A tabela', p: `Em SQL, os dados ficam guardados em <b>tabelas</b>, como as da planilha. Este cartão mostra ${names.length ? 'o nome ' + (names.length > 1 ? 'das tabelas' : 'da tabela') + ' (' + listPt(names) + ') e' : 'o nome da tabela e'} as <b>colunas</b> dela, que são os campos que você pode pedir. ${id == 'x' || id == 't' ? 'O nome da tabela vai logo depois da palavra <b>FROM</b>.' : 'O nome dela aparece depois da palavra <b>FROM</b> no código.'}` };
@@ -1277,7 +1367,7 @@ function lesson() {   // etapa 1: teoria
   delete document.body.dataset.calm;
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.proj ? l.n : l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}</div>
-  ${steps(1, l.proj)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · ${l.proj ? 'Projeto · depois da lição ' + l.after : 'Lição ' + l.n + ' de 30'}</span></div><h2 class=ttl>${esc(l.title)}</h2>
+  ${l.proj ? steps(1, true) : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · ${l.proj ? 'Projeto · depois da lição ' + l.after : 'Lição ' + l.n + ' de 30'}</span></div><h2 class=ttl>${esc(l.title)}</h2>
   <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.proj ? coverBox(l) : ''}${l.example ? (labOn(l) ? labHtml(l) : codeBox(l.example, lang(l), 'Exemplo') + exResult(l)) : ''}${l.mat ? matHtml(l.mat) : ''}${praticaInfo(l)}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
@@ -1288,7 +1378,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   const l = S.cur, T = isTest(l), ok = T && testDone(l), X = l.type == 'excel', Q = l.type == 'quiz', DX = l.type == 'dax'; theme(l.track); S.step = 'pratica'; S.lt = 0; S.t0 = Date.now(); S.h = 0; clearTimeout(LT);
   const left = l.left ?? l.chances;
   A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}`}</div>
-  ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
+  ${T ? '' : l.proj ? steps(2, false, true) : steps(3)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
   <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : l.proj ? 'Projeto' : (rowOf(l.id) || {}).rd ? actTag(l, 'x') : 'Desafio'}</small><div class="tk${String(l.task).length > 170 ? ' long' : ''}">${taskHtml(l.task)}</div></div></div>
   ${tblFor(l, '', 'Toque em <b>Dados</b> para ver as linhas de cada tabela.')}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}

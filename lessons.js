@@ -44,6 +44,13 @@ lessons.forEach(x => { if (EXPY[x.id] != null) x.exampleOut = { out: EXPY[x.id] 
 // "Experimente": uma mudança sugerida para o exemplo (content/tente-sql.js e tente-py.js). A teoria mostra o exemplo editável e o botão que aplica a sugestão.
 const TENTE = { ...require('./content/tente-sql'), ...require('./content/tente-py') };
 lessons.forEach(x => { if (TENTE[x.id]) x.tente = TENTE[x.id]; });
+// "Como funciona" (1ª parte de cada lição): content/como-*.js diz o que cada pedaço do exemplo faz; aqui já calculamos onde cada pedaço está no código que a tela mostra
+// (o SQL aparece organizado em linhas pelo fmtSql). A tela só precisa acender os trechos [a, b) na ordem.
+const COMO = require('./content/como'), comoMatch = require('./content/comoMatch'), FMT = require('./public/fmt.js');
+lessons.forEach(x => {
+  if (!COMO[x.id] || !x.example) return;
+  try { x.como = comoMatch(x.type === 'sql' ? FMT.fmtSql(x.example) : String(x.example), COMO[x.id]).map(({ a, b, d }) => ({ a, b, d })); } catch (e) { console.error(`como de ${x.id}: ${e.message}`); }
+});
 
 // 2ª ATIVIDADE DE CADA LIÇÃO: "ler o código". A lição tem duas atividades: 1) executar (teoria + prática: o aluno escreve e roda) e
 // 2) ler (o aluno vê um código pronto e diz o que ele faz). Os itens ficam em content/rd-*.js (um por lição, pelo id) e são conferidos

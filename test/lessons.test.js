@@ -286,3 +286,21 @@ test('enunciados: todo projeto e prova que não é quiz tem o enunciado em passo
   assert.deepEqual(sem.filter(id => /^(pj|cp|fin)-(sql|py|xl)/.test(id)), [], 'projetos e provas sem enunciado em passos');
   for (const x of todos) if (ENUN[x.id]) { assert.equal(x.task, ENUN[x.id], `${x.id}: o enunciado não foi aplicado`); assert.ok(x.task.length > 60, `${x.id}: enunciado curto demais`); }
 });
+
+test('como funciona: toda lição com exemplo (SQL, Python, Excel e DAX) traz as partes explicadas, e cada parte acende um trecho certo do código', () => {
+  const { fmtSql } = require('../public/fmt'), COMO = require('../content/como');
+  const com = lessons.filter(l => ['sql', 'python', 'excel', 'dax'].includes(l.type) && l.example);
+  assert.equal(com.length, 225, 'esperava 225 lições com exemplo para explicar');
+  for (const l of com) {
+    assert.ok(Array.isArray(l.como) && l.como.length >= 1, `${l.id}: faltam as partes de "Como funciona"`);
+    const code = l.type === 'sql' ? fmtSql(l.example) : String(l.example); let fim = 0;
+    for (const c of l.como) {
+      assert.ok(c.a >= fim && c.b > c.a && c.b <= code.length, `${l.id}: trecho fora de ordem ou fora do código (${c.a}-${c.b})`); fim = c.b;
+      assert.ok(c.d && c.d.length <= 190 && !/`/.test(c.d), `${l.id}: explicação vazia, longa ou com crase`);
+      assert.ok(code.slice(c.a, c.b).trim(), `${l.id}: trecho vazio`);
+    }
+    if (l.example.split(/\s+/).length > 4) assert.ok(l.como.length >= 2, `${l.id}: exemplo longo com uma parte só`);
+  }
+  const ids = new Set(lessons.map(l => l.id));
+  for (const id of Object.keys(COMO)) assert.ok(ids.has(id), `explicação de ${id} não aponta para nenhuma lição`);
+});

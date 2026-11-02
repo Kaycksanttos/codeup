@@ -1278,3 +1278,32 @@ body.wild .tl .ti.pj{--cp-a:#ffd29a;--cp-b:#ea580c;--cp-rgb:251,146,60;--cp-line
 .labw>b{display:flex;align-items:center;gap:6px;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--ok)}
 .labw p{margin:6px 0 0;font-size:14.5px;line-height:1.5}
 .lab .cbp.labl{margin:0;border-top:1px dashed var(--line)}
+
+/* parte 1 da lição: "Como funciona" (animada): o exemplo é digitado, cada pedaço acende com uma explicação e aparece o resultado */
+.steps.st3{gap:6px}.steps.st3 span{padding:5px 8px;font-size:11px;letter-spacing:.2px;cursor:pointer;white-space:nowrap}.steps.st3 i{min-width:4px}
+.hw{margin:12px 0 16px;border:2px solid var(--line);border-bottom-width:5px;border-radius:18px;overflow:hidden;background:var(--panel)}
+.hwh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px 9px 14px;background:color-mix(in srgb,var(--acc) 12%,var(--panel));border-bottom:1px solid var(--line)}
+.hwh span{display:flex;align-items:center;gap:7px;font-weight:900;font-size:12.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--acc)}
+.hwre{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:transparent;color:var(--text);border-radius:99px;padding:5px 11px;font:700 12px/1 inherit;font-family:inherit;cursor:pointer}
+.hwtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 10px 2px}
+.hwtb{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px 7px;border-radius:14px;border:2px solid var(--line);border-bottom-width:4px;background:var(--panel);color:var(--mute);font:800 12px/1.15 inherit;font-family:inherit;cursor:pointer;text-align:center;transition:.2s}
+.hwtb i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--panel2);font-style:normal;font-size:12px}
+.hwtb.on{border-color:var(--acc);color:var(--text);background:color-mix(in srgb,var(--acc) 12%,var(--panel))}.hwtb.on i{background:var(--acc);color:#04101c}
+.hwtb.ok i{background:color-mix(in srgb,var(--ok) 25%,var(--panel2));color:var(--ok)}
+.hwc{margin:8px 10px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#080d19}
+.hwpre{margin:0;padding:12px 14px;font:13.5px/1.7 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:#e2e8f0;tab-size:2;overflow:visible}
+.hcur{display:inline-block;width:7px;height:1.1em;margin-left:1px;background:var(--acc);vertical-align:text-bottom;animation:hwb 1s steps(1) infinite}
+@keyframes hwb{50%{opacity:0}}
+.hdm{opacity:.4;transition:opacity .25s}
+.hm{color:inherit;background:transparent;border-radius:5px;padding:1px 0;cursor:pointer;border-bottom:2px dotted color-mix(in srgb,var(--acc) 65%,transparent);transition:background .25s,box-shadow .25s;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.hm.on{background:color-mix(in srgb,var(--acc) 32%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 32%,transparent);border-bottom-color:transparent}
+.hwn{margin:10px 10px 4px;min-height:92px}
+.hws{padding:11px 13px 12px;border-radius:14px;background:color-mix(in srgb,var(--acc) 9%,var(--panel));border-left:4px solid var(--acc);animation:hwin .35s both}
+.hws small{display:block;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;color:var(--acc);margin-bottom:4px}
+.hws p{margin:0;font-size:15px;line-height:1.5}.hws p+p{margin-top:6px}.hws .hwtip{color:var(--mute);font-size:13px}
+@keyframes hwin{from{opacity:0;transform:translateY(6px)}}
+.hwnav{display:flex;gap:8px;margin:8px 0 2px}.hwnav .btn{flex:1;margin:0;padding:8px 10px;font-size:12px;border-bottom-width:3px;gap:6px}.hwnav .btn:disabled{opacity:.4;cursor:default}
+.hwres{margin:0 10px 10px}.hwres .exr{margin:8px 0 0;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}.hwres.on .exr{opacity:1;transform:none}
+.hwres .exr table{font-size:12px}.hwres .exr td,.hwres .exr th{padding:6px 7px}
+.hwres .exr pre.inl{margin:6px 0 0;padding:10px 12px;border-radius:10px;background:#080d19;color:#e2e8f0;font:13.5px/1.55 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){.hws,.hwres .exr{animation:none;transition:none}.hcur{animation:none}}

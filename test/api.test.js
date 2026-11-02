@@ -1408,6 +1408,25 @@ test('comemorações por acontecimento: acerto, erro, prova aprovada, sequência
   for (const c of ['.fxo{', '.fxo .rays', '.trophy', '.flw', '.sn .n', '.wk{', '.spk{', '.fb .fbc', '@keyframes fxSpark', '@keyframes fxTrophy', '@keyframes fxFl']) assert.ok(css.includes(c), 'css ' + c);
 });
 
+test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo animado), em 3 etapas clicáveis', () => {
+  const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8');
+  for (const f of ['const hwOn = l =>', 'function intro()', 'function hwGo(', 'function hwFocus(', 'function hwType(', 'function hwPlay()', 'const hwRet = l =>', 'const hwMarks = ']) assert.ok(ui.includes(f), f);
+  // a lição ainda não feita abre pelo "Como funciona"; quem já fez vai direto para a teoria; projetos, provas e lições sem exemplo não têm essa parte
+  assert.match(ui, /hwOn\(S\.cur\) && !S\.me\.done\[id\] \? intro\(\) : lesson\(\)/, 'openX começa por intro() quando a lição ainda não foi feita');
+  assert.match(ui, /const hwOn = l => !!l && !l\.proj && !isTest\(l\) && !!l\.example/, 'só lições com exemplo, sem projeto nem prova');
+  // o indicador tem 3 pílulas clicáveis (Como funciona, Teoria, Prática); projeto e prática de projeto ficam com 2
+  assert.match(ui, /const steps = \(n, proj, two\)/, 'steps(n, proj, two)');
+  assert.ok(ui.includes("[['Como funciona', 'intro'], ['Teoria', 'lesson'], ['Prática', 'practice']]") && ui.includes('onclick="${f}()"'), 'as 3 pílulas levam a intro(), lesson() e practice()');
+  assert.match(ui, /\$\{l\.proj \? steps\(1, true\) : steps\(2\)\}/, 'teoria é a etapa 2 de 3 (projeto: 1 de 2)');
+  assert.match(ui, /\$\{T \? '' : l\.proj \? steps\(2, false, true\) : steps\(3\)\}/, 'prática é a etapa 3 de 3 (projeto: 2 de 2)');
+  // o texto do passo 3 vem do exemplo (info.retorno é do exercício da prática e não pode aparecer aqui) e a classe das partes apagadas não colide com o cabeçalho .hd
+  const g = ui.slice(ui.indexOf('function hwGo('), ui.indexOf('function hwFocus('));
+  assert.ok(!/info\.retorno|info\.como/.test(g), 'passos do Como funciona não usam os textos do exercício');
+  assert.ok(ui.includes('class=hdm>') && !/<span class=hd>/.test(ui), 'partes apagadas usam .hdm');
+  for (const c of ['.hw{', '.hwtabs', '.hwtb.on', '.hwpre', '.hm.on', '.hdm{', '.hwnav', '.hwres', '.steps.st3']) assert.ok(css.includes(c), 'estilo ' + c);
+  assert.match(css, /prefers-reduced-motion[^{]*\{[^}]*\.hw/s, 'modo sem animação para o Como funciona');
+});
+
 test('app: cartões de explicação, provas com chances, tela de voltar lições e mapa com checkpoints e prova final', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
   // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
