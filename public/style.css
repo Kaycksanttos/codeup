@@ -1368,3 +1368,4 @@ body.wild .tl .ti.pj{--cp-a:#ffd29a;--cp-b:#ea580c;--cp-rgb:251,146,60;--cp-line
 .vzt tr.bad td{background:color-mix(in srgb,#ef4444 35%,transparent)}.vzo3.gone{opacity:.28;text-decoration:line-through}
 
 .vzo3.err{background:color-mix(in srgb,#ef4444 22%,transparent)}
+.vzold{transition:opacity .35s}.vzold.gone{opacity:.4;text-decoration:line-through}
