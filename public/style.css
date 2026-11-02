@@ -1413,3 +1413,10 @@ button.mua:hover{color:var(--text)}
 .mucv{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 8px}.mucv .bd{flex:1;min-width:180px;display:flex;flex-direction:column;gap:2px}.mucv small{color:var(--mute)}
 .muopen:focus-visible,.mukinds button:focus-visible,.mufl button:focus-visible,.mulk:focus-visible,.mua:focus-visible,.mul:focus-visible,.much button:focus-visible{outline:3px solid var(--acc2,var(--acc));outline-offset:2px}
 @media (max-width:340px){.nav.n6 button{font-size:9.5px}}
+
+/* lote 4 das animações: fichas que quebram linha, cores por grupo e itens riscados */
+.vzch{flex-wrap:wrap;justify-content:center}.vzch.sm{gap:3px;flex-wrap:nowrap}.vzch.sm i{padding:4px 5px;min-width:0;font-size:12px;border-width:1.5px;border-radius:9px}.vzch.sm i small{font-size:9.5px}
+.vzch i.no{opacity:.25;text-decoration:line-through}
+.vzch i.k1,.vzx.k1{border-color:var(--k1);background:color-mix(in srgb,var(--k1) 30%,transparent)}.vzch i.k2,.vzx.k2{border-color:var(--k2);background:color-mix(in srgb,var(--k2) 30%,transparent)}.vzch i.k3,.vzx.k3{border-color:var(--k3);background:color-mix(in srgb,var(--k3) 30%,transparent)}.vzch i.k4,.vzx.k4{border-color:var(--k4);background:color-mix(in srgb,var(--k4) 30%,transparent)}
+.vzch i.bad{border-color:#ef4444;background:color-mix(in srgb,#ef4444 22%,transparent)}
+.vzx span.cel{outline:2px solid var(--ok);border-radius:4px;padding:0 3px}

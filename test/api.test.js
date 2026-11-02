@@ -1450,10 +1450,10 @@ test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo
   assert.ok(ui.includes('class=hdm>') && !/<span class=hd>/.test(ui), 'partes apagadas usam .hdm');
   // "como funciona um JOIN, quando usar e como usar": animação do mecanismo (4 passos), "Quando usar" e "Como usar" com o molde, nesta ordem na tela
   for (const f of ['const VZ = {', 'const VIZ_OF = {', 'function vzGo(', 'function vzApply(', 'function usarHtml(']) assert.ok(ui.includes(f), f);
-  // as animações (78 tipos): cada uma tem 4 passos com legenda, só usa passos de 1 a 4, e toda lição mapeada existe
+  // as animações (112 tipos): cada uma tem 4 passos com legenda, só usa passos de 1 a 4, e toda lição mapeada existe
   const seg = ui.slice(ui.indexOf('const vzT ='), ui.indexOf('const vizOf ='));
   const { VZ, VIZ_IDS, VIZ_OF } = new Function(seg + '; return { VZ, VIZ_IDS, VIZ_OF };')();
-  assert.equal(Object.keys(VZ).length, 78, 'tipos de animação');
+  assert.equal(Object.keys(VZ).length, 112, 'tipos de animação');
   assert.deepEqual(Object.keys(VIZ_IDS).sort(), Object.keys(VZ).sort(), 'todo tipo de animação é usado por alguma lição e vice-versa');
   for (const [k, v] of Object.entries(VZ)) {
     assert.ok(v.t && v.cap.length === 4 && v.cap.every(c => c.length > 10), k + ': título e 4 legendas');
@@ -1463,7 +1463,7 @@ test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo
     assert.ok(/data-s=[2-4]|data-a="[^"]*[2-4][:=]/.test(h), k + ': algo muda depois do passo 1');
   }
   for (const id of Object.keys(VIZ_OF)) assert.ok(lessons.find(l => l.id === id), 'lição da animação não existe: ' + id);
-  assert.equal(Object.keys(VIZ_OF).length, 127, 'lições com animação do mecanismo');
+  assert.equal(Object.keys(VIZ_OF).length, 162, 'lições com animação do mecanismo');
   const iv = ui.slice(ui.indexOf('function intro()'), ui.indexOf('function hwPlay()'));
   assert.ok(iv.indexOf("infoCards(l.info, ['serve'])") < iv.indexOf('id=vzBox') && iv.indexOf('id=vzBox') < iv.indexOf('id=hw>') && iv.indexOf('id=hw>') < iv.indexOf('${usarHtml(l)}') && iv.indexOf('${usarHtml(l)}') < iv.indexOf('onclick=introGo()'), 'ordem: para que serve, animação, código, quando e como usar, botão');
   for (const c of ['.hwm{', '.hwdt', '.vzbox', '.vzt tr.k1', '.vzdot.on']) assert.ok(css.includes(c), 'estilo ' + c);
@@ -2597,5 +2597,5 @@ test('mural: arquivos do app — aba, texto sempre escapado, link só https e te
   assert.match(css, /\.nav\.n6 button/, 'o menu com 6 abas cabe em telas estreitas'); assert.match(css, /\.mup\{[^}]*pre-wrap/, 'quebras de linha do post');
   assert.match(adm, /\['mural', 'chat', 'Mural'\]/, 'aba Mural no painel do dono'); for (const a of ['mu-keep', 'mu-hide', 'mu-del']) assert.match(adm, new RegExp(a), a); assert.match(adm, /id="mu"/, 'interruptor em Ajustes');
   const ov = (await A('overview')).j; assert.equal(typeof ov.mural.pending, 'number'); assert.equal(typeof ov.mural.total, 'number'); assert.equal(ov.settings.mural, true);
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v76/, 'cache do app renovado para chegar a todos');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v77/, 'cache do app renovado para chegar a todos');
 });
