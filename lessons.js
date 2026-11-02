@@ -37,6 +37,13 @@ lessons.forEach(x => { const a = INFO[x.id]; if (a) x.info = Object.fromEntries(
 // tabelinha com o que o EXEMPLO de cada lição de SQL devolve (gerada por `npm run build:content`, que roda o exemplo no banco da lição; só a teoria usa)
 let EXOUT = {}; try { EXOUT = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'example-sql.json'), 'utf8')); } catch { }
 lessons.forEach(x => { if (EXOUT[x.id]) x.exampleOut = EXOUT[x.id]; });
+// Python: a saída do exemplo (content/example-py.json, gerada por `npm run build:content`) aparece abaixo do código na teoria. SQL que não devolve linhas: a consulta que mostra o efeito (content/example-after.js)
+let EXPY = {}; try { EXPY = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'example-py.json'), 'utf8')); } catch { }
+const EXAFTER = require('./content/example-after');
+lessons.forEach(x => { if (EXPY[x.id] != null) x.exampleOut = { out: EXPY[x.id] }; if (EXAFTER[x.id]) x.exampleAfter = EXAFTER[x.id][0]; });
+// "Experimente": uma mudança sugerida para o exemplo (content/tente-sql.js e tente-py.js). A teoria mostra o exemplo editável e o botão que aplica a sugestão.
+const TENTE = { ...require('./content/tente-sql'), ...require('./content/tente-py') };
+lessons.forEach(x => { if (TENTE[x.id]) x.tente = TENTE[x.id]; });
 
 // 2ª ATIVIDADE DE CADA LIÇÃO: "ler o código". A lição tem duas atividades: 1) executar (teoria + prática: o aluno escreve e roda) e
 // 2) ler (o aluno vê um código pronto e diz o que ele faz). Os itens ficam em content/rd-*.js (um por lição, pelo id) e são conferidos
@@ -74,6 +81,10 @@ const checkpoints = tests.filter(t => t.cp), finals = tests.filter(t => t.fin);
 // Não são provas: não gastam chance, não fazem voltar lição e têm dica e solução. Mas são obrigatórios: a lição seguinte (e a prova que vem depois do projeto das lições 10, 20 e 30) só libera com o projeto feito.
 const projects = require('./content/projects').map(fill);
 for (const p of projects) p.cobre = lessons.filter(l => l.track === p.track && l.lv === p.lv && l.n > p.after - 5 && l.n <= p.after).map(l => l.title);   // temas das 5 lições do projeto
+
+// ENUNCIADOS: o texto do que fazer em cada projeto e prova fica em content/enunciados.txt (em passos, para ser fácil de ler) e vale no lugar do `task` curto dos arquivos de cada curso
+const ENUN = require('./content/enunciados');
+for (const x of [...lessons, ...tests, ...projects]) if (ENUN[x.id]) x.task = ENUN[x.id];
 
 module.exports = lessons;
 Object.assign(module.exports, { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });

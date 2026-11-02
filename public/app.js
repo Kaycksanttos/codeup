@@ -996,6 +996,20 @@ async function openX(id) {
   S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false; lesson();
 }
 const isTest = l => !!(l && (l.cp || l.fin));
+// Enunciado em passos: parágrafos, listas ("- item" e "1. item"), `código`, **negrito** e destaque para "Dica:" / "Atenção:" (o texto vem de content/enunciados.txt; enunciado curto de lição é um parágrafo só)
+const inlTxt = t => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+function taskHtml(t) {
+  const out = []; let list = null;
+  const close = () => { if (list) { out.push(`<${list.tag}${list.start > 1 ? ' start=' + list.start : ''}>${list.items.map(i => `<li>${inlTxt(i)}</li>`).join('')}</${list.tag}>`); list = null; } };
+  for (const raw of String(t || '').split('\n')) {
+    const line = raw.trim(); let m;
+    if (!line) { close(); continue; }
+    if ((m = line.match(/^- (.+)$/))) { if (!list || list.tag != 'ul') { close(); list = { tag: 'ul', items: [] }; } list.items.push(m[1]); }
+    else if ((m = line.match(/^(\d+)\. (.+)$/))) { if (!list || list.tag != 'ol') { close(); list = { tag: 'ol', start: +m[1], items: [] }; } list.items.push(m[2]); }
+    else { close(); out.push(/^(Dica|Atenção):/.test(line) ? `<p class=tnote>${inlTxt(line)}</p>` : `<p>${inlTxt(line)}</p>`); }
+  }
+  close(); return out.join('');
+}
 // resultado que o aluno acabou de acertar (a tabela do SQL ou a saída do Python), mostrado na tela de conclusão
 const resBox = () => S.lastRes ? `<div class="ob resbox"><div class=obh>${ic('check', 14)}<span>${S.cur && (S.cur.type == 'sql' || S.cur.type == 'dax') ? 'Seu resultado' : S.cur && S.cur.type == 'excel' ? 'Sua planilha' : S.cur && S.cur.type == 'quiz' ? 'Suas respostas' : 'Sua saída'}</span></div><div class=out>${S.lastRes}</div></div>` : '';
 // Provas: os 2 checkpoints de cada nível (depois das lições 10 e 20, 2 chances) e a prova final (depois da 30, 3 chances). Uma tarefa completa com o que se aprendeu,
@@ -1088,6 +1102,98 @@ const exResult = l => {
   const rest = o.total - o.rows.length;
   return `<div class=exr><div class=exh>${ic('out', 16)}<small>${esc(o.label || 'Resultado do exemplo')}</small></div>${table({ columns: o.cols, values: o.rows })}<p class=exm>${rest > 0 ? `… e mais ${rest} ${rest == 1 ? 'linha' : 'linhas'} (${o.total} no total)` : `${o.total} ${o.total == 1 ? 'linha' : 'linhas'}`}</p></div>`;
 };
+// ============================================================ EXEMPLO AO VIVO (teoria de SQL e Python)
+// O exemplo da lição é um editor de verdade: o aluno muda o código, toca em Rodar e vê o resultado na hora (SQL no navegador; Python no Pyodide). Nada aqui vale nota.
+// "Experimente" sugere uma mudança (content/tente-sql.js e tente-py.js): "Ver a mudança" aplica, roda e explica o que mudou.
+const labOn = l => !!l && !!l.example && (l.type == 'sql' || l.type == 'python') && !isTest(l);
+const labOrig = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
+const labDf = l => l.type == 'python' && /\bdf\s*=/.test(l.prelude || '');
+const labTbl = (cols, vals, total) => { const rest = total - vals.length; return table({ columns: cols, values: vals }) + `<p class=exm>${rest > 0 ? `… e mais ${rest} ${rest == 1 ? 'linha' : 'linhas'} (${total} no total)` : `${total} ${total == 1 ? 'linha' : 'linhas'}`}</p>`; };
+const labFirst = l => {
+  const o = l.exampleOut;
+  if (l.type == 'sql') return o && o.cols && o.rows ? { t: o.label || 'Resultado do exemplo', h: labTbl(o.cols, o.rows, o.total) } : { t: 'Resultado', h: '<p class=labe>Toque em <b>Rodar</b> para ver o resultado.</p>' };
+  return o && o.out != null ? { t: 'Saída do exemplo', h: `<pre class=inl>${esc(o.out) || '(sem saída)'}</pre>` } : { t: 'Saída', h: '<p class=labe>Toque em <b>Rodar</b> para ver a saída.</p>' };
+};
+function labHtml(l) {
+  const sql = l.type == 'sql', t = l.tente, f = labFirst(l), txt = labOrig(l), parts = sql && typeof sqlParts == 'function' ? sqlParts(txt).slice(0, 7) : [];
+  const names = labDf(l) ? ['df', ...(/\bmetas\s*=/.test(l.prelude) ? ['metas'] : [])].map(n => `<code>${n}</code>`).join(' e ') : '';
+  return `<div class=lab id=lab><div class=labh><span>${ic('play', 15)}Exemplo ao vivo</span><small>Mude o código e rode</small></div>
+  ${names ? `<p class=labn>${ic('db', 15)}<span>${names.includes(' e ') ? 'As tabelas' : 'A tabela'} ${names} já ${names.includes(' e ') ? 'estão carregadas' : 'está carregada'}. Toque em <b>Ver os dados</b> para olhar.</span></p>` : ''}
+  ${edBox(l, txt)}
+  <div class=labb><button class="btn pri" id=labRun onclick=labRun()>${ic('play', 16)}Rodar</button><button class="btn ghost" id=labReset onclick=labReset() disabled>${ic('back', 16)}Original</button>${sql || labDf(l) ? `<button class="btn ghost" onclick=labPeek()>${ic('eye', 16)}Ver os dados</button>` : ''}</div>
+  ${t ? `<div class=labt><b>${ic('bulb', 16)}Experimente</b><p>${inlTxt(t.q)}</p><button class="btn ghost" id=labTry onclick=labTry()>Ver a mudança</button></div>` : ''}
+  <div class=exr><div class=exh>${ic('out', 16)}<small id=labTit>${esc(f.t)}</small></div><p class=labhint id=labHint hidden>Você mudou o código. Toque em <b>Rodar</b> para atualizar o resultado.</p><div id=out class=out>${f.h}</div></div>
+  <div class=labw id=labWhy hidden></div>
+  ${parts.length > 1 ? `<div class="cbp labl"><small>Como ler o exemplo</small>${parts.map(p => `<div><b class=k>${esc(p.k)}</b><span>${esc(p.d)}</span></div>`).join('')}</div>` : ''}</div>`;
+}
+function labInit(l) {
+  editor(l); const ed = $('#ed'); if (!ed) return;
+  ed.onkeydown = e => {
+    if (e.key == 'Tab') { e.preventDefault(); ed.setRangeText(l.type == 'sql' ? '  ' : '    ', ed.selectionStart, ed.selectionEnd, 'end'); labSync(); }
+    if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); labRun(); }
+  };
+  ed.addEventListener('input', labSync);
+  if (l.type == 'python') ed.addEventListener('focus', labWarm, { once: true });
+  S.lab = { orig: labOrig(l), ran: labOrig(l), first: labFirst(l), busy: false }; labSync();
+}
+// Python: ao tocar no editor já começa a carregar o Pyodide, para o 1º Rodar não demorar
+function labWarm() {
+  if (S.pyReady) return;
+  pq = pq.catch(() => { }).then(async () => { if (!S.pyReady) { await pyCall({ t: 'init' }, 90000); S.pyReady = true; } }); pq.catch(() => { });
+}
+function labSync() {
+  const ed = $('#ed'), L = S.lab; if (!ed || !L) return;
+  const n = ed.value.split('\n').length; ed.style.height = Math.min(380, Math.max(96, n * 25 + 28)) + 'px';
+  const r = $('#labReset'), h = $('#labHint'), w = $('#labWhy'), t = S.cur && S.cur.tente;
+  if (r) r.disabled = ed.value === L.orig;
+  if (h) h.hidden = ed.value === L.ran;
+  if (w && !w.hidden && t && ed.value.trim() !== (S.cur.type == 'sql' ? niceSql(t.code, 'sql') : t.code).trim()) w.hidden = true;
+  if (S.sync) S.sync();
+}
+async function labSql(l, code) {
+  await loadSql(); const db = new S.SQL.Database();
+  try {
+    db.run(l.seed); const res = db.exec(code); let last = res[res.length - 1], note = '';
+    const stmt = code.trim().replace(/;+\s*$/, '').split(';').pop();
+    if (!last && /^\s*(select|with|values)\b/i.test(stmt)) return '<p class=labe>A consulta rodou, mas nenhuma linha atende ao que você pediu. Mude o filtro e rode de novo.</p>';
+    if (!last && l.exampleAfter) { last = db.exec(l.exampleAfter).pop(); note = '<p class=labn2>O comando mudou a tabela. Veja como ela ficou:</p>'; }
+    if (!last) return '<p class=labe>Comando executado. Ele não devolve uma tabela: rode um <b>SELECT</b> depois para ver o efeito.</p>';
+    return note + labTbl(last.columns, last.values.slice(0, 12), last.values.length);
+  } finally { db.close(); }
+}
+async function labRun() {
+  const l = S.cur, L = S.lab, ed = $('#ed'), o = $('#out'), b = $('#labRun'); if (!labOn(l) || !L || !ed || !o || L.busy) return;
+  const code = ed.value; L.busy = true; if (b) b.disabled = true; o.className = 'out';
+  try {
+    if (!code.trim()) o.innerHTML = '<p class=labe>Escreva alguma coisa para rodar.</p>';
+    else if (l.type == 'sql') o.innerHTML = await labSql(l, code);
+    else { o.textContent = 'Executando…'; o.innerHTML = (await runPy(l, code)).html; }
+    L.ran = code; const t = $('#labTit'); if (t) t.textContent = code === L.orig ? L.first.t : 'Resultado do seu código';
+  } catch (e) { if ($('#out')) { showErr(e); L.ran = code; const t = $('#labTit'); if (t) t.textContent = 'Erro no seu código'; } }
+  finally { L.busy = false; const b2 = $('#labRun'); if (b2) b2.disabled = false; labSync(); }
+}
+function labTry() {
+  const l = S.cur, t = l && l.tente, ed = $('#ed'), w = $('#labWhy'); if (!t || !ed || !w) return;
+  ed.value = l.type == 'sql' ? niceSql(t.code, 'sql') : t.code; ed.scrollTop = 0;
+  w.innerHTML = `<b>${ic('check', 16)}O que mudou</b><p>${inlTxt(t.why)}</p>`; w.hidden = false; labSync();
+  labRun().then(() => { const e = $('.exr'); if (e) e.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+}
+function labReset() {
+  const L = S.lab, ed = $('#ed'), o = $('#out'); if (!L || !ed || !o) return;
+  ed.value = L.orig; ed.scrollTop = 0; o.className = 'out'; o.innerHTML = L.first.h; L.ran = L.orig;
+  const t = $('#labTit'), w = $('#labWhy'); if (t) t.textContent = L.first.t; if (w) w.hidden = true; labSync();
+}
+async function labPeek() {
+  const l = S.cur, o = $('#out'); if (!labOn(l) || !o) return; o.className = 'out'; const t = $('#labTit');
+  try {
+    if (l.type == 'sql') {
+      await loadSql(); const db = new S.SQL.Database();
+      try { db.run(l.seed); o.innerHTML = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(n => `<div class=tname>${ic('db', 14)} ${esc(n)}</div>` + table(db.exec(`SELECT * FROM ${n}`)[0])).join(''); } finally { db.close(); }
+    } else if (l.peek) { o.textContent = 'Executando…'; o.innerHTML = (await runPy(l, l.peek)).html; }
+    else return;
+    if (t) t.textContent = 'Os dados desta lição';
+  } catch (e) { showErr(e); }
+}
 // "Na atividade de prática": a tabela em que o aluno vai trabalhar (só aqui, longe do exemplo) e as explicações de como usar e do que vai aparecer na tela
 const praticaInfo = l => { const t = tblFor(l, 'A tabela desta lição'), c = infoCards(l.info, ['como', 'retorno']); return t || c ? `<div class=infot>Na atividade de prática</div>${t}${c}` : ''; };
 // ler / explicar o código: as tabelas que o código usa (o servidor já separa) e onde estão os dados
@@ -1117,7 +1223,7 @@ function tutSteps(l) {
   const fin = { sel: null, t: 'Agora é com você!', p: (N > 1 ? `Esta lição tem <b>${N} atividades</b>: ${listPt(nms)}. Quando as ${N} estiverem feitas, a lição conclui e a próxima abre. ` : '') + 'Ficou com dúvida? Toque no <b>?</b> lá em cima para rever este tutorial.' };
   const relembrar = { sel: '.rdr-th', t: 'Precisa relembrar?', p: 'Toque aqui para abrir de novo a explicação da lição, sem sair da atividade.' };
   if (id == 't') return [hi, top, stp, { sel: '.tutor', t: 'A explicação', p: 'Aqui o guia explica o assunto em poucas palavras. Leia com calma, sem pressa.' },
-    { sel: '.cb', t: 'O exemplo', p: 'Este é um exemplo pronto do que a lição ensina. Ele serve só para ler: na próxima etapa é você quem faz.' }, ...(sql ? [tbl] : []),
+    labOn(l) ? { sel: '.lab', t: 'O exemplo ao vivo', p: 'Este exemplo é de verdade: <b>mude o código</b> e toque em <b>Rodar</b> para ver o que acontece. Em <b>Experimente</b> eu sugiro uma mudança. Aqui nada vale nota: errar e testar é a melhor forma de aprender.' } : { sel: '.cb', t: 'O exemplo', p: 'Este é um exemplo pronto do que a lição ensina. Ele serve só para ler: na próxima etapa é você quem faz.' }, ...(sql ? [tbl] : []),
     { sel: '.c > .btn.pri.block', t: 'Entendeu? Siga em frente', p: 'Quando terminar de ler, toque em <b>Entendi, ir para a prática</b>. A prática vem com outro tutorial, bem rapidinho.' }];
   if (id == 'x') {
     const AJ = { 'Dica': 'uma pista, sem entregar a resposta', 'Dados': py ? 'os dados da atividade, quando houver' : T == 'dax' ? 'o modelo de dados, com as tabelas' : 'as tabelas com todos os dados que você pode usar', 'Fórmulas': 'mostra as fórmulas das células', 'Solução': 'a resposta pronta (deixe por último!)', 'Teoria': 'volta à explicação da lição', 'Limpar': 'apaga o que você escreveu' };
@@ -1172,10 +1278,10 @@ function lesson() {   // etapa 1: teoria
   const l = S.cur; theme(l.track); S.step = 'teoria'; clearTimeout(LT);
   A.innerHTML = `<div class=c><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(l.proj ? l.n : l.n - 1) / 30 * 100}%"></i></div><b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}</div>
   ${steps(1, l.proj)}<div class=crumb>${tg(l.track, 24)}<span>${TN[l.track]} · ${esc(l.level)} · ${l.proj ? 'Projeto · depois da lição ' + l.after : 'Lição ' + l.n + ' de 30'}</span></div><h2 class=ttl>${esc(l.title)}</h2>
-  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.proj ? coverBox(l) : ''}${l.example ? codeBox(l.example, lang(l), 'Exemplo') + exResult(l) : ''}${l.mat ? matHtml(l.mat) : ''}${praticaInfo(l)}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
+  <div class=tutor>${poseChip('explica', 124) ? `<span class=tpz role=img aria-label="${esc(gnm())}">${poseChip('explica', 124)}</span>` : `<img src="${IMG().full}" alt="${esc(gnm())}">`}<div class=sb>${esc(l.info && l.info.oque || l.explain)}</div></div>${infoCards(l.info, ['serve'])}${l.proj ? coverBox(l) : ''}${l.example ? (labOn(l) ? labHtml(l) : codeBox(l.example, lang(l), 'Exemplo') + exResult(l)) : ''}${l.mat ? matHtml(l.mat) : ''}${praticaInfo(l)}${l.type == 'excel' ? `<div class=infot>A planilha da prática</div>${xlPreview(l)}<p class=tn style="text-align:center">As células <b class=gr>verdes</b> são as que você vai preencher.</p>` : ''}
   <p class=tn style="text-align:center">Leia com calma. Na próxima etapa você pratica e, quando terminar, toca em <b>Concluído</b> para conferir.</p>
   <button class="btn pri block" onclick=practice()>Entendi, ir para a prática ${ic('arrow', 16)}</button></div>`;
-  window.scrollTo(0, 0); tutAuto();
+  window.scrollTo(0, 0); if (labOn(l)) labInit(l); tutAuto();
 }
 function practice() {   // etapa 2: prática. Nada é executado nem mostrado enquanto o aluno digita: resultado, erro e dicas de correção só aparecem depois que ele toca em Concluído (botão fixo no rodapé)
   document.body.dataset.calm = '1';   // fundo 3D mais leve enquanto o aluno digita
@@ -1183,7 +1289,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   const left = l.left ?? l.chances;
   A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}`}</div>
   ${T ? '' : steps(2)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
-  <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : l.proj ? 'Projeto' : (rowOf(l.id) || {}).rd ? actTag(l, 'x') : 'Desafio'}</small>${esc(l.task)}</div></div>
+  <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : l.proj ? 'Projeto' : (rowOf(l.id) || {}).rd ? actTag(l, 'x') : 'Desafio'}</small><div class="tk${String(l.task).length > 170 ? ' long' : ''}">${taskHtml(l.task)}</div></div></div>
   ${tblFor(l, '', 'Toque em <b>Dados</b> para ver as linhas de cada tabela.')}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${DX ? daxViewsNote(l) : ''}${X ? xlBox(l) : Q ? qzBox(l) : edBox(l, l.starter)}

@@ -1238,3 +1238,43 @@ body .tl .ti.pj.av .rail span.nd{background:linear-gradient(145deg,#fb923c,#f43f
 body .tl .ti.pj.av .rail span.nd{animation:pjp 2.2s ease-in-out infinite}
 body.wild .tl .ti.pj{--cp-a:#ffd29a;--cp-b:#ea580c;--cp-rgb:251,146,60;--cp-line:#ffe4c4}
 @media (prefers-reduced-motion:reduce){body .tl .ti.pj.av.cur .rail span.nd{animation:none}}
+
+/* enunciado em passos (projetos e provas): parágrafos, listas e código */
+.task>div{min-width:0;flex:1}.task .tk{margin-top:3px}.task .tk p{margin:0 0 8px}.task .tk>:last-child{margin-bottom:0}
+.task .tk ul,.task .tk ol{margin:0 0 9px;padding-left:22px}.task .tk li{margin:0 0 5px;padding-left:2px}.task .tk li::marker{color:var(--acc);font-weight:800}
+.task .tk code{font:700 .86em ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;background:color-mix(in srgb,var(--acc) 16%,#0000);border:1px solid color-mix(in srgb,var(--acc) 26%,#0000);padding:1px 6px;border-radius:7px;overflow-wrap:anywhere}
+.task .tk .tnote{margin-top:10px;padding:8px 11px;border-left:4px solid var(--acc);background:color-mix(in srgb,var(--acc) 9%,#0000);border-radius:0 10px 10px 0;font-size:.94em}
+.task .tk b{font-weight:800}
+.task .tk.long{font-size:15px;line-height:1.5}
+
+/* exemplo ao vivo da teoria (SQL e Python): editor + Rodar + resultado + "Experimente" */
+.lab{margin:10px 0 14px;border:2px solid var(--line);border-bottom-width:5px;border-radius:18px;overflow:hidden;background:var(--panel)}
+.labh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;background:color-mix(in srgb,var(--acc) 12%,var(--panel));border-bottom:1px solid var(--line)}
+.labh span{display:flex;align-items:center;gap:7px;font-weight:900;font-size:12.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--acc)}
+.labh small{color:var(--mute);font-size:12px;text-align:right}
+.lab .ed{margin:0;border:0;border-radius:0}
+.lab .ed textarea{min-height:96px;resize:none}
+.labn{display:flex;gap:8px;align-items:flex-start;margin:0;padding:9px 14px;font-size:13px;line-height:1.4;color:var(--mute);border-bottom:1px solid var(--line)}
+.labn svg{flex:none;margin-top:2px;color:var(--acc)}
+.labn code,.labt code,.labw code{font:700 .88em ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;background:color-mix(in srgb,var(--acc) 16%,#0000);border:1px solid color-mix(in srgb,var(--acc) 26%,#0000);padding:1px 6px;border-radius:7px;overflow-wrap:anywhere;color:var(--text)}
+.labb{display:flex;gap:6px;flex-wrap:wrap;padding:12px 12px 4px}
+.labb .btn{margin:0;padding:9px 14px;font-size:12.5px;border-bottom-width:4px;gap:6px}
+.labb .btn:disabled{opacity:.45;cursor:default}
+.labt{margin:10px 12px 4px;padding:11px 13px 9px;border-radius:14px;background:color-mix(in srgb,#f5b301 11%,var(--panel));border:1.5px solid color-mix(in srgb,#f5b301 38%,var(--line))}
+.labt>b{display:flex;align-items:center;gap:6px;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:#d99a00}
+.labt p{margin:6px 0 8px;font-size:14.5px;line-height:1.5}
+.labt .btn{margin:0;padding:8px 13px;font-size:12px;border-bottom-width:3px}
+.lab .exr{margin:12px 8px 12px;padding:10px 10px 8px}
+.lab .exr table{font-size:12px}.lab .exr td,.lab .exr th{padding:6px 7px}
+.lab .exr .out{padding:6px 0 0;min-height:0;max-height:380px;font-size:13.5px;white-space:normal}
+.lab .exr .out.er{white-space:pre-wrap;padding-top:8px}
+.lab .exr .out pre.inl{margin:6px 0 0;padding:10px 12px;border-radius:10px;background:#080d19;color:#e2e8f0;font:13.5px/1.55 ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.lab .exr .tname{color:var(--ok)}
+.labe{margin:6px 0 2px;color:var(--mute);line-height:1.5}
+.labn2{margin:6px 0 0;font-size:12.5px;color:var(--mute)}
+.labhint{margin:6px 0 0;padding:6px 10px;border-radius:9px;background:color-mix(in srgb,#f5b301 14%,#0000);font-size:12.5px;color:var(--text)}
+.labw{margin:0 12px 12px;padding:11px 13px;border-radius:14px;background:color-mix(in srgb,var(--ok) 10%,var(--panel));border:1.5px solid color-mix(in srgb,var(--ok) 36%,var(--line))}
+.labw[hidden],.labhint[hidden]{display:none}
+.labw>b{display:flex;align-items:center;gap:6px;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--ok)}
+.labw p{margin:6px 0 0;font-size:14.5px;line-height:1.5}
+.lab .cbp.labl{margin:0;border-top:1px dashed var(--line)}

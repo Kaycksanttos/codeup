@@ -240,3 +240,49 @@ test('dados das lições, provas e projetos: sem acento (tabelas, textos, result
   deep('daxdata', JSON.parse(JSON.stringify(DD, (k, v) => typeof v === 'function' ? undefined : v)));
   assert.deepEqual(bad, [], 'dados com acento ou símbolo especial:\n' + bad.slice(0, 30).join('\n'));
 });
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Exemplo ao vivo da teoria (SQL e Python) e enunciados em passos
+// ---------------------------------------------------------------------------------------------------------------------------
+test('exemplo ao vivo (SQL): cada lição tem uma sugestão "Experimente" que roda, muda o resultado e continua igual depois de formatada', async () => {
+  const SQL = await initSqlJs(), fmt = require('../public/fmt.js'), AFTER = require('../content/example-after');
+  const ex = lessons.filter(l => l.type === 'sql' && l.example);
+  assert.equal(ex.length, 90, 'as 90 lições de SQL têm exemplo');
+  const last = (db, id, code) => { const r = db.exec(code), x = r[r.length - 1] || (AFTER[id] ? db.exec(AFTER[id][0]).pop() : undefined); return JSON.stringify(x ? [x.columns, x.values] : []); };
+  const run = (l, code) => { const db = new SQL.Database(); try { db.run(l.seed); return last(db, l.id, code); } finally { db.close(); } };
+  for (const l of ex) {
+    const t = l.tente; assert.ok(t && t.q && t.code && t.why, `${l.id}: falta a sugestão Experimente (q, code e why)`);
+    assert.ok(!/[áàâãéêíóôõúç]/i.test(t.code), `${l.id}: código da sugestão com acento`);
+    const a = run(l, l.example), b = run(l, t.code);
+    assert.notEqual(a, b, `${l.id}: a sugestão devolve o mesmo resultado do exemplo`);
+    assert.notEqual(b, '[]', `${l.id}: a sugestão não devolve linhas`);
+    // o editor mostra o SQL organizado em linhas (fmtSql): isso não pode mudar o que o código faz
+    assert.equal(run(l, fmt.fmtSql(l.example)), a, `${l.id}: o exemplo formatado muda o resultado`);
+    assert.equal(run(l, fmt.fmtSql(t.code)), b, `${l.id}: a sugestão formatada muda o resultado`);
+    assert.ok(l.exampleOut && l.exampleOut.cols && l.exampleOut.rows.length > 0, `${l.id}: falta o resultado inicial do exemplo`);
+  }
+});
+
+test('exemplo ao vivo (Python): exemplos completos que imprimem algo, com a saída pronta, e sugestões que rodam e mudam a saída', () => {
+  const ex = lessons.filter(l => l.type === 'python' && l.example);
+  assert.equal(ex.length, 90, 'as 90 lições de Python têm exemplo');
+  const run = (l, code) => { const r = spawnSync('python3', ['-c', (l.prelude ? l.prelude + '\n' : '') + code], { encoding: 'utf8', timeout: 60000 }); assert.equal(r.status, 0, `${l.id}: ${r.stderr.trim().split('\n').pop()}`); return r.stdout; };
+  for (const l of ex) {
+    const t = l.tente; assert.ok(t && t.q && t.code && t.why, `${l.id}: falta a sugestão Experimente (q, code e why)`);
+    assert.ok(!/[áàâãéêíóôõúç]/i.test(t.code), `${l.id}: código da sugestão com acento`);
+    const a = run(l, l.example), b = run(l, t.code);
+    assert.ok(a.trim(), `${l.id}: o exemplo não imprime nada`);
+    assert.ok(b.trim() && b !== a, `${l.id}: a sugestão precisa imprimir uma saída diferente do exemplo`);
+    assert.ok(l.exampleOut && l.exampleOut.out === a.replace(/\n$/, ''), `${l.id}: a saída pronta do exemplo está desatualizada (rode npm run build:content)`);
+    // só as lições de pandas usam dados escondidos (df); os outros exemplos precisam funcionar sozinhos
+    if (!/\bdf\s*=/.test(l.prelude || '')) { const r = spawnSync('python3', ['-c', l.example], { encoding: 'utf8', timeout: 30000 }); assert.equal(r.status, 0, `${l.id}: o exemplo depende de dados escondidos`); }
+  }
+});
+
+test('enunciados: todo projeto e prova que não é quiz tem o enunciado em passos, e todo enunciado aponta para uma atividade que existe', () => {
+  const ENUN = require('../content/enunciados'), todos = [...lessons, ...tests, ...projects], ids = new Set(todos.map(x => x.id));
+  for (const id of Object.keys(ENUN)) assert.ok(ids.has(id), `enunciado de ${id} não aponta para nenhuma atividade`);
+  const sem = [...tests, ...projects].filter(x => x.type !== 'quiz' && x.type !== 'dax' && !ENUN[x.id]).map(x => x.id);
+  assert.deepEqual(sem.filter(id => /^(pj|cp|fin)-(sql|py|xl)/.test(id)), [], 'projetos e provas sem enunciado em passos');
+  for (const x of todos) if (ENUN[x.id]) { assert.equal(x.task, ENUN[x.id], `${x.id}: o enunciado não foi aplicado`); assert.ok(x.task.length > 60, `${x.id}: enunciado curto demais`); }
+});

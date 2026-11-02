@@ -1,0 +1,755 @@
+# ENUNCIADOS DOS PROJETOS E DAS PROVAS (o que o aluno precisa fazer)
+#
+# Cada bloco começa com "## id-da-atividade". O texto substitui o `task` curto que está nos arquivos de cada curso.
+# Como escrever (o app e os guias entendem isto):
+#   - uma frase de contexto primeiro (a história), depois o que fazer em lista;
+#   - linha em branco separa os blocos;
+#   - "- item" vira marcador;  "1. item" vira lista numerada (a numeração pode continuar de onde parou);
+#   - `texto` vira código (nomes de colunas, valores, comandos);  **texto** vira negrito;
+#   - uma linha começando com "Dica:" ou "Atenção:" ganha destaque.
+# Nada aqui muda a correção: as soluções e os gabaritos continuam nos arquivos de cada curso.
+
+## pj-sql-1-5
+A loja vai montar uma vitrine só com os móveis.
+
+Mostre uma linha para cada produto da categoria `Moveis`, com estas colunas, nesta ordem:
+- `produto`: o nome do produto (use `AS` para dar o apelido)
+- `valor`: o preço (também com apelido)
+- `estoque`: o estoque, sem apelido
+
+## pj-sql-1-10
+A loja vai fazer uma promoção de fim de mês.
+
+Escolha os produtos que cumprem as três regras:
+- a categoria é `Papelaria` ou `Eletronicos` (use `IN`);
+- o preço é menor que 100;
+- o nome não é `Caneta`.
+
+Mostre estas colunas, nesta ordem:
+- `nome`
+- `categoria`
+- `valor`: o preço, com esse apelido
+
+## pj-sql-1-15
+Um cliente digitou "a" na busca do site.
+
+Mostre `nome` e `preco` dos produtos que cumprem as duas regras:
+- têm a letra `a` em qualquer lugar do nome (use `LIKE`);
+- custam de 50 a 1000, incluindo os dois valores (use `BETWEEN`).
+
+Ordene do mais caro para o mais barato.
+
+## pj-sql-1-20
+A página inicial da loja mostra só 5 produtos.
+
+Mostre `categoria`, `nome` e `preco` dos 5 primeiros produtos, nesta ordem de classificação:
+1. a categoria, de A a Z;
+2. dentro de cada categoria, o preço do mais alto para o mais baixo.
+
+Use `LIMIT` para ficar só com 5 linhas.
+
+## pj-sql-1-25
+O gerente quer um resumo da loja por categoria: uma linha para cada categoria.
+
+Colunas, nesta ordem:
+- `categoria`
+- `produtos`: quantos produtos ela tem
+- `pecas`: o total de peças em estoque (soma de `estoque`)
+- `preco_medio`: o preço médio
+- `menor`: o menor preço
+- `maior`: o maior preço
+
+## pj-sql-1-30
+O dono da loja quer saber quanto dinheiro está parado no estoque.
+
+Considere só os produtos com `estoque` maior que zero e agrupe por categoria. Mostre uma linha por categoria, com estas colunas, nesta ordem:
+1. `categoria`: o nome da categoria
+2. `itens`: quantos produtos ela tem
+3. `valor_estoque`: o dinheiro parado, que é a soma de `preco` vezes `estoque`
+4. `preco_medio`: o preço médio, arredondado com 1 casa
+
+Mostre só as categorias com `valor_estoque` maior que 20000, da que tem mais dinheiro parado para a que tem menos.
+
+## pj-sql-2-5
+O dono quer saber como vão as vendas dos eletrônicos.
+
+Junte `vendas` com `produtos` e considere só os produtos da categoria `Eletronicos` que já foram vendidos. Mostre uma linha por produto:
+- `nome`: o nome do produto
+- `unidades`: o total de unidades vendidas (soma de `qtd`)
+
+Ordene do que mais vendeu para o que menos vendeu. Se empatar, desempate pelo nome, de A a Z.
+
+## pj-sql-2-10
+O RH quer um quadro de todos os departamentos, inclusive os que estão vazios.
+
+Mostre uma linha por departamento, com:
+- `departamento`: o nome do departamento
+- `pessoas`: quantos funcionários ele tem
+- `media_salarial`: a média dos salários, arredondada para 2 casas
+
+Ordene pelo nome do departamento.
+
+Atenção: departamento sem funcionários também precisa aparecer na lista.
+
+## pj-sql-2-15
+A loja quer premiar os clientes fiéis.
+
+Um cliente é fiel quando cumpre as duas regras:
+- fez 2 pedidos pagos ou mais (`status` igual a `pago`);
+- nunca teve um pedido cancelado (use uma subconsulta com `NOT IN`).
+
+Mostre uma linha por cliente fiel, com:
+- `nome` e `cidade`
+- `pedidos_pagos`: quantos pedidos pagos ele fez
+- `gasto`: quanto ele gastou nesses pedidos pagos (soma de `valor`)
+
+Ordene de quem gastou mais para quem gastou menos.
+
+## pj-sql-2-20
+A loja quer separar os produtos em faixas de preço, usando `CASE`:
+- `Barato`: preço menor que 50
+- `Medio`: de 50 até menos de 500
+- `Caro`: 500 ou mais
+
+Mostre uma linha por faixa, com:
+- `faixa`: o nome da faixa
+- `produtos`: quantos produtos ela tem
+- `pecas`: quantas peças há em estoque (soma de `estoque`)
+
+Ordene pelo nome da faixa, de A a Z.
+
+## pj-sql-2-25
+O financeiro pede um relatório mensal: uma linha para cada mês.
+
+Colunas, nesta ordem:
+1. `mes`: o mês no formato `2026-09`
+2. `vendas`: quantas vendas houve no mês
+3. `receita`: a receita do mês, que é a soma de `qtd` vezes o preço do produto
+4. `ultima_venda`: a data da última venda do mês
+5. `dias`: quantos dias se passaram da primeira à última venda do mês, como número inteiro (use `julianday` e `CAST`)
+
+Ordene por `mes`.
+
+## pj-sql-2-30
+A loja vai reorganizar o estoque. Faça estes 5 comandos, nesta ordem:
+1. Crie a tabela `avisos`, com as colunas `produto` (TEXT) e `motivo` (TEXT).
+2. Insira em `avisos` o `nome` e o texto `sem estoque` de cada produto com `estoque` igual a 0.
+3. Apague de `produtos` quem tem `estoque` igual a 0.
+4. Aumente em 1 real o `preco` de todos os produtos da categoria `Papelaria`.
+5. Cadastre o produto `(11, 'Webcam', 300, 'Eletronicos', 40)`.
+
+Por fim, mostre UMA linha com 3 colunas:
+- `produtos`: quantos produtos há agora
+- `soma_precos`: a soma dos preços
+- `avisos`: quantas linhas tem a tabela `avisos`
+
+## pj-sql-3-5
+A loja quer olhar os clientes que mais compram.
+
+Passo 1: crie uma CTE (`WITH`) chamada `ativos`, com o total de pedidos de cada cliente, sem contar os cancelados. Colunas: `cliente_id` e `total`.
+
+Passo 2: usando `ativos`, mostre só os clientes cujo `total` é maior que a média dos totais da CTE. Colunas, nesta ordem:
+- `nome`: o nome do cliente
+- `total`: o total dele
+- `pendente`: `sim` se ele ainda tem algum pedido pendente, senão `nao` (use `EXISTS` dentro de um `CASE`)
+
+Ordene do maior total para o menor.
+
+## pj-sql-3-10
+O RH quer o quadro dos gerentes da empresa: só quem tem pelo menos uma pessoa abaixo (use `EXISTS`). Considere só quem tem salário cadastrado.
+
+Colunas, nesta ordem:
+1. `nome`: o nome do gerente
+2. `gerente`: o nome do chefe dele, ou o texto `Sem gerente` quando não tem
+3. `salario`: o salário
+4. `equipe`: quantas pessoas ficam abaixo dele (use uma subconsulta correlacionada)
+5. `posicao`: a posição no ranking de salários entre os gerentes, do maior para o menor (use `RANK`)
+
+Ordene pela `posicao`.
+
+## pj-sql-3-15
+O RH quer o top 2 de cada departamento, só entre quem tem salário cadastrado.
+
+Colunas, nesta ordem:
+1. `departamento`: o nome do departamento
+2. `nome`: o nome do funcionário
+3. `salario`: o salário
+4. `pos`: a posição dentro do departamento, do maior salário para o menor (use `DENSE_RANK`)
+5. `acumulado`: a soma acumulada dos salários do departamento, nessa ordem
+6. `media_depto`: a média salarial do departamento, arredondada sem casas
+
+Mostre só as posições 1 e 2 e ordene por departamento e, depois, por posição.
+
+Atenção: o filtro pela posição só pode vir depois de a posição ser calculada.
+
+## pj-sql-3-20
+O time comercial quer acompanhar a evolução mês a mês, olhando só de `2026-09` em diante (tabela `vendas_mes`).
+
+Mostre uma linha para cada vendedor e mês, com estas colunas, nesta ordem:
+1. `vendedor`, `mes` e `valor`
+2. `anterior`: o valor do mês anterior do mesmo vendedor (use `LAG`)
+3. `variacao_pct`: a variação percentual em relação ao mês anterior, com 1 casa
+4. `pct_do_mes`: a participação do vendedor no total daquele mês, com 1 casa
+5. `metade`: em qual metade dos vendedores ele ficou naquele mês, com `NTILE(2)` (1 para os maiores valores)
+
+Ordene por `mes` e `vendedor`.
+
+Atenção: o filtro de mês precisa vir DEPOIS do cálculo do `LAG` (use uma CTE).
+
+## pj-sql-3-25
+O diretor quer ver os vendedores lado a lado, mês a mês: uma linha por mês.
+
+Colunas, nesta ordem:
+1. `mes`
+2. `ana`, `bruno`, `carla` e `diego`: o valor de cada vendedor naquele mês (use `SUM` com `CASE`)
+3. `total`: o total do mês
+4. `media_movel`: a média móvel do `total` dos últimos 3 meses, contando o atual, com 1 casa
+5. `primeiro`: o total do primeiro mês da série (use `FIRST_VALUE`)
+
+Ordene por `mes`.
+
+## pj-sql-3-30
+Monte a curva ABC da loja, em 3 passos.
+
+Passo 1: crie a view `receita_produto`, com 2 colunas: `nome` e `receita` (a receita de cada produto vendido, que é a soma de `qtd` vezes `preco`).
+
+Passo 2: crie o índice `idx_vendas_produto` na coluna `produto_id` da tabela `vendas`.
+
+Passo 3: usando a view, mostre uma linha por produto, do de maior receita para o de menor. Colunas, nesta ordem:
+- `nome`
+- `receita`
+- `pct_acum`: o percentual acumulado da receita, com 1 casa
+- `classe`: `A` se o percentual acumulado é até 80, `B` se é até 95 e `C` acima disso
+
+Dica: antes de arredondar, o percentual acumulado é `SUM(receita) OVER (ORDER BY receita DESC) * 100.0 / SUM(receita) OVER ()`.
+
+## cp-sql-1-10
+Mostre os produtos que cumprem as três regras:
+- a categoria é `Eletronicos` ou `Moveis`;
+- o preço é menor que 1000;
+- o `id` não é 4.
+
+Colunas, nesta ordem: `nome` e o preço com o apelido `valor`.
+
+## cp-sql-1-20
+Considere os produtos que cumprem as duas regras:
+- custam de 100 a 4000, incluindo os dois valores;
+- têm a letra `e` no nome.
+
+Mostre `nome` e `preco` só dos 3 mais caros. O mais caro vem primeiro.
+
+## fin-sql-1
+Resumo por categoria: uma linha para cada categoria. Considere só os produtos com `estoque` maior que 0.
+
+Colunas, nesta ordem:
+1. `categoria`
+2. `total`: quantos produtos ela tem
+3. `media`: o preço médio, arredondado em 2 casas
+4. `valor_estoque`: o dinheiro parado, que é a soma de `preco` vezes `estoque`
+
+Mostre só as categorias com 3 produtos ou mais, da maior para a menor `valor_estoque`.
+
+## cp-sql-2-10
+Receita por produto vendido (junte `vendas` com `produtos`).
+
+Colunas, nesta ordem:
+- `nome`: o nome do produto
+- `unidades`: a soma de `qtd`
+- `receita`: a soma de `preco` vezes `qtd`
+
+Só entram produtos com receita acima de 1500. Ordene da maior para a menor receita.
+
+## cp-sql-2-20
+Considere só os pedidos com `status` igual a `pago`.
+
+Mostre uma linha por cliente, com:
+- `nome`: o nome do cliente
+- `total_pago`: a soma de `valor`
+- `perfil`: `VIP` se o total pago for 600 ou mais, e `comum` nos outros casos
+
+Ordene do maior para o menor `total_pago`.
+
+## fin-sql-2
+Resumo por estado: uma linha para cada estado. Considere só os pedidos com `status` igual a `pago`.
+
+Colunas, nesta ordem:
+1. `estado`
+2. `pedidos`: quantos pedidos
+3. `total`: o total pago (soma de `valor`)
+4. `ticket`: o ticket médio, que é a média do valor dos pedidos, arredondada em 1 casa
+5. `classe`: `forte` se o total for 2000 ou mais, e `em crescimento` nos outros casos
+
+Mostre só os estados com `total` acima de 900, do maior para o menor total.
+
+## cp-sql-3-10
+Mostre os funcionários que ganham mais que a média salarial do próprio departamento.
+
+Colunas, nesta ordem:
+- `nome` e `salario`: do funcionário
+- `gerente`: o nome do chefe dele, ou `Sem gerente` quando não tiver
+
+Ordene pelo nome do funcionário.
+
+## cp-sql-3-20
+Só para os vendedores `Ana` e `Carla` (tabela `vendas_mes`).
+
+Colunas, nesta ordem:
+1. `vendedor`, `mes` e `valor`
+2. `variacao`: o valor do mês menos o valor do mês anterior do mesmo vendedor
+3. `acumulado`: a soma dos valores do vendedor até aquele mês
+
+Ordene por `vendedor` e `mes`.
+
+## fin-sql-3
+Painel de funcionários, só de quem tem salário cadastrado.
+
+Colunas, nesta ordem:
+1. `departamento`: o nome do departamento
+2. `nome` e `salario`: do funcionário
+3. `gerente`: o nome do chefe, ou `Sem gerente` quando não tiver
+4. `pos_depto`: a posição do salário dentro do departamento, do maior para o menor (use `RANK`)
+5. `dif`: a diferença entre o salário e a média do departamento, arredondada sem casas
+
+Ordene por `departamento` e `pos_depto`.
+
+## pj-py-1-5
+Você trabalha numa lanchonete e vai imprimir o recibo de um cliente. Um salgado custa 6 reais, um suco custa 4 reais, e o cliente pediu 3 salgados e 1 suco.
+
+Primeiro, crie 3 variáveis:
+- `salgado`: o preço de um salgado
+- `suco`: o preço de um suco
+- `qtd`: quantos salgados o cliente pediu
+
+Depois imprima exatamente 4 linhas, nesta ordem:
+1. o texto `Recibo da lanchonete`
+2. o total dos salgados
+3. o preço do suco
+4. o total do pedido (salgados + suco)
+
+Faça as contas com as variáveis, sem digitar os resultados prontos.
+
+## pj-py-1-10
+A escola de inglês precisa da ficha de uma aluna. Estas variáveis já existem: `aluno`, `duracao` (em minutos), `valor_texto` (o preço de UMA aula, em texto) e `aulas_texto` (quantas aulas, também em texto).
+
+Imprima 5 linhas, nesta ordem:
+1. `Aluna: Bia` (use uma f-string)
+2. `Duracao: 2h15min` (use `//` para as horas e `%` para os minutos que sobram)
+3. `Total: R$ 50.0` (converta com `float()` e `int()` e multiplique)
+4. o tipo do total, usando `type()`
+5. `Pontos: 8` (que é 2 elevado a 3)
+
+## pj-py-1-15
+O site está validando um cadastro novo. Estas variáveis já existem: `usuario` (com espaços sobrando), `senha` e `idade`.
+
+Imprima 5 linhas, nesta ordem:
+1. `Login: mariasilva` (guarde em `login` o usuário sem espaços nas pontas e em minúsculas)
+2. `Inicial: M` (a primeira letra do `login`, em maiúscula)
+3. se a senha tem 8 ou mais caracteres (`True` ou `False`)
+4. se a pessoa é maior de idade (18 ou mais) E a senha tem 8 ou mais caracteres
+5. se a pessoa NÃO é maior de idade (use `not`)
+
+## pj-py-1-20
+A loja virtual está fechando um pedido. A lista `itens` e o `valor` do pedido já existem.
+
+Imprima 4 linhas, nesta ordem:
+1. o primeiro item da lista
+2. o último item da lista
+3. o frete: `Frete gratis` se o valor for 200 ou mais; `Frete: R$ 15` se for 100 ou mais; senão `Frete: R$ 30`
+4. `Pedido grande` se a lista tem 3 itens ou mais; senão `Pedido pequeno` (use `len`)
+
+## pj-py-1-25
+A lanchonete anotou as vendas dos 5 primeiros dias da semana na lista `vendas`. Faltam o sábado (75) e o domingo (60).
+
+Primeiro, adicione os dois valores à lista com `append`.
+
+Depois imprima 6 linhas, nesta ordem:
+1. `Total: 715` (use `sum`)
+2. `Maior: 220`
+3. `Menor: 40`
+4. `Dias bons: 3` (quantos dias venderam mais de 100, contando com um `for` e um `if`)
+5. `Vendido nos dias bons: 450` (some só esses dias, com um acumulador que começa em 0)
+6. `Media: 102` (o total dividido pela quantidade de dias, usando `//` e `len`)
+
+## pj-py-1-30
+O professor quer o boletim do Caio. O dicionário `aluno` e a lista `notas` já existem.
+
+Antes de imprimir, crie 2 funções:
+- `media(lista)`: soma os itens usando um `while` e devolve a soma dividida pela quantidade de itens
+- `situacao(m)`: devolve `Aprovado` se `m` for 7 ou mais, `Recuperacao` se for 5 ou mais e `Reprovado` nos outros casos
+
+Depois imprima, nesta ordem:
+1. `Caio (7B)`, usando o nome e a turma do dicionário
+2. `Nota baixa: 4.5`, uma linha para cada nota abaixo de 6 (use `for` e `if`)
+3. `Media: 6.625`
+4. `Situacao: Recuperacao`
+
+## pj-py-2-5
+A professora tem as listas `nomes` e `notas` (a mesma posição é da mesma pessoa).
+
+Imprima, nesta ordem:
+1. a lista `aprovados`, só com os nomes de quem tirou 6 ou mais (monte com `zip` e uma compreensão de lista)
+2. uma linha para cada aprovado, no formato `1. Ana`, `2. Carla`... (use `enumerate` começando em 1)
+3. a lista dos nomes que estão nas posições 0, 2 e 4 (use `range` com passo 2 dentro de uma compreensão)
+4. a lista das notas abaixo de 6, cada uma com meio ponto de bônus (compreensão com filtro)
+
+## pj-py-2-10
+O campeonato guarda a tabela em listas dentro de listas: cada linha é `[nome, pontos]`. A `tabela` e a lista `apelidos` já existem.
+
+Imprima 5 linhas, nesta ordem:
+1. os 3 maiores pontos, do maior para o menor (monte a lista `pontos` com uma compreensão, ordene com `sorted` e pegue os 3 primeiros com uma fatia)
+2. `Primeiro da tabela: Leo (12 pontos)`, desempacotando a primeira linha em `nome` e `pts`
+3. adicione `["Gui", 18]` à tabela com `append` e imprima quantos jogadores há agora
+4. os apelidos ordenados pelo tamanho (`sorted` com `key=len`)
+5. `Soma dos 2 ultimos: 26` (some os pontos das 2 últimas linhas da tabela, usando uma fatia)
+
+## pj-py-2-15
+A loja anotou os clientes que passaram de manhã e à tarde (um cliente pode aparecer várias vezes) e uma tabela de preços. As listas `manha` e `tarde` e o dicionário `precos` já existem.
+
+Imprima 6 linhas, nesta ordem (a última só vem depois de uma mudança no dicionário):
+1. quantos clientes DIFERENTES vieram de manhã
+2. em ordem alfabética (`sorted`), quem veio de manhã E à tarde
+3. em ordem alfabética, todos que vieram em algum dos dois horários
+4. o preço do `"Monitor"`, usando `get` com padrão 0
+5. se `"Mouse"` existe em `precos` (use `in`)
+
+Agora mude o preço do Mouse para 90 e adicione o Monitor por 1200. Então imprima a última linha:
+6. um novo dicionário com 10% de desconto em cada preço, arredondado com `round(valor, 2)` (use dict comprehension)
+
+## pj-py-2-20
+Você vai analisar um texto. A variável `texto` já existe.
+
+Imprima, nesta ordem:
+1. quantas palavras o texto tem (use `split`)
+2. as palavras que aparecem mais de uma vez, em ordem alfabética, uma por linha, no formato `python: 3` (antes de contar, deixe tudo em minúsculas e tire os pontos com `replace`; conte com um dicionário e `get`)
+3. a posição onde começa a palavra `"facil"` (use `find`)
+4. crie a função `destaque(palavra, simbolo="*")`, que devolve a palavra com o símbolo dos dois lados, e imprima `destaque("python")` e `destaque("python", "#")` (são 2 linhas)
+5. uma frase com a porcentagem de palavras que são `"python"`, com 1 casa decimal: `Python aparece em 30.0% das palavras`
+
+## pj-py-2-25
+Um sensor mandou as leituras como texto e algumas vieram quebradas. A lista `leituras` já existe.
+
+Primeiro, crie a função `converter(texto)`: ela tenta devolver `float(texto)` e, se der `ValueError`, devolve `None`.
+
+Depois imprima 5 linhas, nesta ordem:
+1. a lista `numeros`, com as leituras convertidas e sem os `None` (use `map` e `filter` com `lambda`)
+2. se TODOS os números são maiores que 5 (`all`)
+3. se ALGUM número passa de 15 (`any`)
+4. os números do maior para o menor (`sorted` com `reverse=True`)
+5. `Descartadas: 2` (quantas leituras foram jogadas fora)
+
+## pj-py-2-30
+Hora de fechar o mês. Já existem: `vendas` (dicionário com o total de cada produto), `pedidos` (lista com o produto de cada pedido) e `inicio` / `fim` (datas em texto).
+
+Primeiro, crie a função `parcela(total, vezes)`:
+- se `vezes` for 0 ou menos, ela levanta `ValueError("vezes deve ser positivo")`;
+- senão, devolve `total / vezes` arredondado com `round(..., 2)`.
+
+Depois imprima, nesta ordem:
+1. a mensagem do erro, chamando `parcela(3600, 0)` dentro de `try` / `except`
+2. `parcela(3600, 7)`
+3. `Caixas necessarias: 2` (com `math.ceil`, 4 pedidos por caixa)
+4. `Dias no mes: 31` (a diferença entre as datas, mais 1, com `datetime`)
+5. `Mais pedido: Mouse (3 vezes)`, com `Counter`
+6. uma linha por produto, no formato `Mouse: R$ 960.00`
+7. `Total do mes: R$ 6110.00`, usando uma função recursiva `soma(lista)` para somar os valores
+
+## pj-py-3-5
+Monte o sistema de um banco pequeno, em 2 partes.
+
+Parte 1: crie a classe `Conta`, com:
+- `__init__(self, titular, saldo=0)`, guardando os dois valores
+- `depositar(valor)`: soma o valor ao saldo
+- `sacar(valor)`: só tira o dinheiro se o saldo for suficiente e devolve `True`; se não for, devolve `False` e não mexe no saldo
+- `__str__`: devolve um texto como `Ana: R$ 150`
+
+Parte 2: crie a classe `Poupanca`, que herda de `Conta` e tem o método `render()`, que soma ao saldo um décimo dele (use `// 10`).
+
+Depois imprima, nesta ordem:
+1. `c = Conta("Ana", 100)`, depositando 50: mostre `c`
+2. o resultado de `c.sacar(500)`
+3. o resultado de `c.sacar(30)`
+4. `c` de novo
+5. `p = Poupanca("Bia", 200)`: deposite 100, chame `render()` e mostre `p`
+6. `isinstance(p, Conta)`
+
+## pj-py-3-10
+Monte o catálogo de uma loja, em 3 partes.
+
+Parte 1: crie a classe `Produto`, com:
+- `__init__(self, nome, preco)`
+- uma `@property` chamada `preco_final`: o preço mais 10%, arredondado com `round(..., 2)`
+- o método `descricao()`, que devolve algo como `Mouse: R$ 110.00` (preço final com 2 casas)
+- um `@classmethod` `de_texto(cls, texto)`, que cria o produto a partir de um texto como `"Teclado;250"` (separe no ponto e vírgula e converta o preço com `int`)
+- um `@staticmethod` `eh_valido(preco)`, que devolve `True` se o preço é maior que 0
+
+Parte 2: crie a classe `Perecivel`, que herda de `Produto`, recebe também os dias de validade (use `super().__init__`) e muda o `descricao()` para acrescentar ` (vence em 3 dias)` no fim (o 3 é a validade).
+
+Parte 3: crie, com `@dataclass`, a classe `Pedido`, com `cliente` (texto) e `itens` (inteiro, padrão 1).
+
+Depois imprima, nesta ordem:
+1. a `descricao()` de `Produto("Mouse", 100)`
+2. a `descricao()` de `Perecivel("Leite", 5, 3)`
+3. a `descricao()` de `Produto.de_texto("Teclado;250")`
+4. `Produto.eh_valido(-1)`
+5. `Pedido("Ana")`
+
+## pj-py-3-15
+Monte um pequeno pipeline de números. Imprima, nesta ordem:
+1. `list(pares(10))`, onde `pares(limite)` é um gerador (com `yield`) que devolve os números pares de 2 até o limite
+2. a soma dos quadrados de 1 a 5, feita com uma generator expression dentro do `sum`
+3. o primeiro valor de `iter([10, 20, 30])`, usando `next`
+4. o segundo valor do mesmo iterador, usando `next` de novo
+5. o decorator `avisar` aplicado em `soma(a, b)` (que devolve `a + b`): antes de executar a função, ele imprime `Chamando` e o nome dela (`func.__name__`), e depois devolve o resultado. Chame `print(soma(2, 3))`
+6. o decorator com argumento `repetir(vezes)`, que executa a função essa quantidade de vezes. Aplique com `@repetir(3)` numa função `ola()` que imprime `Oi`, e chame `ola()`
+
+## pj-py-3-20
+Teste a sua caixa de ferramentas de funções. Imprima, nesta ordem:
+1. a 3ª chamada de um contador feito com closure: crie `contador()`, que guarda um número começando em 0 e devolve uma função que soma 1 a cada chamada (use `nonlocal`). Faça `c = contador()`, chame `c()` duas vezes e imprima o resultado da 3ª chamada
+2. `fib(30)`, com `fib` recursiva e `@lru_cache(maxsize=None)`
+3. `list(combinations(["A", "B", "C"], 2))`, de `itertools`
+4. o produto de `[1, 2, 3, 4, 5]` com `functools.reduce` e `lambda`
+5. uma classe `Caixa` que funciona com `with`: o `__enter__` imprime `Abriu` e devolve `self`; o `__exit__(self, tipo, valor, tb)` imprime `Fechou`. Use `with Caixa():` e, lá dentro, imprima `Trabalhando`
+
+## pj-py-3-25
+O DataFrame `df` já existe, com as vendas de uma loja (colunas `produto`, `categoria`, `qtd`, `preco` e `mes`).
+
+Imprima 5 linhas, nesta ordem:
+1. o formato da tabela (`df.shape`)
+2. crie a coluna `total` (`qtd` vezes `preco`) e imprima a lista dela (`tolist()`)
+3. filtre as linhas com `total` maior que 500 e imprima a lista dos produtos (`tolist()`)
+4. o total vendido por categoria, com `groupby` e `sum`, como dicionário (`to_dict()`)
+5. o nome da categoria que mais vendeu (`idxmax()`)
+
+## pj-py-3-30
+Um segundo projeto com Pandas. O DataFrame `df` e a tabela `metas` (colunas `categoria` e `meta`) já existem.
+
+Primeiro, crie a coluna `total` (`qtd` vezes `preco`). Depois imprima 5 linhas, nesta ordem:
+1. os 3 produtos com maior `total`, em lista (`sort_values` com `ascending=False` e `head`)
+2. o número de vendas de cada categoria, como dicionário (`groupby` com `agg` e a função `count`; pegue a coluna `count` com `to_dict()`)
+3. a lista das categorias que bateram a meta (junte o `total` somado por categoria com `metas` usando `merge` e filtre as que somaram a meta ou mais)
+4. quantas vendas aconteceram em `mar` (`value_counts`)
+5. o total de `Moveis` em `mar`, vindo de uma `pivot_table` (`index` categoria, `columns` mes, `values` total, `aggfunc` sum, `fill_value` 0)
+
+## cp-py-1-10
+As variáveis `produto`, `preco` e `qtd` já existem, mas `preco` e `qtd` são TEXTO.
+
+Converta os dois para número, calcule o total (`preco` vezes `qtd`) e imprima exatamente esta linha, usando uma f-string:
+
+`4 x Caneta = R$ 14.0`
+
+## cp-py-1-20
+A variável `nome` tem espaços sobrando nas pontas e `notas` é uma lista de 3 notas.
+
+Imprima 2 linhas:
+1. o `nome` sem os espaços e em maiúsculas
+2. a situação, pela média das 3 notas (some as 3 e divida por 3): `Aprovado` se for 7 ou mais, `Recuperacao` se for 5 ou mais, e `Reprovado` nos outros casos
+
+## fin-py-1
+A lista `vendas` guarda quanto se vendeu em cada dia da semana. Use um laço para contar os "dias bons" (vendas acima de 100) e somar o que foi vendido nesses dias.
+
+Imprima 2 linhas:
+1. exatamente neste formato: `Dias bons: 3 | Total: 450 | Maior: 220 | Menor: 40` (o maior e o menor valem para TODOS os dias)
+2. `Semana otima` se o total dos dias bons passar de 400; senão `Semana normal`
+
+## cp-py-2-10
+As listas `nomes` e `notas` andam juntas (a mesma posição é da mesma pessoa).
+1. Com `zip` e uma compreensão de lista, monte uma lista de tuplas `(nota, nome)` só de quem tirou 6 ou mais.
+2. Ordene da maior nota para a menor (`sorted` com `reverse=True`).
+3. Imprima uma linha por pessoa, numerada a partir de 1, neste formato: `1. Carla - 9`
+
+## cp-py-2-20
+A variável `frase` tem um texto. Conte quantas vezes cada palavra aparece (ignorando maiúsculas e minúsculas), usando um dicionário.
+
+Imprima:
+- em ordem alfabética, só as palavras que aparecem mais de uma vez, no formato `ola: 3`;
+- na última linha, `Palavras diferentes: 4` (com o número certo).
+
+## fin-py-2
+A lista `pedidos` tem textos no formato `"produto:quantidade"`, e alguns têm quantidade inválida.
+
+Crie a função `total_por_produto(lista)`, que devolve um dicionário com a soma das quantidades de cada produto, ignorando os registros inválidos (use `try` / `except`).
+
+Depois imprima:
+- em ordem alfabética, uma linha por produto, no formato `mouse: 7`;
+- na última linha, `Mais vendido:` seguido do nome do produto com maior total.
+
+## cp-py-3-10
+Crie estas duas classes:
+- `Produto`, com `__init__(nome, preco)` e `__str__` devolvendo `"nome - R$ preco"`
+- `Perecivel`, filha de `Produto`, com `__init__(nome, preco, dias)` (use `super()`) e a `@property` `vencido`, que é `True` quando `dias` for menor que 0
+
+Depois, para cada um destes dois produtos, imprima o produto e, embaixo, o valor de `vencido`:
+- `Perecivel("Leite", 6, 2)`
+- `Perecivel("Iogurte", 4, -1)`
+
+## cp-py-3-20
+Crie o decorator `registrar`: toda vez que a função decorada for chamada, ele imprime `chamou` e o nome da função (por exemplo, `chamou soma_quadrados`) e devolve o resultado normal dela.
+
+Decore a função `soma_quadrados(n)`, que usa uma generator expression para devolver a soma dos quadrados de 1 até `n`. Depois imprima `soma_quadrados(3)` e `soma_quadrados(4)`.
+
+## fin-py-3
+O DataFrame `df` tem as colunas `produto`, `categoria`, `qtd`, `preco` e `mes`. Crie a coluna `total` (`qtd` vezes `preco`).
+
+Imprima:
+- uma linha por categoria, da maior receita para a menor, no formato `Eletronicos: R$ 8120 em 3 vendas` (a receita da categoria e o número de linhas dela);
+- na última linha, `Melhor mes:` seguido do mês com maior receita.
+
+## pj-xl-1-5
+Você está organizando uma festa de aniversário. A planilha tem os itens, o preço e a quantidade de cada um.
+
+Preencha, nesta ordem:
+1. `D2` até `D6`: o Total de cada item (preço vezes quantidade)
+2. `D8`: o total dos itens (some os totais com `+`)
+3. `D10`: o total com a taxa de entrega
+4. `D12`: o custo por convidado (total com entrega dividido pelos convidados; lembre dos parênteses)
+5. `D13`: a sobra se cada convidado pagar R$ 25 (o que foi arrecadado menos o total com entrega)
+
+## pj-xl-1-10
+A professora lançou as notas de 5 alunos (linhas 2 a 6).
+
+Para cada aluno, preencha:
+- coluna `E` (Total): a soma das três notas, com `SOMA`
+- coluna `F` (Media): a média das três notas, com `MÉDIA`
+- coluna `G` (média com bônus de 10%): a média mais 10% dela
+
+Depois preencha o resumo:
+- `F8`: a maior média
+- `F9`: a menor média
+- `F10`: a média da turma
+- `F11`: a maior nota que alguém tirou numa prova ou trabalho (olhando todas as notas, de `B2` até `D6`)
+
+## pj-xl-1-15
+O gerente quer saber quanto cada região pesa nas vendas. A taxa de comissão está em `H1` e a meta de vendas está em `H2`.
+
+Preencha:
+- `B7`: o total de vendas
+- coluna `C`: a participação de cada região (vendas da região dividido pelo total; fixe o total com `$`)
+- coluna `D`: a comissão de cada região (vendas vezes a taxa de `H1`, arredondada para 2 casas com `ARRED`; fixe a taxa com `$`)
+- coluna `E`: o texto `Meta batida` se as vendas forem maiores ou iguais à meta de `H2`, ou `Abaixo da meta` se não forem
+- `B9`: quantas regiões têm um número de vendas (`CONT.NÚM`)
+- `B10`: quantas regiões há na lista (`CONT.VALORES`)
+
+## pj-xl-1-20
+O time comercial tem 8 vendedores (linhas 2 a 9).
+
+Preencha:
+- coluna `E` (Situacao), usando um `SE` dentro de outro: `Excelente` se as vendas forem 120% da meta ou mais; `Bateu` se forem maiores ou iguais à meta; `Abaixo` nos outros casos
+- coluna `F` (Bonus): 300 só para quem é da região Sul E bateu a meta (vendas maiores ou iguais à meta); os outros ganham 0
+
+No resumo, preencha:
+- `I2`: as vendas do Sul (`SOMASE`)
+- `I3`: quantos vendedores ficaram `Abaixo` (`CONT.SE`)
+- `I4`: a média das vendas do Norte (`MÉDIASE`)
+- `I5`: o total de bônus
+
+## pj-xl-1-25
+O RH vai imprimir os crachás dos novos funcionários, e os nomes foram digitados de qualquer jeito (linhas 2 a 5).
+
+Preencha:
+- coluna `D`: o nome arrumado (sem espaços sobrando e com a primeira letra de cada nome em maiúscula)
+- coluna `E`: o setor, que são as 3 primeiras letras do código
+- coluna `F`: o ano que está no código (4 caracteres, a partir da posição 5)
+- coluna `G`: quantos dias a pessoa tem de casa até 31/12/2025 (data final menos a data de admissão)
+- coluna `H`: o texto do crachá, no formato `Ana Lima - VEN - desde 03/2023` (nome arrumado, ` - `, setor, ` - desde ` e o mês e o ano da admissão, com `TEXTO` e o formato `"mm/aaaa"`)
+
+## pj-xl-1-30
+A loja tem uma tabela de produtos (`A1:C6`) e uma lista de pedidos (colunas `D` a `I`).
+
+Para cada pedido, preencha:
+- coluna `G`: o nome do produto (use `PROCV` e, se o código não existir, mostre o texto `Nao encontrado` com `SEERRO`)
+- coluna `H`: o preço (`PROCV` com `SEERRO`, mostrando 0 se o código não existir)
+- coluna `I`: o total (quantidade vezes o preço)
+
+Depois preencha o resumo:
+- `I9`: o total vendido
+- `I10`: quantos pedidos tiveram código inexistente (`CONT.SE`)
+- `I11`: o nome do produto mais barato da tabela (`ÍNDICE` e `CORRESP`, com `MÍNIMO`)
+- `I12`: o preço do código 104, buscado com `PROCX`
+
+## cp-xl-1-10
+Preencha o Total de cada produto (preço vezes quantidade).
+
+Depois, nas células de resumo, calcule:
+- o total geral
+- a média dos totais
+- a maior venda
+- a menor venda
+- o total geral com 10% de desconto
+
+## cp-xl-1-20
+Preencha a coluna `E` com `Sim` quando as vendas bateram a meta (vendas maiores ou iguais à meta) e `Nao` quando não bateram.
+
+No resumo, calcule:
+- o total vendido no Sul
+- quantos bateram a meta
+- a média das vendas
+- quanto o Sul representa do total de vendas, em porcentagem
+
+## fin-xl-1
+Preencha o Total de cada produto (preço vezes quantidade) e a Situacao:
+- `Alta` se o total for 1000 ou mais
+- `Media` se for 500 ou mais
+- `Baixa` nos outros casos
+
+No resumo, calcule:
+- o total geral
+- a maior venda
+- quantas vendas `Alta` existem
+- a soma das vendas `Baixa`
+- o produto da maior venda (use `ÍNDICE` e `CORRESP`)
+- o nome do produto do código que está em `I7` (`Nao encontrado` se não existir)
+- a etiqueta do primeiro produto, no formato `Mouse - R$ 50,00`
+
+## pj-pbi-1-15
+Crie as seis medidas básicas da lanchonete, uma por linha, no formato `Nome = fórmula`:
+- `Total Vendas`: a soma do `Valor`
+- `Qtd de Vendas`: quantas vendas existem
+- `Venda Media`: a média do `Valor`
+- `Maior Venda`: o maior `Valor`
+- `Clientes Atendidos`: quantos clientes diferentes compraram
+- `Comissao`: 5% do total das vendas
+
+## pj-pbi-1-20
+O `Total Vendas` e a `Qtd de Vendas` já estão prontos no modelo.
+
+Crie as cinco medidas do painel:
+- `Ticket Medio`: `Total Vendas` dividido pela `Qtd de Vendas`, mostrando 0 se não houver vendas
+- `Vendas Online`: o `Total Vendas` só do canal `Online`
+- `% Online`: `Vendas Online` dividido pelo `Total Vendas`
+- `Online de Lanches`: o `Total Vendas` do canal `Online` e da categoria `Lanches`
+- `Vendas Grandes`: quantas vendas têm `Valor` maior que 20
+
+## pj-pbi-1-25
+Na tabela `Vendas`, crie cinco colunas calculadas:
+- `Preco Pago`: o `Valor` dividido pela `Qtd`
+- `Tipo de Venda`: `Entrega` se o `Canal` for `Online`; senão `Balcao`
+- `Tamanho do Pedido`: `Grande` se a `Qtd` for 4 ou mais; `Medio` se for 2 ou mais; senão `Pequeno`
+- `Categoria da Venda`: a categoria do produto vendido
+- `Local`: a cidade do cliente, ` - ` e o canal (por exemplo: `Sao Paulo - Online`)
+
+## pj-pbi-1-30
+O dono quer comparar 2023 com 2024.
+
+Crie as cinco medidas:
+- `Vendas 2023`: o total das vendas só do ano 2023
+- `Vendas 2024`: o mesmo, para 2024
+- `Variacao`: `Vendas 2024` menos `Vendas 2023`
+- `% de Variacao`: a variação dividida pelas `Vendas 2023` (use `DIVIDE`)
+- `Maior Venda 2024`: o maior `Valor` de uma venda só em 2024
+
+## cp-pbi-1-20
+Crie as cinco medidas do painel:
+- `Total Vendas`: a soma do `Valor`
+- `Clientes Atendidos`: quantos clientes diferentes compraram
+- `Ticket Medio`: `Total Vendas` dividido pela quantidade de vendas, mostrando 0 se não houver vendas
+- `Vendas Online`: o `Total Vendas` só do canal `Online`
+- `% Online`: `Vendas Online` dividido pelo `Total Vendas`
+
+## fin-pbi-1
+Na tabela `Vendas`, crie seis colunas calculadas:
+- `Valor Unitario`: o `Valor` dividido pela `Qtd`
+- `Lucro da Venda`: o `Valor` menos a `Qtd` vezes o `Custo` do produto
+- `Porte`: `Grande` se o `Valor` for 20 ou mais; senão `Pequena`
+- `Tamanho`: `Uma` se a `Qtd` for 1; `Poucas` se for até 3; senão `Muitas`
+- `Ano e Mes`: a data no formato `2024-03`
+- `Etiqueta`: as 3 primeiras letras do `Canal` em maiúsculas, ` - ` e o nome do produto (por exemplo: `LOJ - Pastel`)

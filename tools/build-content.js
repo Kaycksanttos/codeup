@@ -3,7 +3,7 @@
 //  - SQL: roda a solução no sql.js e grava as linhas esperadas em content/expected-sql.json
 //    (usado só como reserva quando o servidor não consegue rodar o sql.js; o normal é o servidor rodar o SQL do aluno)
 const { spawnSync } = require('child_process'), fs = require('fs'), path = require('path');
-const out = {}, sqlOut = {};
+const out = {}, sqlOut = {}, exPy = {};
 const CPS = require('../content/checkpoints');   // checkpoints e provas finais (têm lv e track)
 const PJS = require('../content/projects');        // projetos (um depois de cada 5 lições; têm lv e track)
 for (const f of ['py1', 'py2', 'py3']) {
@@ -13,7 +13,16 @@ for (const f of ['py1', 'py2', 'py3']) {
     if (r.status !== 0) { console.error(`✗ ${x.id} (${x.title})\n${r.stderr}`); process.exitCode = 1; continue; }
     out[x.id] = r.stdout.trim();
   }
+  // Saída do EXEMPLO de cada lição (a teoria mostra o código e, logo abaixo, o que ele imprime; o aluno pode mudar e rodar de novo)
+  for (const x of m.lessons) {
+    if (!x.example) continue;
+    const r = spawnSync('python3', ['-I', '-c', (x.prelude || '') + '\n' + x.example], { encoding: 'utf8', timeout: 30000 });
+    if (r.status !== 0 || !r.stdout.trim()) { console.error(`✗ exemplo de ${x.id}: ${r.status !== 0 ? r.stderr : 'não imprime nada (use print)'}`); process.exitCode = 1; continue; }
+    exPy[x.id] = r.stdout.replace(/\s+$/, "");   // só tira o fim: o começo importa (o DataFrame começa com espaços para alinhar as colunas)
+  }
 }
+fs.writeFileSync(path.join(__dirname, '..', 'content', 'example-py.json'), JSON.stringify(exPy));
+console.log('saídas dos exemplos Python geradas:', Object.keys(exPy).length);
 fs.writeFileSync(path.join(__dirname, '..', 'content', 'expected.json'), JSON.stringify(out, null, 1));
 console.log('gabaritos Python gerados:', Object.keys(out).length);
 

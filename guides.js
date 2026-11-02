@@ -16,6 +16,20 @@ const INTRO = {
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // texto simples das lições -> HTML seguro (`código` vira <code>, linha em branco separa parágrafos)
+// enunciado em passos (content/enunciados.txt): parágrafos, listas, `código` e **negrito**
+const inl = t => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const taskHtml = t => {
+  const out = []; let list = null;
+  const close = () => { if (list) { out.push(`<${list.tag}${list.start > 1 ? ' start=' + list.start : ''}>${list.items.map(i => `<li>${inl(i)}</li>`).join('')}</${list.tag}>`); list = null; } };
+  for (const raw of String(t || '').split('\n')) {
+    const line = raw.trim(); let m;
+    if (!line) { close(); continue; }
+    if ((m = line.match(/^- (.+)$/))) { if (!list || list.tag !== 'ul') { close(); list = { tag: 'ul', items: [] }; } list.items.push(m[1]); }
+    else if ((m = line.match(/^(\d+)\. (.+)$/))) { if (!list || list.tag !== 'ol') { close(); list = { tag: 'ol', start: +m[1], items: [] }; } list.items.push(m[2]); }
+    else { close(); out.push(`<p>${inl(line)}</p>`); }
+  }
+  close(); return out.join('');
+};
 const para = s => String(s || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean).map(t => `<p>${esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br>')}</p>`).join('');
 const cut = (s, n) => s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…';
 
@@ -89,7 +103,7 @@ ${typeof l.example === 'string' && l.example.trim() ? `<h3>Exemplo</h3><pre><cod
 <p>Neste guia você vai ver as lições ${g.from} a ${g.to} do curso de ${esc(g.course)} (nível ${esc(g.level)}). Cada lição explica o assunto em quatro partes: o que é, para que serve, como usar e o que você vai ver na tela. No final, há um projeto para juntar tudo o que aprendeu.</p>
 <nav class="toc" aria-label="Lições deste guia"><b>Neste guia</b><ol start="${g.from}">${g.lessons.map(l => `<li><a href="#licao-${l.n}">${esc(l.title)}</a></li>`).join('')}</ol></nav>
 ${g.lessons.map(lessonHtml).join('\n')}
-${p ? `<section class="pj" id="projeto"><h2>${esc(p.title)}</h2>${para(p.task)}${p.cobre && p.cobre.length ? `<p><b>O que este projeto usa:</b> ${p.cobre.map(esc).join(', ')}.</p>` : ''}<p>No ${esc(ctx.company)} esse projeto é feito no próprio app, com dicas e correção automática, e não tira vidas de ninguém.</p></section>` : ''}
+${p ? `<section class="pj" id="projeto"><h2>${esc(p.title)}</h2>${taskHtml(p.task)}${p.cobre && p.cobre.length ? `<p><b>O que este projeto usa:</b> ${p.cobre.map(esc).join(', ')}.</p>` : ''}<p>No ${esc(ctx.company)} esse projeto é feito no próprio app, com dicas e correção automática, e não tira vidas de ninguém.</p></section>` : ''}
 ${adUnit(ads)}
 <div class="box"><p><b>Pratique de verdade.</b> Ler é só o começo: no ${esc(ctx.company)} você escreve o código, recebe a correção na hora e ganha pontos.</p><p><a class="cta" style="display:inline-block;text-decoration:none" href="/">Começar grátis</a></p></div>
 <div class="nav2">${g.prev ? `<a href="/guias/${g.prev.slug}"><small>← Anterior</small>${esc(g.prev.course)} ${esc(g.prev.level)}, lições ${g.prev.from} a ${g.prev.to}</a>` : '<span></span>'}${g.next ? `<a href="/guias/${g.next.slug}"><small>Próximo →</small>${esc(g.next.course)} ${esc(g.next.level)}, lições ${g.next.from} a ${g.next.to}</a>` : ''}</div>`;

@@ -1412,7 +1412,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   const pubDir = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pubDir, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pubDir, 'style.css'), 'utf8'), sw = fs.readFileSync(path.join(pubDir, 'sw.js'), 'utf8');
   // as 4 explicações aparecem na teoria ("o que é" dentro do balão do personagem; "para que serve" antes do exemplo; como você vai usar aqui e o que vai aparecer na tela depois) e a prática fica limpa (só o desafio, o editor e os botões)
   for (const k of ['O que é', 'Para que serve', 'Como você vai usar aqui', 'O que vai aparecer na tela']) assert.ok(ui.includes(`'${k}'`), k);
-  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.proj \? coverBox\(l\) : ''\}\$\{l\.example \? codeBox\(l\.example, lang\(l\), 'Exemplo'\) \+ exResult\(l\) : ''\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{praticaInfo\(l\)\}/);
+  assert.match(ui, /infoCards\(l\.info, \['serve'\]\)\}\$\{l\.proj \? coverBox\(l\) : ''\}\$\{l\.example \? \(labOn\(l\) \? labHtml\(l\) : codeBox\(l\.example, lang\(l\), 'Exemplo'\) \+ exResult\(l\)\) : ''\}\$\{l\.mat \? matHtml\(l\.mat\) : ''\}\$\{praticaInfo\(l\)\}/);
   // SQL na teoria: o exemplo traz a tabela do que ele devolve; o cartão "A tabela desta lição" fica só no grupo "Na atividade de prática" (nunca colado no exemplo)
   const pI = ui.slice(ui.indexOf('const praticaInfo = l =>'), ui.indexOf('const praticaInfo = l =>') + 420);
   assert.match(pI, /Na atividade de prática<\/div>\$\{t\}\$\{c\}/, 'a tabela da lição vem dentro de "Na atividade de prática", antes das explicações');
