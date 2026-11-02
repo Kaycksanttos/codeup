@@ -2461,3 +2461,141 @@ test('projetos: um depois de cada 5 lições, obrigatórios, sem chances nem pro
   await doPj(t2, 'sql', 1, 30);
   assert.equal((await doFinal(t2, 'sql', 1)).j.ok, true, 'com o projeto 30 feito a prova final abre');
 });
+
+// ---------------- Mural: a turma posta projetos, conquistas e dicas ----------------
+const mural = async (tk, q = '') => { const r = await call('/api/mural' + q, { token: tk }); assert.equal(r.status, 200, JSON.stringify(r.j)); return r.j; };
+const postMu = (tk, body) => call('/api/mural/new', { token: tk, body });
+
+test('mural: posta projeto, conquista e dica; só link https; texto puro; sem repetir', async () => {
+  const tk = await regP('mu-a@teste.com', 'Ana Mural', { sex: 'f', guide: 'tay', gname: 'Tay' });
+  assert.equal((await call('/api/mural')).status, 401, 'precisa estar logado');
+  assert.equal((await call('/api/mural/new', { body: { kind: 'dica', text: 'sem login nao pode' } })).status, 401);
+  assert.equal((await call('/api/config')).j.mural, true, 'o app sabe que o Mural está ligado');
+  assert.deepEqual((await mural(tk)).items, [], 'começa vazio');
+  const r = await postMu(tk, { kind: 'projeto', text: 'Meu <b>primeiro</b> projeto: um painel de vendas em Power BI', link: 'github.com/ana/painel' });
+  assert.equal(r.status, 200, JSON.stringify(r.j)); const it = r.j.item;
+  assert.equal(it.link, 'https://github.com/ana/painel', 'sem https:// o app completa'); assert.equal(it.kind, 'projeto'); assert.equal(it.name, 'Ana M.', 'só nome + inicial, nunca e-mail');
+  assert.equal(it.mine, true); assert.equal(it.likes, 0); assert.equal(it.liked, false); assert.equal(it.text, 'Meu <b>primeiro</b> projeto: um painel de vendas em Power BI', 'o servidor guarda o texto como veio (a tela escapa o HTML)');
+  assert.ok(!JSON.stringify(it).includes('mu-a@teste.com') && !('uid' in it) && !('email' in it), 'nada de e-mail nem id interno');
+  for (const k of ['guide', 'tier', 'frame', 'color', 'sticker', 'bg']) assert.ok(k in it, 'o rosto do personagem vem junto: ' + k);
+  assert.equal((await postMu(tk, { kind: 'conquista', text: 'Terminei o Básico de SQL hoje!' })).status, 200);
+  assert.equal((await postMu(tk, { kind: 'dica', text: 'Dica: use LIMIT para espiar a tabela antes de rodar tudo.' })).status, 200);
+  // validações
+  const bad = async (body, re) => { const x = await postMu(tk, { kind: 'dica', text: 'texto valido para testar', ...body }); assert.equal(x.status, 400, JSON.stringify(body)); if (re) assert.match(x.j.error, re); };
+  await bad({ kind: 'xyz' }, /tipo/); await bad({ kind: '' }); await bad({ text: 'oi' }, /frase/); await bad({ text: '   ' }); await bad({ text: 'a'.repeat(501) }, /500/);
+  await bad({ link: 'http://exemplo.com' }, /https/); await bad({ link: 'javascript:alert(1)' }); await bad({ link: 'data:text/html,<b>x</b>' }); await bad({ link: 'ftp://exemplo.com/a' });
+  await bad({ link: 'https://usuario:senha@exemplo.com' }); await bad({ link: 'https://localhost/x' }); await bad({ link: 'https://127.0.0.1/x' }); await bad({ link: 'https://' + 'a'.repeat(300) + '.com' }); await bad({ link: 'não é link' });
+  await bad({ text: 'veja https://a.com e https://b.com agora' }, /Link/);
+  assert.equal((await postMu(tk, { kind: 'dica', text: 'um link no texto https://a.com ainda passa' })).status, 200, 'um endereço no texto passa (a tela não o transforma em link)');
+  const inv = await postMu(tk, { kind: 'dica', text: 'Texto ‮invertido\u0000 limpo\n\n\n\nfim' }); assert.equal(inv.j.item.text, 'Texto invertido limpo\n\nfim', 'sem caracteres de controle nem os que invertem o texto');
+  assert.equal((await postMu(tk, { kind: 'conquista', text: '  terminei o  básico de sql hoje!  ' })).status, 409, 'o mesmo texto não repete (ignora maiúsculas e espaços)');
+  assert.equal((await call('/api/mural/new', { token: tk, body: {} })).status, 400, 'corpo vazio');
+  // lista: mais novo primeiro, filtro por tipo e "meus posts"
+  const all = await mural(tk); assert.equal(all.on, true); assert.equal(all.items.length, 5); assert.equal(all.items[0].text, 'Texto invertido limpo\n\nfim'); assert.equal(all.items.at(-1).kind, 'projeto');
+  assert.deepEqual((await mural(tk, '?k=dica')).items.map(x => x.kind), ['dica', 'dica', 'dica']); assert.equal((await mural(tk, '?k=nada')).items.length, 5, 'tipo desconhecido = todos');
+  const other = await regP('mu-b@teste.com', 'Beto Mural'); const ob = await mural(other); assert.equal(ob.items.length, 5); assert.ok(ob.items.every(x => x.mine === false), 'para os outros nenhum post é "meu"');
+  assert.equal((await mural(other, '?mine=1')).items.length, 0); assert.equal((await mural(tk, '?mine=1')).items.length, 5);
+  // sem e-mail confirmado só lê
+  const un = (await call('/api/register', { body: { name: 'Sem Email', email: 'mu-un@teste.com', password: 'segredo1', accept: true } })).j;
+  const x = await postMu(un.token, { kind: 'dica', text: 'quero postar sem confirmar' }); assert.equal(x.status, 403); assert.equal(x.j.needsVerify, true);
+  assert.equal((await call('/api/mural', { token: un.token })).status, 200, 'mas pode ler');
+});
+
+test('mural: paginação de 20 em 20', async () => {
+  const tk = await regP('mu-pg@teste.com', 'Paula Páginas');
+  for (let i = 0; i < 4; i++) { const t = await regP(`mu-pg${i}@teste.com`, 'Autor ' + i); for (let k = 0; k < 5; k++) assert.equal((await postMu(t, { kind: 'dica', text: `Dica numero ${i}-${k} para a paginação` })).status, 200); }
+  const p1 = await mural(tk); assert.equal(p1.items.length, 20); assert.equal(p1.more, true); assert.ok(p1.next);
+  const p2 = await mural(tk, '?before=' + encodeURIComponent(p1.next)); assert.ok(p2.items.length > 0 && p2.items.length <= 20);
+  const ids = new Set([...p1.items, ...p2.items].map(x => x.id)); assert.equal(ids.size, p1.items.length + p2.items.length, 'sem repetir post entre as páginas');
+  const last = await mural(tk, '?before=' + encodeURIComponent(p2.next || p1.next)); assert.ok(last.items.length <= 20);
+});
+
+test('mural: curtir, denunciar (3 denúncias escondem), revisão do dono e apagar', async () => {
+  const a = await regP('mu-c1@teste.com', 'Carla Autora'), [b, c, d, e] = await Promise.all(['mu-c2', 'mu-c3', 'mu-c4', 'mu-c5'].map(x => regP(x + '@teste.com', 'Leitor ' + x.slice(-1))));
+  const id = (await postMu(a, { kind: 'projeto', text: 'Projeto do mural para denunciar e curtir' })).j.item.id;
+  // curtir liga e desliga; cada pessoa conta uma vez
+  let r = (await call(`/api/mural/${id}/like`, { token: b, body: {} })).j; assert.deepEqual(r, { likes: 1, liked: true });
+  r = (await call(`/api/mural/${id}/like`, { token: c, body: {} })).j; assert.equal(r.likes, 2);
+  assert.equal((await mural(b)).items.find(x => x.id === id).liked, true); assert.equal((await mural(e)).items.find(x => x.id === id).liked, false);
+  r = (await call(`/api/mural/${id}/like`, { token: b, body: {} })).j; assert.deepEqual(r, { likes: 1, liked: false });
+  assert.equal((await call('/api/mural/naoexiste/like', { token: b, body: {} })).status, 404); assert.equal((await call(`/api/mural/${id}/like`, { body: {} })).status, 401);
+  // denunciar
+  assert.equal((await call(`/api/mural/${id}/report`, { token: a, body: {} })).status, 400, 'não dá para denunciar o próprio post');
+  r = (await call(`/api/mural/${id}/report`, { token: b, body: {} })).j; assert.deepEqual(r, { ok: true, hidden: false });
+  r = (await call(`/api/mural/${id}/report`, { token: b, body: {} })).j; assert.equal(r.already, true, 'a mesma pessoa não conta duas vezes');
+  assert.equal((await call(`/api/mural/${id}/report`, { token: c, body: {} })).j.hidden, false, '2 denúncias ainda não escondem');
+  assert.equal((await mural(b)).items.find(x => x.id === id).reported, true);
+  assert.equal((await call(`/api/mural/${id}/report`, { token: d, body: {} })).j.hidden, true, '3 pessoas diferentes escondem o post');
+  assert.ok(!(await mural(e)).items.some(x => x.id === id), 'sumiu para os outros'); const own = (await mural(a)).items.find(x => x.id === id); assert.ok(own && own.hidden === true, 'a autora ainda vê o próprio post, marcado como em análise');
+  assert.equal((await call(`/api/mural/${id}/like`, { token: e, body: {} })).status, 404, 'post escondido não recebe curtida'); assert.equal((await call(`/api/mural/${id}/report`, { token: e, body: {} })).status, 404);
+  // painel do dono
+  assert.equal((await call('/api/admin/mural')).status, 404, 'sem o token do dono a rota nem existe'); assert.equal((await call('/api/admin/mural', { headers: { 'x-admin-token': 'lixo' } })).status, 401);
+  let q = (await A('mural')).j; assert.ok(q.pending >= 1); const row = q.rows.find(x => x.id === id); assert.ok(row); assert.equal(row.reports, 3); assert.equal(row.hidden, true); assert.equal(row.author.name, 'Carla Autora'); assert.equal(row.author.email, 'mu-c1@teste.com');
+  assert.equal((await A('mural/' + id, { action: 'xyz' })).status, 400); assert.equal((await A('mural/naoexiste', { action: 'keep' })).status, 404);
+  assert.equal((await A('mural/' + id, { action: 'keep' })).status, 200);
+  assert.ok((await mural(e)).items.some(x => x.id === id), 'o dono manteve: volta a aparecer'); const kept = (await A('mural?f=all')).j.rows.find(x => x.id === id); assert.equal(kept.reports, 0, 'denúncias antigas zeram'); assert.equal(kept.kept, true);
+  assert.ok(!(await A('mural')).j.rows.some(x => x.id === id), 'já revisado: sai da fila de denúncias');
+  for (const t of [b, c, d]) await call(`/api/mural/${id}/report`, { token: t, body: {} });
+  assert.ok((await mural(e)).items.some(x => x.id === id), 'post já mantido pelo dono não se esconde mais sozinho'); assert.ok((await A('mural')).j.rows.some(x => x.id === id), 'mas as novas denúncias aparecem para o dono');
+  assert.equal((await A('mural/' + id, { action: 'hide' })).status, 200); assert.ok(!(await mural(e)).items.some(x => x.id === id));
+  assert.equal((await A('mural/' + id, { action: 'keep' })).status, 200);
+  assert.ok((await A('audit')).j.rows.some(x => x.action === 'manteve-post') && (await A('audit')).j.rows.some(x => x.action === 'escondeu-post'), 'fica na auditoria');
+  // apagar: só o dono do post
+  assert.equal((await call(`/api/mural/${id}`, { method: 'DELETE', token: b })).status, 404, 'outra pessoa não apaga'); assert.equal((await call(`/api/mural/${id}`, { method: 'DELETE' })).status, 401);
+  assert.equal((await call(`/api/mural/${id}`, { method: 'DELETE', token: a })).status, 200); assert.ok(!(await mural(e)).items.some(x => x.id === id));
+  const id2 = (await postMu(a, { kind: 'dica', text: 'Outro post para o dono remover' })).j.item.id;
+  assert.equal((await A('mural/' + id2, { action: 'remove' })).status, 200); assert.equal((await call(`/api/mural/${id2}/like`, { token: b, body: {} })).status, 404, 'removido de vez');
+});
+
+test('mural: limite de posts, conta suspensa, conta apagada e exportação', async () => {
+  const f = await regP('mu-f@teste.com', 'Fábio Frequente'), v = await regP('mu-v@teste.com', 'Vera Viewer');
+  for (let i = 0; i < 5; i++) assert.equal((await postMu(f, { kind: 'dica', text: `Dica de limite número ${i} aqui` })).status, 200);
+  const x = await postMu(f, { kind: 'dica', text: 'Dica de limite número seis' }); assert.equal(x.status, 429); assert.match(x.j.error, /última hora/);
+  const fid = (await mural(v)).items.find(p => p.name.startsWith('Fábio')).id;
+  await call(`/api/mural/${fid}/like`, { token: v, body: {} });                                                        // a Vera curte um post do Fábio
+  const gEm = 'mu-g@teste.com', g = await regP(gEm, 'Gil Guarda'); const gp = (await postMu(g, { kind: 'conquista', text: 'Primeira lição concluída, bora!' })).j.item.id;
+  await call(`/api/mural/${gp}/like`, { token: f, body: {} });                                                          // o Fábio curte um post do Gil
+  // suspensa: some; reativada: volta
+  const k = await regP('mu-k@teste.com', 'Kleber Banido'); assert.equal((await postMu(k, { kind: 'dica', text: 'Dica do Kleber antes de ser suspenso' })).status, 200);
+  const kc = async () => (await mural(v, '?k=dica')).items.filter(p => p.name.startsWith('Kleber')).length, kid = await uidOf('mu-k@teste.com');
+  assert.equal(await kc(), 1); assert.equal((await act(kid, { action: 'ban', reason: 'teste' })).status, 200); assert.equal(await kc(), 0, 'conta suspensa some do Mural'); assert.equal((await call('/api/mural', { token: k })).status, 401, 'e a sessão dela cai');
+  assert.equal((await act(kid, { action: 'unban' })).status, 200); assert.equal(await kc(), 1, 'reativada volta');
+  const names = async () => (await mural(v, '?k=dica')).items.filter(p => p.name.startsWith('Fábio')).length; assert.equal(await names(), 5);
+  // exportação (LGPD)
+  const ex = (await call('/api/export', { token: g })).j; assert.equal(ex.mural.length, 1); assert.equal(ex.mural[0].texto, 'Primeira lição concluída, bora!'); assert.equal(ex.mural[0].curtidas, 1); assert.equal(ex.mural[0].tipo, 'conquista');
+  // excluir a conta apaga os posts e as curtidas dela
+  assert.equal((await call('/api/account', { method: 'DELETE', token: f, body: { password: 'segredo1' } })).status, 200);
+  assert.equal(await names(), 0, 'posts da conta apagada somem'); assert.equal((await mural(g)).items.find(p => p.id === gp).likes, 0, 'e as curtidas dela também');
+  // o dono apagando a conta pelo painel também limpa
+  const h = await regP('mu-h@teste.com', 'Hugo Honesto'); await postMu(h, { kind: 'dica', text: 'Post do Hugo que vai sumir' });
+  assert.equal((await act(await uidOf('mu-h@teste.com'), { action: 'delete', confirm: 'mu-h@teste.com' })).status, 200); assert.ok(!(await mural(v)).items.some(p => p.name.startsWith('Hugo')), 'conta apagada pelo dono: posts somem');
+});
+
+test('mural: o dono liga e desliga em Ajustes', async () => {
+  const tk = await regP('mu-s@teste.com', 'Sara Switch'); const id = (await postMu(tk, { kind: 'dica', text: 'Post antes de desligar o mural' })).j.item.id;
+  assert.equal((await A('settings')).j.mural, true);
+  try {
+    const off = await A('settings', { mural: false }); assert.equal(off.status, 200); assert.equal(off.j.mural, false);
+    assert.equal((await call('/api/config')).j.mural, false, 'o app esconde a aba'); const l = await mural(tk); assert.equal(l.on, false); assert.deepEqual(l.items, []);
+    const p = await postMu(tk, { kind: 'dica', text: 'tentando postar com o mural off' }); assert.equal(p.status, 403); assert.equal(p.j.off, true);
+    assert.equal((await call(`/api/mural/${id}/like`, { token: tk, body: {} })).status, 403); assert.equal((await call(`/api/mural/${id}/report`, { token: tk, body: {} })).status, 403);
+    assert.equal((await call(`/api/mural/${id}`, { method: 'DELETE', token: tk })).status, 200, 'mas a pessoa ainda pode apagar o que postou');
+  } finally { assert.equal((await A('settings', { mural: true })).j.mural, true); }
+  assert.equal((await call('/api/config')).j.mural, true); assert.equal((await mural(tk)).on, true);
+  assert.equal((await A('settings', { mural: 'sim' })).status, 400, 'só aceita ligado/desligado');
+  assert.ok((await A('audit')).j.rows.some(x => /mural desligado/.test(x.detail)), 'a mudança fica na auditoria');
+});
+
+test('mural: arquivos do app — aba, texto sempre escapado, link só https e tela do dono', async () => {
+  const rd = f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8'), ui = rd('app.js'), adm = rd('admin.js'), css = rd('style.css');
+  assert.match(ui, /\['mu', 'chat', 'Mural'\]/, 'aba Mural no menu'); assert.match(ui, /if \(S\.tab == 'mu'\) h = muView\(\)/); assert.match(ui, /S\.cfg\.mural !== false/, 'o dono pode esconder a aba');
+  assert.match(ui, /if \(S\.tab == 'mu' && muOn\(\)\) await muFetch\(\)/, 'a lista é carregada ao abrir a aba');
+  const card = ui.slice(ui.indexOf('function muCard'), ui.indexOf('function muView'));
+  assert.ok(card.length > 200 && !/\$\{r\.(text|name|link|kind|at|id)\}/.test(card), 'nada do que vem do servidor entra na tela sem esc()');
+  assert.match(card, /esc\(r\.text\)/); assert.match(card, /esc\(r\.name\)/); assert.match(card, /\/\^https:\\\/\\\//, 'o link só vira <a> se começar com https://'); assert.match(card, /rel="noopener noreferrer nofollow ugc"/);
+  assert.match(ui, /Compartilhar no Mural/, 'botão no perfil'); assert.match(ui, /function achList\(\)/, 'as conquistas viram sugestões de post');
+  assert.match(css, /\.nav\.n6 button/, 'o menu com 6 abas cabe em telas estreitas'); assert.match(css, /\.mup\{[^}]*pre-wrap/, 'quebras de linha do post');
+  assert.match(adm, /\['mural', 'chat', 'Mural'\]/, 'aba Mural no painel do dono'); for (const a of ['mu-keep', 'mu-hide', 'mu-del']) assert.match(adm, new RegExp(a), a); assert.match(adm, /id="mu"/, 'interruptor em Ajustes');
+  const ov = (await A('overview')).j; assert.equal(typeof ov.mural.pending, 'number'); assert.equal(typeof ov.mural.total, 'number'); assert.equal(ov.settings.mural, true);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v76/, 'cache do app renovado para chegar a todos');
+});

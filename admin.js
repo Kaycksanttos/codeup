@@ -17,7 +17,7 @@ const crypto = require('crypto'), path = require('path'), totp = require('./totp
 
 module.exports = function mountAdmin(app, X) {
   const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
-    makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf } = X;
+    makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf, dropPosts } = X;
   const lvs = t => Array.from({ length: (lessons.LEVELS_OF || {})[t] || 3 }, (_, i) => i + 1);   // níveis que o curso tem hoje (o Excel começa só com o Básico)
   const DAY = 864e5, TZ = -3 * 36e5;                                   // Brasil (sem horário de verão)
   const dk = ms => new Date(ms + TZ).toISOString().slice(0, 10);       // "2026-10-20" no horário de Brasília
@@ -195,11 +195,12 @@ module.exports = function mountAdmin(app, X) {
       funnel: [['Cadastros', us.length], ['E-mail confirmado', c.verified], ['Fizeram 1 lição', started], ['Passaram na prova do Básico', lvl1]],
       top: [...us].sort((a, b) => (b.xp || 0) - (a.xp || 0)).slice(0, 8).map(row),
       recent: [...us].sort((a, b) => msOf(b.created) - msOf(a.created)).slice(0, 10).map(row),
-      settings: publicSettings()
+      settings: publicSettings(),
+      mural: (ps => ({ total: ps.length, pending: ps.filter(p => p.hidden || Object.keys(p.rep || {}).length > 0).length }))(Object.values(DB.posts || {}))
     };
     ovCache = { at: now, v }; return v;
   }
-  function publicSettings() { const s = settingsMain(), a = adsNow(); return { signupsOpen: s.signupsOpen !== false, announce: s.announce, courses: TRACKS.map(t => ({ id: t, name: TRACK_NAMES[t], on: courseOn(t), levels: lvs(t), lessons: lessons.filter(l => l.track === t).length, students: Object.values(DB.users).filter(u => u.track === t).length })), unlockAll: { on: unlockAllOn(), until: s.unlockAll.until || null }, ads: { on: a.on, client: a.client, slot: a.slot, from: a.from, adsTxt: a.client ? BASE + '/ads.txt' : '' } }; }
+  function publicSettings() { const s = settingsMain(), a = adsNow(); return { signupsOpen: s.signupsOpen !== false, mural: s.mural !== false, announce: s.announce, courses: TRACKS.map(t => ({ id: t, name: TRACK_NAMES[t], on: courseOn(t), levels: lvs(t), lessons: lessons.filter(l => l.track === t).length, students: Object.values(DB.users).filter(u => u.track === t).length })), unlockAll: { on: unlockAllOn(), until: s.unlockAll.until || null }, ads: { on: a.on, client: a.client, slot: a.slot, from: a.from, adsTxt: a.client ? BASE + '/ads.txt' : '' } }; }
   app.get('/api/admin/overview', ...guard, (req, res) => res.json(overview()));
 
   // ---------- lista de usuários ----------
@@ -270,7 +271,7 @@ module.exports = function mountAdmin(app, X) {
       case 'delete': {
         if (String(b.confirm || '').trim().toLowerCase() !== String(u.email).toLowerCase()) return res.status(400).json({ error: 'Digite o e-mail do usuário para confirmar.' });
         dropSessions(u.id); for (const k in DB.resets) if (DB.resets[k].id === u.id) delete DB.resets[k]; for (const k in DB.verifies) if (DB.verifies[k].id === u.id) delete DB.verifies[k];
-        delete DB.users[u.id]; audit(req, 'excluiu-conta', who, ''); save(); ovCache = null; return res.json({ ok: true, deleted: true });
+        dropPosts(u.id); delete DB.users[u.id]; audit(req, 'excluiu-conta', who, ''); save(); ovCache = null; return res.json({ ok: true, deleted: true });
       }
       default: return res.status(400).json({ error: 'Ação desconhecida.' });
     }
@@ -304,6 +305,7 @@ module.exports = function mountAdmin(app, X) {
   app.post('/api/admin/settings', ...guard, (req, res) => {
     const s = settingsMain(), b = req.body || {}, did = [];
     if (typeof b.signupsOpen === 'boolean') { s.signupsOpen = b.signupsOpen; did.push('cadastros ' + (b.signupsOpen ? 'abertos' : 'fechados')); }
+    if (typeof b.mural === 'boolean') { s.mural = b.mural; did.push('mural ' + (b.mural ? 'ligado' : 'desligado')); }
     if (b.courses && typeof b.courses === 'object' && !Array.isArray(b.courses)) {                       // quais cursos ficam ativos no aplicativo
       const ks = Object.keys(b.courses); if (!ks.length || ks.some(k => !TRACKS.includes(k) || typeof b.courses[k] !== 'boolean')) return res.status(400).json({ error: 'Curso inválido.' });
       const next = { ...coursesCfg(), ...b.courses }; if (!TRACKS.some(t => next[t])) return res.status(400).json({ error: 'Deixe pelo menos um curso ativo, senão o aplicativo fica sem nada para estudar.' });
@@ -334,6 +336,23 @@ module.exports = function mountAdmin(app, X) {
     }
     if (!did.length) return res.status(400).json({ error: 'Nada para salvar.' });
     audit(req, 'ajustes', '', did.join('; ')); save(); res.json(publicSettings());
+  });
+
+  // ---------- mural: posts denunciados (3 denúncias escondem o post até aqui) e todos os posts ----------
+  const postRow = p => { const a = DB.users[p.uid] || {}; return { id: p.id, kind: p.kind, text: p.text, link: p.link || null, at: p.at, likes: (p.likes || []).length, reports: Object.keys(p.rep || {}).length, hidden: !!p.hidden, kept: !!p.ok, author: { id: p.uid, name: a.name || '(conta excluída)', email: a.email || '', banned: !!a.banned } }; };
+  app.get('/api/admin/mural', ...guard, (req, res) => {
+    const all = Object.values(DB.posts || {}), pending = p => p.hidden || Object.keys(p.rep || {}).length > 0;
+    const f = req.query.f === 'all' ? 'all' : 'rep', rows = all.filter(p => f === 'all' || pending(p)).sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 100).map(postRow);
+    res.json({ on: settingsMain().mural !== false, filter: f, total: all.length, pending: all.filter(pending).length, rows });
+  });
+  app.post('/api/admin/mural/:id', ...guard, (req, res) => {
+    const p = (DB.posts || {})[String(req.params.id || '')]; if (!p) return res.status(404).json({ error: 'Post não encontrado (talvez a pessoa já tenha apagado).' });
+    const a = String((req.body || {}).action || ''), who = `${(DB.users[p.uid] || {}).name || p.uid}: ${p.text.slice(0, 60)}`;
+    if (a === 'keep') { p.hidden = false; p.ok = true; p.rep = {}; audit(req, 'manteve-post', who, ''); }                  // revisou e está tudo bem: volta a aparecer e as denúncias antigas zeram
+    else if (a === 'hide') { p.hidden = true; audit(req, 'escondeu-post', who, ''); }
+    else if (a === 'remove') { delete DB.posts[p.id]; audit(req, 'removeu-post', who, ''); }
+    else return res.status(400).json({ error: 'Ação desconhecida.' });
+    save(); res.json({ ok: true });
   });
 
   // ---------- sistema e auditoria ----------

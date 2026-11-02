@@ -75,12 +75,13 @@ function prune() {
   for (const k in DB.resets) if (DB.resets[k].exp < now) delete DB.resets[k];
   for (const k in DB.verifies) if (DB.verifies[k].exp < now) delete DB.verifies[k];
   for (const k in DB.asessions) if (DB.asessions[k].exp < now) delete DB.asessions[k];
+  muralTrim();
   save();
 }
 async function initDb() {
   Object.assign(DB, await store.load());
-  DB.users ??= {}; DB.sessions ??= {}; DB.resets ??= {}; DB.verifies ??= {}; DB.asessions ??= {}; DB.audit ??= {}; DB.settings ??= {}; DB.meta ??= {};
-  delete DB.certs;                                           // o certificado foi retirado do app: apaga os registros antigos (eles guardavam o nome da pessoa)
+  DB.users ??= {}; DB.sessions ??= {}; DB.resets ??= {}; DB.verifies ??= {}; DB.asessions ??= {}; DB.audit ??= {}; DB.settings ??= {}; DB.meta ??= {}; DB.posts ??= {};
+  delete DB.certs;                                          // o certificado foi retirado do app: apaga os registros antigos (eles guardavam o nome da pessoa)
   for (const u of Object.values(DB.users)) delete u.certs;
   prune(); await flush(); store.backup();
   setInterval(flush, 1000).unref(); setInterval(() => flush().then(() => store.backup()), 3600e3).unref(); setInterval(prune, 6 * 3600e3).unref();
@@ -368,7 +369,7 @@ require('./guides').mount(app, { lessons, projects, env: () => ({ base: BASE, co
 // ads.txt: o AdSense exige este arquivo na raiz do site para pagar pelos anúncios
 app.get('/ads.txt', (req, res) => { const a = adsNow(); return a.client ? res.set('Cache-Control', 'public, max-age=300').type('text/plain').send(`google.com, ${a.client.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n`) : res.sendStatus(404); });
 
-app.get('/api/config', (req, res) => res.json({ teste: TESTE, contact: CONTACT, company: COMPANY, googleClientId: GOOGLE_ID, courses: coursesCfg(), ads: (a => a.on ? { client: a.client, slot: a.slot } : ADS_PREVIEW ? { preview: true } : null)(adsNow()),
+app.get('/api/config', (req, res) => res.json({ teste: TESTE, contact: CONTACT, company: COMPANY, googleClientId: GOOGLE_ID, courses: coursesCfg(), mural: muralOn(), ads: (a => a.on ? { client: a.client, slot: a.slot } : ADS_PREVIEW ? { preview: true } : null)(adsNow()),
   announce: (a => a.on && a.text ? { id: a.id, text: a.text, kind: a.kind } : null)(settingsMain().announce) }));
 
 // "Começar do zero" do modo teste: apaga contas, sessões, ajustes e histórico (só existe com CODEUP_TESTE=1 e arquivo local).
@@ -501,7 +502,7 @@ app.post('/api/google', limit(20, 15 * 60e3), async (req, res) => {
 });
 
 // confirmação de e-mail
-app.get('/verificar', limit(60, 15 * 60e3), (req, res) => {
+app.get('/verificar', limit(60 * RELAX, 15 * 60e3), (req, res) => {
   const t = DB.verifies[sha(String(req.query.token || ''))];
   if (!t || t.exp < Date.now() || !DB.users[t.id]) return res.redirect('/?verificado=0');
   DB.users[t.id].verified = true; delete DB.verifies[sha(String(req.query.token))]; save(); res.redirect('/?verificado=1');
@@ -607,16 +608,105 @@ app.post('/api/ranking/visibility', auth, (req, res) => {
   RANK.at = 0; save(); res.json(pub(req.u));
 });
 
+// ---------- Mural: a turma posta projetos, conquistas e dicas ----------
+// Só texto (até 500 letras) e, se quiser, UM link https. Nada de imagens nem HTML: o texto sempre aparece como texto puro.
+// Segurança: só contas com e-mail confirmado postam · no máximo 5 posts por hora e 15 por dia por pessoa · não repete o mesmo texto ·
+// 3 denúncias de pessoas diferentes escondem o post até o dono revisar em /admin → Mural · o dono pode desligar o Mural em Ajustes.
+const MURAL_KINDS = ['projeto', 'conquista', 'dica'], MURAL_TEXT = 500, MURAL_PAGE = 20, MURAL_HIDE_AT = 3, MURAL_PER_HOUR = 5, MURAL_PER_DAY = 15;
+const MURAL_KEEP = +process.env.MURAL_MAX_POSTS > 0 ? +process.env.MURAL_MAX_POSTS : 3000;      // só os 3000 posts mais novos ficam guardados
+const muralOn = () => settingsMain().mural !== false;
+function muralTrim() {                                                                          // apaga os mais antigos quando passa do limite
+  DB.posts ??= {}; const ids = Object.keys(DB.posts);
+  if (ids.length > MURAL_KEEP) ids.sort((a, b) => (DB.posts[a].at < DB.posts[b].at ? 1 : -1)).slice(MURAL_KEEP).forEach(k => delete DB.posts[k]);
+}
+function dropPosts(uid) {                                                                       // conta excluída: some com os posts e com as curtidas/denúncias dela
+  for (const [k, p] of Object.entries(DB.posts || {})) {
+    if (p.uid === uid) { delete DB.posts[k]; continue; }
+    if (p.likes) p.likes = p.likes.filter(x => x !== uid);
+    if (p.rep && p.rep[uid]) delete p.rep[uid];
+  }
+}
+const muralClean = t => String(t ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁦-⁩﻿]/g, '')   // sem caracteres de controle nem os que invertem o sentido do texto
+  .replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+function muralLink(v) {                                                                         // '' = sem link · null = link inválido · senão o endereço https limpo
+  const s = String(v ?? '').trim(); if (!s) return ''; if (s.length > 200) return null;
+  let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(s) ? s : 'https://' + s); } catch { return null; }
+  if (u.protocol !== 'https:' || u.username || u.password || !u.hostname.includes('.') || /^[\d.]+$/.test(u.hostname) || u.href.length > 250) return null;
+  return u.href;
+}
+const muralLook = u => ({ guide: GUIDES.includes(u.guide) ? u.guide : 'cut', tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame), color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), cos: cosWorn(u) });
+const muralKey = p => p.at + '|' + p.id;
+const muralShown = (p, me) => { const a = DB.users[p.uid]; return !!a && !a.banned && (!p.hidden || p.uid === me.id); };   // quem escreveu ainda vê o próprio post escondido (com o aviso "em análise")
+const muralItem = (p, me) => { const a = DB.users[p.uid] || {}, lk = p.likes || []; return { id: p.id, kind: p.kind, text: p.text, link: p.link || undefined, at: p.at, name: shortName(a.name), ...muralLook(a), likes: lk.length, liked: lk.includes(me.id), mine: p.uid === me.id, hidden: p.hidden ? true : undefined, reported: !!(p.rep && p.rep[me.id]) || undefined }; };
+// limite por pessoa (e não por IP): { nome, quantas vezes, em quantos ms }
+const uLimit = (name, max, ms) => (req, res, next) => {
+  const k = `u:${req.u.id}:${name}`, now = Date.now(), a = (hits.get(k) || []).filter(t => now - t < ms);
+  if (a.length >= max * RELAX) return res.status(429).json({ error: 'Calma! Muitas ações seguidas. Espere um pouco e tente de novo.' });
+  a.push(now); hits.set(k, a); next();
+};
+const muralGate = (req, res, next) => muralOn() ? next() : res.status(403).json({ error: 'O Mural está desligado no momento.', off: true });
+const muralPost = (req, res) => { const p = DB.posts[String(req.params.id || '')]; if (!p || !muralShown(p, req.u)) { res.status(404).json({ error: 'Esse post não existe mais.' }); return null; } return p; };
+
+app.get('/api/mural', auth, uLimit('mural-ler', 90, 60e3), (req, res) => {
+  if (!muralOn()) return res.json({ on: false, items: [], more: false });
+  const kind = MURAL_KINDS.includes(req.query.k) ? req.query.k : null, before = String(req.query.before || '').slice(0, 60), mine = req.query.mine === '1';
+  const all = Object.values(DB.posts).filter(p => muralShown(p, req.u) && (!kind || p.kind === kind) && (!mine || p.uid === req.u.id) && (!before || muralKey(p) < before))
+    .sort((a, b) => (muralKey(a) < muralKey(b) ? 1 : -1));
+  const page = all.slice(0, MURAL_PAGE);
+  res.json({ on: true, items: page.map(p => muralItem(p, req.u)), more: all.length > MURAL_PAGE, next: page.length ? muralKey(page[page.length - 1]) : null });
+});
+
+app.post('/api/mural/new', auth, muralGate, uLimit('mural-novo', 20, 3600e3), (req, res) => {
+  if (needVerify(req.u, res)) return;
+  const b = req.body || {}, kind = String(b.kind || ''), text = muralClean(b.text), link = muralLink(b.link);
+  if (!MURAL_KINDS.includes(kind)) return res.status(400).json({ error: 'Escolha o tipo do post: projeto, conquista ou dica.' });
+  if (text.length < 5) return res.status(400).json({ error: 'Escreva pelo menos uma frase (5 letras ou mais).' });
+  if (text.length > MURAL_TEXT) return res.status(400).json({ error: `O texto passou de ${MURAL_TEXT} letras. Encurte um pouco.` });
+  if (link === null) return res.status(400).json({ error: 'O link precisa ser um endereço https:// válido (ex.: https://github.com/voce/projeto).' });
+  if ((text.match(/https?:\/\//gi) || []).length > 1) return res.status(400).json({ error: 'Use o campo "Link" para o endereço. No texto cabe no máximo um.' });
+  const norm = s => s.toLowerCase().replace(/\s+/g, ' ');
+  if (Object.values(DB.posts).some(p => p.uid === req.u.id && norm(p.text) === norm(text))) return res.status(409).json({ error: 'Você já publicou esse mesmo texto.' });
+  const now = Date.now(), mp = (req.u.mp || []).filter(t => now - t < 864e5);
+  if (mp.length >= MURAL_PER_DAY) return res.status(429).json({ error: `Você já postou ${MURAL_PER_DAY} vezes hoje. Volte amanhã!` });
+  if (mp.filter(t => now - t < 3600e3).length >= MURAL_PER_HOUR) return res.status(429).json({ error: `Você já postou ${MURAL_PER_HOUR} vezes na última hora. Espere um pouco para postar de novo.` });
+  const p = { id: crypto.randomBytes(8).toString('hex'), uid: req.u.id, kind, text, at: new Date(now).toISOString(), likes: [], rep: {} };
+  if (link) p.link = link;
+  DB.posts[p.id] = p; req.u.mp = [...mp, now].slice(-MURAL_PER_DAY); muralTrim(); save();
+  res.json({ item: muralItem(p, req.u) });
+});
+
+app.post('/api/mural/:id/like', auth, muralGate, uLimit('mural-curtir', 60, 60e3), (req, res) => {
+  const p = muralPost(req, res); if (!p) return;
+  const lk = p.likes ??= [], i = lk.indexOf(req.u.id); if (i < 0) lk.push(req.u.id); else lk.splice(i, 1);
+  save(); res.json({ likes: lk.length, liked: i < 0 });
+});
+
+app.post('/api/mural/:id/report', auth, muralGate, uLimit('mural-denunciar', 10, 3600e3), (req, res) => {
+  const p = muralPost(req, res); if (!p) return;
+  if (p.uid === req.u.id) return res.status(400).json({ error: 'Esse post é seu. Se quiser, é só apagar.' });
+  p.rep ??= {}; if (p.rep[req.u.id]) return res.json({ ok: true, already: true });
+  p.rep[req.u.id] = new Date().toISOString();
+  if (!p.ok && Object.keys(p.rep).length >= MURAL_HIDE_AT) p.hidden = true;                    // esconde até o dono revisar (se ele já manteve o post, não esconde mais)
+  save(); res.json({ ok: true, hidden: !!p.hidden });
+});
+
+app.delete('/api/mural/:id', auth, (req, res) => {
+  const p = DB.posts[String(req.params.id || '')];
+  if (!p || p.uid !== req.u.id) return res.status(404).json({ error: 'Esse post não existe mais.' });
+  delete DB.posts[p.id]; save(); res.json({ ok: true });
+});
+
 // LGPD: portabilidade e exclusão
 app.get('/api/export', auth, (req, res) => {
   const { pass, id, googleId, ...data } = req.u;
+  data.mural = Object.values(DB.posts || {}).filter(p => p.uid === req.u.id).map(p => ({ id: p.id, tipo: p.kind, texto: p.text, link: p.link || null, em: p.at, curtidas: (p.likes || []).length }));
   res.set('Content-Disposition', 'attachment; filename="meus-dados-codeup.json"').json(data);
 });
 
 app.delete('/api/account', auth, async (req, res) => {
   if (req.u.pass ? !checkPw(String(req.body.password || ''), req.u.pass) : req.body.confirm !== 'EXCLUIR')
     return res.status(403).json({ error: req.u.pass ? 'Senha incorreta.' : 'Digite EXCLUIR para confirmar.' });
-  dropSessions(req.u.id); delete DB.users[req.u.id]; RANK.at = 0; dropCookie(req, res); save(); res.json({ ok: true });
+  dropSessions(req.u.id); dropPosts(req.u.id); delete DB.users[req.u.id]; RANK.at = 0; dropCookie(req, res); save(); res.json({ ok: true });
 });
 
 // ============================================================================
@@ -846,7 +936,7 @@ app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
 // ============================================================================
 let SQL_SELF = null;                                      // resultado do autoteste do corretor de SQL (true/false)
 const admin = require('./admin')(app, {
-  DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf,
+  DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf, dropPosts,
   info: () => { const a = adsNow(); return { mail: mailReady, verifyOn: VERIFY_ON, google: !!GOOGLE_ID, ads: a.on ? 'on' : ADS_PREVIEW ? 'preview' : 'off', adsFrom: a.from, adsClient: a.client, adsSlot: !!a.slot, pyServer: PY_SERVER, sqlServer: SQL_SELF, company: COMPANY, contact: CONTACT }; }
 });
 
