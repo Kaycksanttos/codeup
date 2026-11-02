@@ -1366,3 +1366,5 @@ body.wild .tl .ti.pj{--cp-a:#ffd29a;--cp-b:#ea580c;--cp-rgb:251,146,60;--cp-line
 .vzb2.e{outline:2px solid var(--acc);border-radius:10px;outline-offset:3px}
 .vzch i{display:flex;flex-direction:column;align-items:center;gap:2px}.vzch i small{font-size:11px;color:var(--mute);font-weight:800}.vzch i small.ng{color:var(--k3,#f59e0b)}.vzch i.pass{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 22%,transparent)}.vzch i.ok.pass{opacity:1}
 .vzt tr.bad td{background:color-mix(in srgb,#ef4444 35%,transparent)}.vzo3.gone{opacity:.28;text-decoration:line-through}
+
+.vzo3.err{background:color-mix(in srgb,#ef4444 22%,transparent)}
