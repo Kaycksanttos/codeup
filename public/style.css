@@ -1358,3 +1358,11 @@ body.wild .tl .ti.pj{--cp-a:#ffd29a;--cp-b:#ea580c;--cp-rgb:251,146,60;--cp-line
 .hwdt{margin-top:2px}.hwdt summary{cursor:pointer;font-weight:800;font-size:13.5px;color:var(--acc);padding:4px 0}
 .hwol{margin:6px 0 2px;padding-left:20px}.hwol li{margin:0 0 7px;line-height:1.45}.hwol code{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:7px;background:color-mix(in srgb,var(--acc) 16%,var(--panel2));font-size:12.5px}.hwol span{font-size:14px}
 @media (prefers-reduced-motion:reduce){.vzbox [data-s]{transition:none;transform:none}.vzt td,.vzx,.vzbr,.vzch i{transition:none}}
+
+/* mais animações do "Como funciona" */
+.vzt4{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;justify-content:center}.vzt4 i{display:flex;flex-direction:column;align-items:center;min-width:56px;padding:6px 8px;border-radius:12px;background:color-mix(in srgb,var(--ok) 20%,transparent);font-style:normal}.vzt4 small{font-size:10px;font-weight:900;letter-spacing:.5px;color:var(--mute)}.vzt4 b{font-size:16px}
+.vzm{display:flex;align-items:center;justify-content:center;gap:8px}.vzar2{font-size:20px;color:var(--acc)}
+.vzx small{font:700 11px/1.3 inherit;font-family:inherit;color:var(--mute)}.vzx.err{border-color:#ef4444;background:color-mix(in srgb,#ef4444 18%,transparent)}
+.vzb2.e{outline:2px solid var(--acc);border-radius:10px;outline-offset:3px}
+.vzch i{display:flex;flex-direction:column;align-items:center;gap:2px}.vzch i small{font-size:11px;color:var(--mute);font-weight:800}.vzch i small.ng{color:var(--k3,#f59e0b)}.vzch i.pass{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 22%,transparent)}.vzch i.ok.pass{opacity:1}
+.vzt tr.bad td{background:color-mix(in srgb,#ef4444 35%,transparent)}.vzo3.gone{opacity:.28;text-decoration:line-through}
