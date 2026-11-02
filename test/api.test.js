@@ -1450,10 +1450,10 @@ test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo
   assert.ok(ui.includes('class=hdm>') && !/<span class=hd>/.test(ui), 'partes apagadas usam .hdm');
   // "como funciona um JOIN, quando usar e como usar": animação do mecanismo (4 passos), "Quando usar" e "Como usar" com o molde, nesta ordem na tela
   for (const f of ['const VZ = {', 'const VIZ_OF = {', 'function vzGo(', 'function vzApply(', 'function usarHtml(']) assert.ok(ui.includes(f), f);
-  // as animações (56 tipos): cada uma tem 4 passos com legenda, só usa passos de 1 a 4, e toda lição mapeada existe
+  // as animações (78 tipos): cada uma tem 4 passos com legenda, só usa passos de 1 a 4, e toda lição mapeada existe
   const seg = ui.slice(ui.indexOf('const vzT ='), ui.indexOf('const vizOf ='));
   const { VZ, VIZ_IDS, VIZ_OF } = new Function(seg + '; return { VZ, VIZ_IDS, VIZ_OF };')();
-  assert.equal(Object.keys(VZ).length, 56, 'tipos de animação');
+  assert.equal(Object.keys(VZ).length, 78, 'tipos de animação');
   assert.deepEqual(Object.keys(VIZ_IDS).sort(), Object.keys(VZ).sort(), 'todo tipo de animação é usado por alguma lição e vice-versa');
   for (const [k, v] of Object.entries(VZ)) {
     assert.ok(v.t && v.cap.length === 4 && v.cap.every(c => c.length > 10), k + ': título e 4 legendas');
@@ -1463,7 +1463,7 @@ test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo
     assert.ok(/data-s=[2-4]|data-a="[^"]*[2-4][:=]/.test(h), k + ': algo muda depois do passo 1');
   }
   for (const id of Object.keys(VIZ_OF)) assert.ok(lessons.find(l => l.id === id), 'lição da animação não existe: ' + id);
-  assert.equal(Object.keys(VIZ_OF).length, 104, 'lições com animação do mecanismo');
+  assert.equal(Object.keys(VIZ_OF).length, 127, 'lições com animação do mecanismo');
   const iv = ui.slice(ui.indexOf('function intro()'), ui.indexOf('function hwPlay()'));
   assert.ok(iv.indexOf("infoCards(l.info, ['serve'])") < iv.indexOf('id=vzBox') && iv.indexOf('id=vzBox') < iv.indexOf('id=hw>') && iv.indexOf('id=hw>') < iv.indexOf('${usarHtml(l)}') && iv.indexOf('${usarHtml(l)}') < iv.indexOf('onclick=introGo()'), 'ordem: para que serve, animação, código, quando e como usar, botão');
   for (const c of ['.hwm{', '.hwdt', '.vzbox', '.vzt tr.k1', '.vzdot.on']) assert.ok(css.includes(c), 'estilo ' + c);
