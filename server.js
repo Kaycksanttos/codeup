@@ -613,6 +613,25 @@ app.post('/api/ranking/visibility', auth, (req, res) => {
 // Segurança: só contas com e-mail confirmado postam · no máximo 5 posts por hora e 15 por dia por pessoa · não repete o mesmo texto ·
 // 3 denúncias de pessoas diferentes escondem o post até o dono revisar em /admin → Mural · o dono pode desligar o Mural em Ajustes.
 const MURAL_KINDS = ['projeto', 'conquista', 'dica'], MURAL_TEXT = 500, MURAL_PAGE = 20, MURAL_HIDE_AT = 3, MURAL_PER_HOUR = 5, MURAL_PER_DAY = 15;
+// Só o aluno posta (projeto, dica e conquista). Aviso, destaque e comentário são só da Equipe, pelo painel do dono (ver admin.js): o aluno não consegue criar nada disso.
+const MURAL_SHOW = [...MURAL_KINDS, 'aviso'], MURAL_PINS = 3, MURAL_CM_MAX = 20;
+// As conquistas do Perfil (mesmos ids e nomes do app). Quem compartilha precisa TER ganhado: o servidor confere com os dados da própria pessoa.
+const ACH = { primeira: 'Primeira lição', seq3: 'Sequência de 3 dias', basico: 'Básico aprovado', inter: 'Intermediário aprovado', avancado: 'Avançado aprovado', curso: 'Curso concluído', meio: 'Meio caminho', xp1000: '1.000 XP' };
+function achEarned(u) {
+  const got = new Set(), passed = u.passed || {}, done = u.done || {};
+  if (Object.keys(done).some(id => ACT.has(id))) got.add('primeira');
+  if ((u.streak || 0) >= 3) got.add('seq3');
+  if (Object.keys(passed).length >= 1) got.add('basico');
+  if (TRACKS.some(t => passed[key(t, 2)])) got.add('inter');
+  if (TRACKS.some(t => passed[key(t, 3)])) got.add('avancado');
+  if (TRACKS.some(t => trackDone(u, t))) got.add('curso');
+  if (TRACKS.includes(u.track)) {
+    const L = Array.from({ length: LEVELS_OF[u.track] || 3 }, (_, i) => i + 1), n = L.reduce((s, lv) => s + levelLessons(u.track, lv).filter(x => done[x.id]).length + (passed[key(u.track, lv)] ? 1 : 0), 0);
+    if (Math.round(n / (L.length * 31) * 100) >= 50) got.add('meio');
+  }
+  if ((u.xp || 0) >= 1000) got.add('xp1000');
+  return got;
+}
 const MURAL_KEEP = +process.env.MURAL_MAX_POSTS > 0 ? +process.env.MURAL_MAX_POSTS : 3000;      // só os 3000 posts mais novos ficam guardados
 const muralOn = () => settingsMain().mural !== false;
 function muralTrim() {                                                                          // apaga os mais antigos quando passa do limite
@@ -636,8 +655,14 @@ function muralLink(v) {                                                         
 }
 const muralLook = u => ({ guide: GUIDES.includes(u.guide) ? u.guide : 'cut', tier: R.tierOf(u.xp), frame: R.frameOf(u.xp, u.frame), color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), cos: cosWorn(u) });
 const muralKey = p => p.at + '|' + p.id;
-const muralShown = (p, me) => { const a = DB.users[p.uid]; return !!a && !a.banned && (!p.hidden || p.uid === me.id); };   // quem escreveu ainda vê o próprio post escondido (com o aviso "em análise")
-const muralItem = (p, me) => { const a = DB.users[p.uid] || {}, lk = p.likes || []; return { id: p.id, kind: p.kind, text: p.text, link: p.link || undefined, at: p.at, name: shortName(a.name), ...muralLook(a), likes: lk.length, liked: lk.includes(me.id), mine: p.uid === me.id, hidden: p.hidden ? true : undefined, reported: !!(p.rep && p.rep[me.id]) || undefined }; };
+const muralShown = (p, me) => { if (p.staff) return true; const a = DB.users[p.uid]; return !!a && !a.banned && (!p.hidden || p.uid === me.id); };   // quem escreveu ainda vê o próprio post escondido (com o aviso "em análise")
+const muralItem = (p, me) => {
+  const lk = p.likes || [], cm = (p.cm || []).slice(-MURAL_CM_MAX).map(c => ({ id: c.id, text: c.text, at: c.at }));
+  const base = { id: p.id, kind: p.kind, text: p.text, link: p.link || undefined, at: p.at, likes: lk.length, liked: lk.includes(me.id), pin: p.pin ? true : undefined, cm: cm.length ? cm : undefined };
+  if (p.staff) return { ...base, name: 'Equipe CodeUp', staff: true };
+  const a = DB.users[p.uid] || {};
+  return { ...base, ach: ACH[p.ach] ? p.ach : undefined, name: shortName(a.name), ...muralLook(a), mine: p.uid === me.id, hidden: p.hidden ? true : undefined, reported: !!(p.rep && p.rep[me.id]) || undefined };
+};
 // limite por pessoa (e não por IP): { nome, quantas vezes, em quantos ms }
 const uLimit = (name, max, ms) => (req, res, next) => {
   const k = `u:${req.u.id}:${name}`, now = Date.now(), a = (hits.get(k) || []).filter(t => now - t < ms);
@@ -649,28 +674,35 @@ const muralPost = (req, res) => { const p = DB.posts[String(req.params.id || '')
 
 app.get('/api/mural', auth, uLimit('mural-ler', 90, 60e3), (req, res) => {
   if (!muralOn()) return res.json({ on: false, items: [], more: false });
-  const kind = MURAL_KINDS.includes(req.query.k) ? req.query.k : null, before = String(req.query.before || '').slice(0, 60), mine = req.query.mine === '1';
-  const all = Object.values(DB.posts).filter(p => muralShown(p, req.u) && (!kind || p.kind === kind) && (!mine || p.uid === req.u.id) && (!before || muralKey(p) < before))
-    .sort((a, b) => (muralKey(a) < muralKey(b) ? 1 : -1));
-  const page = all.slice(0, MURAL_PAGE);
-  res.json({ on: true, items: page.map(p => muralItem(p, req.u)), more: all.length > MURAL_PAGE, next: page.length ? muralKey(page[page.length - 1]) : null });
+  const kind = MURAL_SHOW.includes(req.query.k) ? req.query.k : null, before = String(req.query.before || '').slice(0, 60), mine = req.query.mine === '1', plain = !kind && !mine;
+  const desc = (a, b) => (muralKey(a) < muralKey(b) ? 1 : -1), seen = Object.values(DB.posts).filter(p => muralShown(p, req.u));
+  const pinned = plain ? seen.filter(p => p.pin && !p.hidden).sort(desc).slice(0, MURAL_PINS) : [];                 // destaques da Equipe: só no "Tudo", em cima, uma vez
+  const all = seen.filter(p => (!kind || p.kind === kind) && (!mine || p.uid === req.u.id) && (!before || muralKey(p) < before) && !pinned.includes(p)).sort(desc);
+  const page = all.slice(0, MURAL_PAGE), shared = Object.values(DB.posts).filter(p => p.uid === req.u.id && ACH[p.ach]).map(p => p.ach);
+  res.json({ on: true, items: page.map(p => muralItem(p, req.u)), pinned: !before ? pinned.map(p => muralItem(p, req.u)) : undefined, shared, more: all.length > MURAL_PAGE, next: page.length ? muralKey(page[page.length - 1]) : null });
 });
 
 app.post('/api/mural/new', auth, muralGate, uLimit('mural-novo', 20, 3600e3), (req, res) => {
   if (needVerify(req.u, res)) return;
-  const b = req.body || {}, kind = String(b.kind || ''), text = muralClean(b.text), link = muralLink(b.link);
+  const b = req.body || {}, kind = String(b.kind || ''), ach = String(b.ach || '');
+  let text = muralClean(b.text), link = muralLink(b.link);
   if (!MURAL_KINDS.includes(kind)) return res.status(400).json({ error: 'Escolha o tipo do post: projeto, conquista ou dica.' });
-  if (text.length < 5) return res.status(400).json({ error: 'Escreva pelo menos uma frase (5 letras ou mais).' });
+  if (kind === 'conquista') {                                                                    // conquista não é texto livre: tem que ser uma da lista e a pessoa precisa tê-la ganhado
+    if (!Object.prototype.hasOwnProperty.call(ACH, ach)) return res.status(400).json({ error: 'Escolha uma conquista da sua lista para compartilhar.' });
+    if (!achEarned(req.u).has(ach)) return res.status(403).json({ error: 'Você ainda não desbloqueou essa conquista.' });
+    if (Object.values(DB.posts).some(p => p.uid === req.u.id && p.ach === ach)) return res.status(409).json({ error: 'Você já compartilhou essa conquista.' });
+    link = ''; if (!text) text = 'Desbloqueei a conquista "' + ACH[ach] + '"!';
+  } else if (text.length < 5) return res.status(400).json({ error: 'Escreva pelo menos uma frase (5 letras ou mais).' });
   if (text.length > MURAL_TEXT) return res.status(400).json({ error: `O texto passou de ${MURAL_TEXT} letras. Encurte um pouco.` });
   if (link === null) return res.status(400).json({ error: 'O link precisa ser um endereço https:// válido (ex.: https://github.com/voce/projeto).' });
   if ((text.match(/https?:\/\//gi) || []).length > 1) return res.status(400).json({ error: 'Use o campo "Link" para o endereço. No texto cabe no máximo um.' });
   const norm = s => s.toLowerCase().replace(/\s+/g, ' ');
-  if (Object.values(DB.posts).some(p => p.uid === req.u.id && norm(p.text) === norm(text))) return res.status(409).json({ error: 'Você já publicou esse mesmo texto.' });
+  if (kind !== 'conquista' && Object.values(DB.posts).some(p => p.uid === req.u.id && norm(p.text) === norm(text))) return res.status(409).json({ error: 'Você já publicou esse mesmo texto.' });
   const now = Date.now(), mp = (req.u.mp || []).filter(t => now - t < 864e5);
   if (mp.length >= MURAL_PER_DAY) return res.status(429).json({ error: `Você já postou ${MURAL_PER_DAY} vezes hoje. Volte amanhã!` });
   if (mp.filter(t => now - t < 3600e3).length >= MURAL_PER_HOUR) return res.status(429).json({ error: `Você já postou ${MURAL_PER_HOUR} vezes na última hora. Espere um pouco para postar de novo.` });
   const p = { id: crypto.randomBytes(8).toString('hex'), uid: req.u.id, kind, text, at: new Date(now).toISOString(), likes: [], rep: {} };
-  if (link) p.link = link;
+  if (link) p.link = link; if (kind === 'conquista') p.ach = ach;
   DB.posts[p.id] = p; req.u.mp = [...mp, now].slice(-MURAL_PER_DAY); muralTrim(); save();
   res.json({ item: muralItem(p, req.u) });
 });
@@ -683,6 +715,7 @@ app.post('/api/mural/:id/like', auth, muralGate, uLimit('mural-curtir', 60, 60e3
 
 app.post('/api/mural/:id/report', auth, muralGate, uLimit('mural-denunciar', 10, 3600e3), (req, res) => {
   const p = muralPost(req, res); if (!p) return;
+  if (p.staff) return res.status(400).json({ error: 'Esse é um aviso da Equipe CodeUp. Se algo estiver errado, fale com a gente pelo contato do app.' });
   if (p.uid === req.u.id) return res.status(400).json({ error: 'Esse post é seu. Se quiser, é só apagar.' });
   p.rep ??= {}; if (p.rep[req.u.id]) return res.json({ ok: true, already: true });
   p.rep[req.u.id] = new Date().toISOString();
@@ -699,7 +732,7 @@ app.delete('/api/mural/:id', auth, (req, res) => {
 // LGPD: portabilidade e exclusão
 app.get('/api/export', auth, (req, res) => {
   const { pass, id, googleId, ...data } = req.u;
-  data.mural = Object.values(DB.posts || {}).filter(p => p.uid === req.u.id).map(p => ({ id: p.id, tipo: p.kind, texto: p.text, link: p.link || null, em: p.at, curtidas: (p.likes || []).length }));
+  data.mural = Object.values(DB.posts || {}).filter(p => p.uid === req.u.id).map(p => ({ id: p.id, tipo: p.kind, texto: p.text, link: p.link || null, conquista: ACH[p.ach] || null, em: p.at, curtidas: (p.likes || []).length }));
   res.set('Content-Disposition', 'attachment; filename="meus-dados-codeup.json"').json(data);
 });
 
@@ -936,7 +969,7 @@ app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
 // ============================================================================
 let SQL_SELF = null;                                      // resultado do autoteste do corretor de SQL (true/false)
 const admin = require('./admin')(app, {
-  DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf, dropPosts,
+  DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions, makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost: ADMIN_HOST, adsNow, adsClientOf, adsSlotOf, dropPosts, muralClean, muralLink, MURAL_TEXT, MURAL_PINS, MURAL_CM_MAX, ACH,
   info: () => { const a = adsNow(); return { mail: mailReady, verifyOn: VERIFY_ON, google: !!GOOGLE_ID, ads: a.on ? 'on' : ADS_PREVIEW ? 'preview' : 'off', adsFrom: a.from, adsClient: a.client, adsSlot: !!a.slot, pyServer: PY_SERVER, sqlServer: SQL_SELF, company: COMPANY, contact: CONTACT }; }
 });
 

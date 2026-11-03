@@ -2478,7 +2478,7 @@ test('mural: posta projeto, conquista e dica; só link https; texto puro; sem re
   assert.equal(it.mine, true); assert.equal(it.likes, 0); assert.equal(it.liked, false); assert.equal(it.text, 'Meu <b>primeiro</b> projeto: um painel de vendas em Power BI', 'o servidor guarda o texto como veio (a tela escapa o HTML)');
   assert.ok(!JSON.stringify(it).includes('mu-a@teste.com') && !('uid' in it) && !('email' in it), 'nada de e-mail nem id interno');
   for (const k of ['guide', 'tier', 'frame', 'color', 'sticker', 'bg']) assert.ok(k in it, 'o rosto do personagem vem junto: ' + k);
-  assert.equal((await postMu(tk, { kind: 'conquista', text: 'Terminei o Básico de SQL hoje!' })).status, 200);
+  const sc = await postMu(tk, { kind: 'conquista', text: 'Terminei o Básico de SQL hoje!' }); assert.equal(sc.status, 400, 'conquista não é texto livre'); assert.match(sc.j.error, /conquista da sua lista/);
   assert.equal((await postMu(tk, { kind: 'dica', text: 'Dica: use LIMIT para espiar a tabela antes de rodar tudo.' })).status, 200);
   // validações
   const bad = async (body, re) => { const x = await postMu(tk, { kind: 'dica', text: 'texto valido para testar', ...body }); assert.equal(x.status, 400, JSON.stringify(body)); if (re) assert.match(x.j.error, re); };
@@ -2488,13 +2488,13 @@ test('mural: posta projeto, conquista e dica; só link https; texto puro; sem re
   await bad({ text: 'veja https://a.com e https://b.com agora' }, /Link/);
   assert.equal((await postMu(tk, { kind: 'dica', text: 'um link no texto https://a.com ainda passa' })).status, 200, 'um endereço no texto passa (a tela não o transforma em link)');
   const inv = await postMu(tk, { kind: 'dica', text: 'Texto ‮invertido\u0000 limpo\n\n\n\nfim' }); assert.equal(inv.j.item.text, 'Texto invertido limpo\n\nfim', 'sem caracteres de controle nem os que invertem o texto');
-  assert.equal((await postMu(tk, { kind: 'conquista', text: '  terminei o  básico de sql hoje!  ' })).status, 409, 'o mesmo texto não repete (ignora maiúsculas e espaços)');
+  assert.equal((await postMu(tk, { kind: 'dica', text: '  dica:  use LIMIT para espiar a tabela antes de rodar tudo.  ' })).status, 409, 'o mesmo texto não repete (ignora maiúsculas e espaços)');
   assert.equal((await call('/api/mural/new', { token: tk, body: {} })).status, 400, 'corpo vazio');
   // lista: mais novo primeiro, filtro por tipo e "meus posts"
-  const all = await mural(tk); assert.equal(all.on, true); assert.equal(all.items.length, 5); assert.equal(all.items[0].text, 'Texto invertido limpo\n\nfim'); assert.equal(all.items.at(-1).kind, 'projeto');
-  assert.deepEqual((await mural(tk, '?k=dica')).items.map(x => x.kind), ['dica', 'dica', 'dica']); assert.equal((await mural(tk, '?k=nada')).items.length, 5, 'tipo desconhecido = todos');
-  const other = await regP('mu-b@teste.com', 'Beto Mural'); const ob = await mural(other); assert.equal(ob.items.length, 5); assert.ok(ob.items.every(x => x.mine === false), 'para os outros nenhum post é "meu"');
-  assert.equal((await mural(other, '?mine=1')).items.length, 0); assert.equal((await mural(tk, '?mine=1')).items.length, 5);
+  const all = await mural(tk); assert.equal(all.on, true); assert.equal(all.items.length, 4); assert.equal(all.items[0].text, 'Texto invertido limpo\n\nfim'); assert.equal(all.items.at(-1).kind, 'projeto');
+  assert.deepEqual((await mural(tk, '?k=dica')).items.map(x => x.kind), ['dica', 'dica', 'dica']); assert.equal((await mural(tk, '?k=nada')).items.length, 4, 'tipo desconhecido = todos');
+  const other = await regP('mu-b@teste.com', 'Beto Mural'); const ob = await mural(other); assert.equal(ob.items.length, 4); assert.ok(ob.items.every(x => x.mine === false), 'para os outros nenhum post é "meu"');
+  assert.equal((await mural(other, '?mine=1')).items.length, 0); assert.equal((await mural(tk, '?mine=1')).items.length, 4);
   // sem e-mail confirmado só lê
   const un = (await call('/api/register', { body: { name: 'Sem Email', email: 'mu-un@teste.com', password: 'segredo1', accept: true } })).j;
   const x = await postMu(un.token, { kind: 'dica', text: 'quero postar sem confirmar' }); assert.equal(x.status, 403); assert.equal(x.j.needsVerify, true);
@@ -2553,7 +2553,7 @@ test('mural: limite de posts, conta suspensa, conta apagada e exportação', asy
   const x = await postMu(f, { kind: 'dica', text: 'Dica de limite número seis' }); assert.equal(x.status, 429); assert.match(x.j.error, /última hora/);
   const fid = (await mural(v)).items.find(p => p.name.startsWith('Fábio')).id;
   await call(`/api/mural/${fid}/like`, { token: v, body: {} });                                                        // a Vera curte um post do Fábio
-  const gEm = 'mu-g@teste.com', g = await regP(gEm, 'Gil Guarda'); const gp = (await postMu(g, { kind: 'conquista', text: 'Primeira lição concluída, bora!' })).j.item.id;
+  const gEm = 'mu-g@teste.com', g = await regP(gEm, 'Gil Guarda'); const gp = (await postMu(g, { kind: 'projeto', text: 'Primeira lição concluída, bora!' })).j.item.id;
   await call(`/api/mural/${gp}/like`, { token: f, body: {} });                                                          // o Fábio curte um post do Gil
   // suspensa: some; reativada: volta
   const k = await regP('mu-k@teste.com', 'Kleber Banido'); assert.equal((await postMu(k, { kind: 'dica', text: 'Dica do Kleber antes de ser suspenso' })).status, 200);
@@ -2562,7 +2562,7 @@ test('mural: limite de posts, conta suspensa, conta apagada e exportação', asy
   assert.equal((await act(kid, { action: 'unban' })).status, 200); assert.equal(await kc(), 1, 'reativada volta');
   const names = async () => (await mural(v, '?k=dica')).items.filter(p => p.name.startsWith('Fábio')).length; assert.equal(await names(), 5);
   // exportação (LGPD)
-  const ex = (await call('/api/export', { token: g })).j; assert.equal(ex.mural.length, 1); assert.equal(ex.mural[0].texto, 'Primeira lição concluída, bora!'); assert.equal(ex.mural[0].curtidas, 1); assert.equal(ex.mural[0].tipo, 'conquista');
+  const ex = (await call('/api/export', { token: g })).j; assert.equal(ex.mural.length, 1); assert.equal(ex.mural[0].texto, 'Primeira lição concluída, bora!'); assert.equal(ex.mural[0].curtidas, 1); assert.equal(ex.mural[0].tipo, 'projeto');
   // excluir a conta apaga os posts e as curtidas dela
   assert.equal((await call('/api/account', { method: 'DELETE', token: f, body: { password: 'segredo1' } })).status, 200);
   assert.equal(await names(), 0, 'posts da conta apagada somem'); assert.equal((await mural(g)).items.find(p => p.id === gp).likes, 0, 'e as curtidas dela também');
@@ -2593,9 +2593,92 @@ test('mural: arquivos do app — aba, texto sempre escapado, link só https e te
   const card = ui.slice(ui.indexOf('function muCard'), ui.indexOf('function muView'));
   assert.ok(card.length > 200 && !/\$\{r\.(text|name|link|kind|at|id)\}/.test(card), 'nada do que vem do servidor entra na tela sem esc()');
   assert.match(card, /esc\(r\.text\)/); assert.match(card, /esc\(r\.name\)/); assert.match(card, /\/\^https:\\\/\\\//, 'o link só vira <a> se começar com https://'); assert.match(card, /rel="noopener noreferrer nofollow ugc"/);
-  assert.match(ui, /Compartilhar no Mural/, 'botão no perfil'); assert.match(ui, /function achList\(\)/, 'as conquistas viram sugestões de post');
+  assert.match(ui, /Compartilhar minhas conquistas/, 'botão no perfil'); assert.match(ui, /function achList\(\)/, 'a lista de conquistas do perfil');
   assert.match(css, /\.nav\.n6 button/, 'o menu com 6 abas cabe em telas estreitas'); assert.match(css, /\.mup\{[^}]*pre-wrap/, 'quebras de linha do post');
   assert.match(adm, /\['mural', 'chat', 'Mural'\]/, 'aba Mural no painel do dono'); for (const a of ['mu-keep', 'mu-hide', 'mu-del']) assert.match(adm, new RegExp(a), a); assert.match(adm, /id="mu"/, 'interruptor em Ajustes');
   const ov = (await A('overview')).j; assert.equal(typeof ov.mural.pending, 'number'); assert.equal(typeof ov.mural.total, 'number'); assert.equal(ov.settings.mural, true);
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v77/, 'cache do app renovado para chegar a todos');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v78/, 'cache do app renovado para chegar a todos');
+});
+
+// ---------------- Mural: conquistas verificadas, avisos da Equipe, destaques e comentários do dono ----------------
+test('mural: conquista só se compartilha quando foi ganha de verdade, uma vez cada; aluno não cria aviso, destaque nem comentário', async () => {
+  const tk = await regP('mu-q1@teste.com', 'Quita Conquista', { sex: 'f', guide: 'tay', gname: 'Tay' });
+  const bad = async (body, st, re) => { const x = await postMu(tk, { kind: 'conquista', ...body }); assert.equal(x.status, st, JSON.stringify(body)); if (re) assert.match(x.j.error, re); };
+  await bad({ ach: 'primeira' }, 403, /ainda não desbloqueou/);                 // ainda não fez nenhuma lição
+  await bad({ ach: 'xp1000', text: 'quero mentir' }, 403, /ainda não desbloqueou/); await bad({ ach: 'nao-existe' }, 400, /da sua lista/); await bad({ ach: '__proto__' }, 400); await bad({ ach: '' }, 400); await bad({}, 400, /da sua lista/);
+  assert.equal((await mural(tk)).shared.length, 0);
+  await call('/api/track', { token: tk, body: { track: 'sql' } }); await doRange(tk, 'sql', 1, 1, 1);               // 1ª lição feita = "Primeira lição"
+  await bad({ ach: 'seq3' }, 403); await bad({ ach: 'basico' }, 403); await bad({ ach: 'curso' }, 403);
+  const ok = await postMu(tk, { kind: 'conquista', ach: 'primeira' }); assert.equal(ok.status, 200, JSON.stringify(ok.j));
+  assert.equal(ok.j.item.ach, 'primeira'); assert.equal(ok.j.item.kind, 'conquista'); assert.equal(ok.j.item.text, 'Desbloqueei a conquista "Primeira lição"!', 'sem texto, o servidor escreve a frase'); assert.equal(ok.j.item.mine, true);
+  await bad({ ach: 'primeira' }, 409, /já compartilhou/);
+  assert.deepEqual((await mural(tk)).shared, ['primeira']); assert.equal((await mural(tk, '?k=conquista')).items.length, 1);
+  // o aluno consegue apagar e compartilhar de novo
+  assert.equal((await call('/api/mural/' + ok.j.item.id, { method: 'DELETE', token: tk })).status, 200); assert.deepEqual((await mural(tk)).shared, []);
+  const again = await postMu(tk, { kind: 'conquista', ach: 'primeira', text: 'Foi difícil, mas consegui! <b>oi</b>', link: 'https://exemplo.com/x' }); assert.equal(again.status, 200);
+  assert.equal(again.j.item.text, 'Foi difícil, mas consegui! <b>oi</b>', 'a mensagem é opcional; a tela escapa o HTML'); assert.equal(again.j.item.link, undefined, 'conquista não leva link');
+  assert.equal((await postMu(tk, { kind: 'conquista', ach: 'primeira', text: 'Foi difícil, mas consegui! <b>oi</b>' })).status, 409);
+  // quem não tem e-mail confirmado só lê
+  const un = (await call('/api/register', { body: { name: 'Sem Confirmar', email: 'mu-q2@teste.com', password: 'segredo1', accept: true } })).j;
+  assert.equal((await postMu(un.token, { kind: 'conquista', ach: 'primeira' })).status, 403);
+  // o aluno não cria aviso, não destaca e não comenta (isso é do painel do dono)
+  assert.equal((await postMu(tk, { kind: 'aviso', text: 'Aviso falso da Equipe CodeUp' })).status, 400, 'aluno não cria aviso');
+  const p = await postMu(tk, { kind: 'dica', text: 'Dica com campos escondidos para testar', staff: true, pin: true, cm: [{ text: 'x' }], uid: 'outro' });
+  assert.equal(p.status, 200); assert.ok(!p.j.item.staff && !p.j.item.pin && !p.j.item.cm, 'staff, pin e cm vindos do aluno são ignorados'); assert.equal((await mural(tk)).pinned.length, 0);
+  for (const [m, u] of [['POST', 'mural/new'], ['POST', 'mural/' + p.j.item.id + '/comment'], ['POST', 'mural/' + p.j.item.id], ['DELETE', 'mural/' + p.j.item.id + '/comment/x']]) assert.ok([401, 404].includes((await call('/api/admin/' + u, { method: m, token: tk, body: { text: 'oi pessoal', action: 'pin' } })).status), 'rota do dono fechada para aluno: ' + u);
+});
+
+test('mural: o dono publica avisos da Equipe, destaca (até 3) e comenta; o aluno vê, curte e não denuncia', async () => {
+  const [a, b] = await Promise.all([regP('mu-d1@teste.com', 'Dani Dona'), regP('mu-d2@teste.com', 'Duda Leitora')]);
+  assert.equal((await call('/api/admin/mural/new', { body: { text: 'sem token nao entra' } })).status, 404, 'sem token a rota nem existe');
+  const bad = async (body, st, re) => { const x = await A('mural/new', body); assert.equal(x.status, st, JSON.stringify(body)); if (re) assert.match(x.j.error, re); };
+  await bad({}, 400, /frase/); await bad({ text: 'oi' }, 400); await bad({ text: 'a'.repeat(501) }, 400, /500/); await bad({ text: 'texto valido do aviso', link: 'http://exemplo.com' }, 400, /https/);
+  const n1 = await A('mural/new', { text: 'Novidade! <b>Excel Intermediário</b> no ar.', link: 'https://exemplo.com/novo', pin: true }); assert.equal(n1.status, 200, JSON.stringify(n1.j)); const id1 = n1.j.row.id;
+  assert.equal(n1.j.row.staff, true); assert.equal(n1.j.row.pin, true); assert.equal(n1.j.row.kind, 'aviso'); assert.equal(n1.j.row.author.name, 'Equipe CodeUp');
+  const n2 = await A('mural/new', { text: 'Segundo aviso sem destaque' }); assert.equal(n2.status, 200); const id2 = n2.j.row.id;
+  // o aluno vê o aviso destacado em cima (só no "Tudo", uma vez) e o outro na lista
+  const m = await mural(a); assert.equal(m.pinned.length, 1); const it = m.pinned[0];
+  assert.equal(it.staff, true); assert.equal(it.name, 'Equipe CodeUp'); assert.equal(it.kind, 'aviso'); assert.equal(it.pin, true); assert.equal(it.link, 'https://exemplo.com/novo'); assert.equal(it.text, 'Novidade! <b>Excel Intermediário</b> no ar.');
+  assert.ok(!('mine' in it) && !('guide' in it) && !('uid' in it), 'aviso da Equipe não mostra aluno nenhum');
+  assert.ok(m.items.some(x => x.id === id2) && !m.items.some(x => x.id === id1), 'o destaque não repete na lista');
+  assert.deepEqual((await mural(a, '?k=aviso')).items.map(x => x.id).sort(), [id1, id2].sort(), 'filtro Avisos'); assert.equal((await mural(a, '?k=aviso')).pinned.length, 0);
+  assert.equal((await mural(a, '?mine=1')).items.length, 0, 'aviso não é "meu post" de ninguém');
+  // curtir pode; denunciar e apagar não
+  assert.deepEqual((await call(`/api/mural/${id1}/like`, { token: b, body: {} })).j, { likes: 1, liked: true });
+  const rep = await call(`/api/mural/${id1}/report`, { token: b, body: {} }); assert.equal(rep.status, 400); assert.match(rep.j.error, /Equipe CodeUp/);
+  assert.equal((await call('/api/mural/' + id1, { method: 'DELETE', token: a })).status, 404, 'aluno não apaga aviso');
+  // comentários do dono (só o dono comenta)
+  assert.equal((await A(`mural/${id1}/comment`, { text: '' })).status, 400); assert.equal((await A(`mural/${id1}/comment`, { text: 'a'.repeat(301) })).status, 400); assert.equal((await A('mural/naoexiste/comment', { text: 'oi pessoal' })).status, 404);
+  assert.equal((await A(`mural/${id1}/comment`, { text: 'Parabéns, turma! <i>Continuem assim</i>' })).status, 200);
+  const sh = (await mural(a)).pinned.find(x => x.id === id1); assert.equal(sh.cm.length, 1); assert.equal(sh.cm[0].text, 'Parabéns, turma! <i>Continuem assim</i>'); assert.ok(!('uid' in sh.cm[0]));
+  // comentar também vale para post de aluno
+  const pa = (await postMu(a, { kind: 'dica', text: 'Dica da Dani para a turma toda' })).j.item.id; assert.equal((await A(`mural/${pa}/comment`, { text: 'Boa dica, Dani!' })).status, 200);
+  assert.equal((await mural(b)).items.find(x => x.id === pa).cm[0].text, 'Boa dica, Dani!');
+  // destaque: no máximo 3
+  assert.equal((await A('mural/' + id2, { action: 'pin' })).status, 200); assert.equal((await A('mural/' + pa, { action: 'pin' })).status, 200);
+  const n3 = await A('mural/new', { text: 'Terceiro aviso para testar o limite', pin: true }); assert.equal(n3.status, 400); assert.match(n3.j.error, /3 posts destacados/);
+  assert.equal((await A('mural/new', { text: 'Terceiro aviso sem destaque' })).status, 200);
+  assert.equal((await mural(b)).pinned.length, 3); assert.equal((await A('mural/' + id2, { action: 'unpin' })).status, 200); assert.equal((await mural(b)).pinned.length, 2);
+  // lista do dono: filtro "Avisos da Equipe", contagens e comentário apagado
+  const st = (await A('mural?f=staff')).j; assert.equal(st.filter, 'staff'); assert.ok(st.staff >= 3 && st.rows.every(r => r.staff && r.kind === 'aviso')); assert.equal(st.max.pins, 3);
+  const row = (await A('mural?f=all')).j.rows.find(r => r.id === id1); assert.equal(row.cm.length, 1); assert.equal(row.author.name, 'Equipe CodeUp');
+  assert.equal((await A(`mural/${id1}/comment/${row.cm[0].id}`, undefined, 'DELETE')).status, 200); assert.equal((await mural(a)).pinned.find(x => x.id === id1).cm, undefined); assert.equal((await A(`mural/${id1}/comment/zzz`, undefined, 'DELETE')).status, 404);
+  // auditoria e remoção
+  const au = (await A('audit?limit=300')).j.rows.map(r => r.action); for (const k of ['publicou-aviso', 'comentou-post', 'apagou-comentario', 'destacou-post', 'tirou-destaque']) assert.ok(au.includes(k), 'auditoria: ' + k);
+  assert.equal((await A('mural/' + id1, { action: 'remove' })).status, 200); assert.ok(!(await mural(a)).pinned.some(x => x.id === id1));
+  // os posts da Equipe não entram na exportação de dados de nenhum aluno
+  assert.ok((await call('/api/export', { token: a })).j.mural.every(x => x.texto !== 'Segundo aviso sem destaque'));
+});
+
+test('mural: arquivos do app — aba Conquistas, conquista só da lista, Equipe CodeUp e telas do dono', async () => {
+  const rd = f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8'), ui = rd('app.js'), adm = rd('admin.js'), css = rd('style.css');
+  for (const f of ['function muConq(', 'function muFeed(', 'function muTab(', 'function muAch(', 'function muAchSend(', 'const ACHS = [', 'Destaques da Equipe', 'Conquistas da turma', 'Minhas conquistas']) assert.ok(ui.includes(f), f);
+  assert.match(ui, /MU_POST = \['projeto', 'dica'\]/, 'o aluno só escreve projeto e dica; conquista vem da lista'); assert.match(ui, /kind: 'conquista', ach: id/, 'compartilhar manda o id da conquista, não texto livre');
+  const card = ui.slice(ui.indexOf('function muCard'), ui.indexOf('function muView'));
+  assert.match(card, /esc\(c\.text\)/, 'comentário da Equipe sempre escapado'); assert.match(card, /r\.staff \? ''/, 'aviso da Equipe não tem Denunciar nem Apagar'); assert.match(card, /esc\(A\[2\]\)/);
+  const ids = [...ui.matchAll(/\['(\w+)', '\w+', '[^']+', '[^']+'\]/g)].map(x => x[1]).filter(x => ['primeira', 'seq3', 'basico', 'inter', 'avancado', 'curso', 'meio', 'xp1000'].includes(x));
+  assert.deepEqual(ids, ['primeira', 'seq3', 'basico', 'inter', 'avancado', 'curso', 'meio', 'xp1000'], 'as 8 conquistas do app');
+  for (const c of ['.mqg{', '.mqt.on', '.mqbd{', '.mst{', '.mucmi{', '.mucm{']) assert.ok(css.includes(c), 'estilo ' + c);
+  for (const a of ['mu-new', 'mu-cm', 'mu-pin', 'mu-cmdel']) assert.match(adm, new RegExp(a), 'painel do dono: ' + a); assert.match(adm, /Avisos da Equipe/);
+  assert.match(adm, /esc\(c\.text\)/, 'comentário escapado no painel');
 });

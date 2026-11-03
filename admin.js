@@ -17,7 +17,7 @@ const crypto = require('crypto'), path = require('path'), totp = require('./totp
 
 module.exports = function mountAdmin(app, X) {
   const { DB, save, limit, tooMany, sha, same, lessons, checkpoints, projects, TRACKS, TRACK_NAMES, actOf, finals, PROD, BASE, dropSessions,
-    makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf, dropPosts } = X;
+    makeResetLink, sendVerify, settingsMain, unlockAllOn, courseOn, coursesCfg, store, ensure, adminHost, info, adsNow, adsClientOf, adsSlotOf, dropPosts, muralClean, muralLink, MURAL_TEXT, MURAL_PINS, MURAL_CM_MAX, ACH } = X;
   const lvs = t => Array.from({ length: (lessons.LEVELS_OF || {})[t] || 3 }, (_, i) => i + 1);   // níveis que o curso tem hoje (o Excel começa só com o Básico)
   const DAY = 864e5, TZ = -3 * 36e5;                                   // Brasil (sem horário de verão)
   const dk = ms => new Date(ms + TZ).toISOString().slice(0, 10);       // "2026-10-20" no horário de Brasília
@@ -339,18 +339,53 @@ module.exports = function mountAdmin(app, X) {
   });
 
   // ---------- mural: posts denunciados (3 denúncias escondem o post até aqui) e todos os posts ----------
-  const postRow = p => { const a = DB.users[p.uid] || {}; return { id: p.id, kind: p.kind, text: p.text, link: p.link || null, at: p.at, likes: (p.likes || []).length, reports: Object.keys(p.rep || {}).length, hidden: !!p.hidden, kept: !!p.ok, author: { id: p.uid, name: a.name || '(conta excluída)', email: a.email || '', banned: !!a.banned } }; };
+  const postRow = p => {
+    const a = p.staff ? { name: 'Equipe CodeUp' } : DB.users[p.uid] || {};
+    return { id: p.id, kind: p.kind, staff: !!p.staff, pin: !!p.pin, ach: ACH[p.ach] ? p.ach : null, achName: ACH[p.ach] || null, text: p.text, link: p.link || null, at: p.at, likes: (p.likes || []).length, reports: Object.keys(p.rep || {}).length, hidden: !!p.hidden, kept: !!p.ok,
+      cm: (p.cm || []).map(c => ({ id: c.id, text: c.text, at: c.at })), author: { id: p.staff ? null : p.uid, name: a.name || '(conta excluída)', email: a.email || '', banned: !!a.banned } };
+  };
+  const postWho = p => (p.staff ? 'Equipe: ' : `${(DB.users[p.uid] || {}).name || p.uid}: `) + p.text.slice(0, 60);
   app.get('/api/admin/mural', ...guard, (req, res) => {
     const all = Object.values(DB.posts || {}), pending = p => p.hidden || Object.keys(p.rep || {}).length > 0;
-    const f = req.query.f === 'all' ? 'all' : 'rep', rows = all.filter(p => f === 'all' || pending(p)).sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 100).map(postRow);
-    res.json({ on: settingsMain().mural !== false, filter: f, total: all.length, pending: all.filter(pending).length, rows });
+    const f = ['all', 'staff'].includes(req.query.f) ? req.query.f : 'rep', rows = all.filter(p => f === 'all' || (f === 'staff' ? p.staff : pending(p))).sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 100).map(postRow);
+    res.json({ on: settingsMain().mural !== false, filter: f, total: all.length, pending: all.filter(pending).length, staff: all.filter(p => p.staff).length, pins: all.filter(p => p.pin).length, max: { text: MURAL_TEXT, pins: MURAL_PINS, comments: MURAL_CM_MAX }, rows });
+  });
+  // O dono publica avisos da Equipe no Mural, comenta nos posts e destaca (no máximo 3). Só o painel faz isso: aluno nenhum consegue criar aviso, destaque ou comentário.
+  const pinsNow = () => Object.values(DB.posts || {}).filter(p => p.pin).length;
+  app.post('/api/admin/mural/new', ...guard, (req, res) => {
+    const b = req.body || {}, text = muralClean(b.text), link = muralLink(b.link);
+    if (text.length < 5) return res.status(400).json({ error: 'Escreva pelo menos uma frase (5 letras ou mais).' });
+    if (text.length > MURAL_TEXT) return res.status(400).json({ error: `O texto passou de ${MURAL_TEXT} letras. Encurte um pouco.` });
+    if (link === null) return res.status(400).json({ error: 'O link precisa ser um endereço https:// válido.' });
+    if (b.pin === true && pinsNow() >= MURAL_PINS) return res.status(400).json({ error: `Já existem ${MURAL_PINS} posts destacados. Tire o destaque de um deles antes.` });
+    DB.posts ??= {};
+    const p = { id: crypto.randomBytes(8).toString('hex'), uid: null, staff: true, kind: 'aviso', text, at: new Date().toISOString(), likes: [], rep: {} };
+    if (link) p.link = link; if (b.pin === true) p.pin = true;
+    DB.posts[p.id] = p; audit(req, 'publicou-aviso', postWho(p), p.pin ? 'destacado' : ''); save(); res.json({ ok: true, row: postRow(p) });
+  });
+  app.post('/api/admin/mural/:id/comment', ...guard, (req, res) => {
+    const p = (DB.posts || {})[String(req.params.id || '')]; if (!p) return res.status(404).json({ error: 'Post não encontrado (talvez já tenha sido apagado).' });
+    const text = muralClean((req.body || {}).text);
+    if (text.length < 2) return res.status(400).json({ error: 'Escreva o comentário.' });
+    if (text.length > 300) return res.status(400).json({ error: 'O comentário passou de 300 letras. Encurte um pouco.' });
+    p.cm ??= []; if (p.cm.length >= MURAL_CM_MAX) return res.status(400).json({ error: `Esse post já tem ${MURAL_CM_MAX} comentários da Equipe.` });
+    p.cm.push({ id: crypto.randomBytes(6).toString('hex'), text, at: new Date().toISOString() });
+    audit(req, 'comentou-post', postWho(p), text.slice(0, 60)); save(); res.json({ ok: true, cm: p.cm.length });
+  });
+  app.delete('/api/admin/mural/:id/comment/:cid', ...guard, (req, res) => {
+    const p = (DB.posts || {})[String(req.params.id || '')], i = p ? (p.cm || []).findIndex(c => c.id === String(req.params.cid || '')) : -1;
+    if (i < 0) return res.status(404).json({ error: 'Comentário não encontrado.' });
+    const [c] = p.cm.splice(i, 1); if (!p.cm.length) delete p.cm;
+    audit(req, 'apagou-comentario', postWho(p), c.text.slice(0, 60)); save(); res.json({ ok: true });
   });
   app.post('/api/admin/mural/:id', ...guard, (req, res) => {
     const p = (DB.posts || {})[String(req.params.id || '')]; if (!p) return res.status(404).json({ error: 'Post não encontrado (talvez a pessoa já tenha apagado).' });
-    const a = String((req.body || {}).action || ''), who = `${(DB.users[p.uid] || {}).name || p.uid}: ${p.text.slice(0, 60)}`;
+    const a = String((req.body || {}).action || ''), who = postWho(p);
     if (a === 'keep') { p.hidden = false; p.ok = true; p.rep = {}; audit(req, 'manteve-post', who, ''); }                  // revisou e está tudo bem: volta a aparecer e as denúncias antigas zeram
     else if (a === 'hide') { p.hidden = true; audit(req, 'escondeu-post', who, ''); }
     else if (a === 'remove') { delete DB.posts[p.id]; audit(req, 'removeu-post', who, ''); }
+    else if (a === 'pin') { if (p.hidden) return res.status(400).json({ error: 'Esse post está escondido. Mantenha-o antes de destacar.' }); if (!p.pin && pinsNow() >= MURAL_PINS) return res.status(400).json({ error: `Já existem ${MURAL_PINS} posts destacados. Tire o destaque de um deles antes.` }); p.pin = true; audit(req, 'destacou-post', who, ''); }
+    else if (a === 'unpin') { delete p.pin; audit(req, 'tirou-destaque', who, ''); }
     else return res.status(400).json({ error: 'Ação desconhecida.' });
     save(); res.json({ ok: true });
   });

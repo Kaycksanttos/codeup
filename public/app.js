@@ -743,16 +743,22 @@ async function rkVis(show) {
 // vira <a> se começar com https://. O dono pode desligar o Mural no painel (S.cfg.mural) e 3 denúncias escondem o post até ele revisar.
 const MU_MAX = 500, MU_KIND = {
   projeto: ['Projeto', 'brief', 'Conte o que você montou e o que aprendeu. Ex.: "Fiz um painel de vendas em Power BI com 3 gráficos."'],
-  conquista: ['Conquista', 'trophy', 'Comemore! Ex.: "Passei na prova final do Básico de SQL!"'],
-  dica: ['Dica', 'bulb', 'Ensine algo que ajudou você. Ex.: "Use LIMIT 5 para espiar a tabela antes de rodar tudo."']
-};
+  conquista: ['Conquista', 'trophy', ''],
+  dica: ['Dica', 'bulb', 'Ensine algo que ajudou você. Ex.: "Use LIMIT 5 para espiar a tabela antes de rodar tudo."'],
+  aviso: ['Aviso', 'shield', '']
+}, MU_POST = ['projeto', 'dica'];     // o aluno escreve projeto e dica; conquista só se compartilha da lista abaixo; aviso é só da Equipe (painel do dono)
+// as conquistas do app: [id, ícone, nome, como ganhar]. O servidor tem a mesma lista e confere se a pessoa realmente ganhou antes de deixar compartilhar.
+const ACHS = [['primeira', 'target', 'Primeira lição', 'Conclua uma lição.'], ['seq3', 'flame', 'Sequência de 3 dias', 'Treine 3 dias seguidos.'], ['basico', 'cap', 'Básico aprovado', 'Passe na prova final de um Básico.'], ['inter', 'code', 'Intermediário aprovado', 'Passe na prova final de um Intermediário.'],
+  ['avancado', 'trophy', 'Avançado aprovado', 'Passe na prova final de um Avançado.'], ['curso', 'award', 'Curso concluído', 'Passe em todas as provas finais de um curso.'], ['meio', 'chart', 'Meio caminho', 'Chegue a 50% do seu curso.'], ['xp1000', 'bolt', '1.000 XP', 'Junte 1.000 XP.']];
+const achBy = id => ACHS.find(x => x[0] == id);
 const muOn = () => !S.cfg || S.cfg.mural !== false;
-const muSt = () => S.mu || (S.mu = { items: [], more: false, next: null, k: '', mine: false, on: true, err: false, open: false, draft: { kind: 'projeto', text: '', link: '' } });
+const muSt = () => S.mu || (S.mu = { v: 'feed', items: [], pinned: [], shared: [], more: false, next: null, k: '', mine: false, on: true, err: false, open: false, sh: null, cq: '', draft: { kind: 'projeto', text: '', link: '' } });
+const muFind = id => { const s = muSt(); return s.items.find(x => x.id == id) || (s.pinned || []).find(x => x.id == id); };
 const muAgo = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.max(0, Math.round((Date.now() - t) / 6e4)); if (m < 1) return 'agora'; if (m < 60) return `há ${m} min`; if (m < 1440) return `há ${Math.round(m / 60)} h`; if (m < 2880) return 'ontem'; if (m < 43200) return `há ${Math.round(m / 1440)} dias`; return new Date(t).toLocaleDateString('pt-BR'); };
 async function muFetch(more) {
-  const s = muSt(), q = new URLSearchParams(); if (s.k) q.set('k', s.k); if (s.mine) q.set('mine', '1'); if (more && s.next) q.set('before', s.next);
-  try { const r = await api('mural' + (q.toString() ? '?' + q : '')); s.on = r.on !== false; s.items = more ? s.items.concat(r.items || []) : (r.items || []); s.more = !!r.more; s.next = r.next || null; s.err = false; }
-  catch (e) { if (e.silent) throw e; if (more) return fail(e); s.err = true; s.items = []; s.more = false; }
+  const s = muSt(), q = new URLSearchParams(), conq = s.v == 'conq'; if (conq) q.set('k', 'conquista'); else { if (s.k) q.set('k', s.k); if (s.mine) q.set('mine', '1'); } if (more && s.next) q.set('before', s.next);
+  try { const r = await api('mural' + (q.toString() ? '?' + q : '')); s.on = r.on !== false; s.items = more ? s.items.concat(r.items || []) : (r.items || []); if (!more) s.pinned = r.pinned || []; s.shared = r.shared || s.shared || []; s.more = !!r.more; s.next = r.next || null; s.err = false; }
+  catch (e) { if (e.silent) throw e; if (more) return fail(e); s.err = true; s.items = []; s.pinned = []; s.more = false; }
 }
 async function muReload() { try { await muFetch(); render(); } catch (e) { } }
 function muFilter(k) { const s = muSt(); s.mine = k == 'mine'; s.k = k == 'mine' ? '' : k; muReload(); }
@@ -761,15 +767,14 @@ async function muMore() { const b = $('#mumore'); if (b) b.disabled = true; try 
 function muIdeas() {
   const m = S.me, nm = p => p.title.replace(/^Projeto:\s*/i, ''), out = [];
   (S.projs || []).filter(p => (m.cps || []).includes(p.id)).slice(-3).reverse().forEach(p => out.push({ kind: 'projeto', label: 'Projeto: ' + nm(p), text: `Concluí o projeto "${nm(p)}" no curso de ${TN[p.track]}. ` }));
-  achList().filter(a => a[2]).slice(-3).reverse().forEach(a => out.push({ kind: 'conquista', label: a[1], text: `Conquista desbloqueada no CodeUp: ${a[1]}! ` }));
   return out;
 }
 function muComposer() {
   const m = S.me, s = muSt(), d = s.draft;
   if (!m.verified) return `<div class="panel mucv">${ic('info', 20)}<div class=bd><b>Confirme seu e-mail para postar</b><small>Você já pode ler o Mural. Enviamos um link para ${esc(m.email)}.</small></div><button class="btn ghost" onclick=resendVerify()>Reenviar e-mail</button></div>`;
-  if (!s.open) return `<button class="panel muopen" onclick=muOpen()>${avatar(44, 'ring')}<span class=bd><b>Compartilhe com a turma</b><small>Projeto, conquista ou dica</small></span><span class=muplus>${ic('plus', 20)}</span></button>`;
+  if (!s.open) return `<button class="panel muopen" onclick=muOpen()>${avatar(44, 'ring')}<span class=bd><b>Compartilhe com a turma</b><small>Projeto ou dica</small></span><span class=muplus>${ic('plus', 20)}</span></button>`;
   const ideas = muIdeas();
-  return `<div class="panel mucomp"><div class=mukinds role=tablist aria-label="Tipo do post">${Object.entries(MU_KIND).map(([k, v]) => `<button role=tab aria-selected=${d.kind == k} class="${d.kind == k ? 'on' : ''}" onclick="muKind('${k}')">${ic(v[1], 16)}<span>${v[0]}</span></button>`).join('')}</div>
+  return `<div class="panel mucomp"><div class=mukinds role=tablist aria-label="Tipo do post">${MU_POST.map(k => [k, MU_KIND[k]]).map(([k, v]) => `<button role=tab aria-selected=${d.kind == k} class="${d.kind == k ? 'on' : ''}" onclick="muKind('${k}')">${ic(v[1], 16)}<span>${v[0]}</span></button>`).join('')}</div>
     ${ideas.length ? `<div class=muid><small>Preencher com o que você fez:</small><div class=much>${ideas.map((x, i) => `<button onclick="muIdea(${i})">${esc(x.label)}</button>`).join('')}</div></div>` : ''}
     <textarea id=mut class=muta maxlength=${MU_MAX} rows=4 placeholder="${esc(MU_KIND[d.kind][2])}" oninput="muType(this)" aria-label="Texto do post">${esc(d.text)}</textarea>
     <div class=mucnt><span id=mucn>${d.text.length}/${MU_MAX}</span></div>
@@ -778,27 +783,61 @@ function muComposer() {
     <div class=mucs><button class="btn ghost" onclick=muCancel()>Cancelar</button><button class="btn pri" id=musend onclick=muSend()>Publicar</button></div></div>`;
 }
 function muCard(r) {
-  const K = MU_KIND[r.kind] || MU_KIND.dica, link = typeof r.link == 'string' && /^https:\/\//i.test(r.link) ? r.link : '', host = (() => { try { return new URL(link).hostname.replace(/^www\./, ''); } catch { return ''; } })(), id = esc(r.id);
-  return `<article class="panel muc k-${esc(r.kind)}${r.hidden ? ' hid' : ''}" id="mu-${id}"><header class=muh>${faceOf(r, 44)}<div class=bd><b>${esc(r.name)}${r.mine ? ' <span class=badge>você</span>' : ''}</b><small>${esc((CR.TIERS[r.tier] || CR.TIERS[0]).title)} · ${esc(muAgo(r.at))}</small></div><span class=muk>${ic(K[1], 14)} ${K[0]}</span></header>
+  const K = MU_KIND[r.kind] || MU_KIND.dica, link = typeof r.link == 'string' && /^https:\/\//i.test(r.link) ? r.link : '', host = (() => { try { return new URL(link).hostname.replace(/^www\./, ''); } catch { return ''; } })(), id = esc(r.id), A = r.ach && achBy(r.ach);
+  const who = r.staff ? `<span class=mst>${ic('shield', 22)}</span><div class=bd><b>Equipe CodeUp <span class="badge gold">${ic('check', 11)} oficial</span></b><small>${r.pin ? 'Destaque · ' : ''}${esc(muAgo(r.at))}</small></div>`
+    : `${faceOf(r, 44)}<div class=bd><b>${esc(r.name)}${r.mine ? ' <span class=badge>você</span>' : ''}</b><small>${esc((CR.TIERS[r.tier] || CR.TIERS[0]).title)} · ${esc(muAgo(r.at))}</small></div>`;
+  const auto = A && r.text == 'Desbloqueei a conquista "' + A[2] + '"!';          // texto automático: o selo já diz tudo
+  return `<article class="panel muc k-${esc(r.kind)}${r.staff ? ' staff' : ''}${r.hidden ? ' hid' : ''}" id="mu-${id}"><header class=muh>${who}<span class=muk>${ic(K[1], 14)} ${K[0]}</span></header>
     ${r.hidden ? `<div class=muhid>${ic('info', 15)}<span>Este post está escondido e em análise. Só você o vê por enquanto.</span></div>` : ''}
-    <p class=mup>${esc(r.text)}</p>${link && host ? `<a class=mul href="${esc(link)}" target=_blank rel="noopener noreferrer nofollow ugc">${ic('link', 15)}<span>${esc(host)}</span></a>` : ''}
+    ${A ? `<div class=mqbd><span class=mqi>${ic(A[1], 28)}</span><div><small>Conquista desbloqueada</small><b>${esc(A[2])}</b></div></div>` : ''}
+    ${auto ? '' : `<p class=mup>${esc(r.text)}</p>`}${link && host ? `<a class=mul href="${esc(link)}" target=_blank rel="noopener noreferrer nofollow ugc">${ic('link', 15)}<span>${esc(host)}</span></a>` : ''}
+    ${(r.cm || []).length ? `<div class=mucm>${r.cm.map(c => `<div class=mucmi><span class=mst>${ic('shield', 13)}</span><div><b>Equipe CodeUp</b><span>${esc(c.text)}</span><small>${esc(muAgo(c.at))}</small></div></div>`).join('')}</div>` : ''}
     <footer class=muf><button class="mulk${r.liked ? ' on' : ''}" onclick="muLike('${id}')" aria-pressed=${!!r.liked} aria-label="${r.liked ? 'Descurtir' : 'Curtir'} (${r.likes} ${r.likes == 1 ? 'curtida' : 'curtidas'})">${ic('heart', 19)}<b>${r.likes}</b></button><span class=grow></span>
-    ${r.mine ? `<button class=mua onclick="muDel('${id}')">${ic('trash', 15)} Apagar</button>` : r.reported ? `<span class=mua>${ic('check', 15)} Denunciado</span>` : `<button class=mua onclick="muRep('${id}')">${ic('flag', 15)} Denunciar</button>`}</footer></article>`;
+    ${r.staff ? '' : r.mine ? `<button class=mua onclick="muDel('${id}')">${ic('trash', 15)} Apagar</button>` : r.reported ? `<span class=mua>${ic('check', 15)} Denunciado</span>` : `<button class=mua onclick="muRep('${id}')">${ic('flag', 15)} Denunciar</button>`}</footer></article>`;
 }
 function muView() {
-  const s = muSt(), head = `<h2 class=ttl>Mural</h2><p class=sub>A turma mostra o que construiu e conquistou. Poste o seu e inspire quem está começando.</p>`;
+  const s = muSt(), head = `<h2 class=ttl>Mural</h2><p class=sub>A turma mostra o que construiu e conquistou. Compartilhe o seu e inspire quem está começando.</p>`;
   if (!muOn() || !s.on) return head + `<div class="panel rkem">${poseChip('pensando', 76)}<b>O Mural está em pausa</b><small>Volte daqui a pouco. Os posts ficam guardados.</small></div>`;
-  const F = [['', 'Tudo'], ['projeto', 'Projetos'], ['conquista', 'Conquistas'], ['dica', 'Dicas'], ['mine', 'Meus posts']], cur = s.mine ? 'mine' : s.k;
+  const seg = `<div class=pseg role=tablist aria-label="Seções do Mural">${[['feed', 'Mural'], ['conq', 'Conquistas']].map(([k, n]) => `<button role=tab aria-selected=${s.v == k} class="${s.v == k ? 'on' : ''}" onclick="muTab('${k}')">${n}</button>`).join('')}</div>`;
+  return head + seg + (s.v == 'conq' ? muConq() : muFeed()) + `<div class="panel rkpv">${ic('shield', 20)}<div class=bd><b>Combinado da turma</b><small>Aparecem só o seu primeiro nome, a inicial do sobrenome e o personagem, nunca o e-mail. Não poste senhas nem dados pessoais. Post ofensivo pode ser denunciado e removido.</small></div></div>`;
+}
+function muFeed() {
+  const s = muSt(), F = [['', 'Tudo'], ['aviso', 'Avisos'], ['projeto', 'Projetos'], ['dica', 'Dicas'], ['mine', 'Meus posts']], cur = s.mine ? 'mine' : s.k, pin = !s.k && !s.mine && (s.pinned || []).length;
   const list = s.err ? `<div class=panel><p>Não foi possível carregar o Mural agora.</p><button class="btn pri block" onclick=muReload()>Tentar de novo</button></div>`
     : s.items.length ? s.items.map(muCard).join('') + (s.more ? `<button class="btn ghost block" id=mumore onclick=muMore()>Ver mais posts</button>` : '')
-    : `<div class="panel rkem">${poseChip('pensando', 76)}<b>${s.mine ? 'Você ainda não postou' : 'Ainda não há posts aqui'}</b><small>${s.mine ? 'Compartilhe seu primeiro projeto, conquista ou dica!' : `Seja ${fm('o primeiro', 'a primeira')} a compartilhar algo com a turma!`}</small></div>`;
-  return head + muComposer() + `<div class=mufl role=tablist aria-label="Filtrar posts">${F.map(([k, n]) => `<button role=tab aria-selected=${cur == k} class="${cur == k ? 'on' : ''}" onclick="muFilter('${k}')">${n}</button>`).join('')}</div>` + list
-    + `<div class="panel rkpv">${ic('shield', 20)}<div class=bd><b>Combinado da turma</b><small>Aparecem só o seu primeiro nome, a inicial do sobrenome e o personagem, nunca o e-mail. Não poste senhas nem dados pessoais. Post ofensivo pode ser denunciado e removido.</small></div></div>`;
+    : pin ? '' : `<div class="panel rkem">${poseChip('pensando', 76)}<b>${s.mine ? 'Você ainda não postou' : s.k == 'aviso' ? 'Nenhum aviso por enquanto' : 'Ainda não há posts aqui'}</b><small>${s.mine ? 'Compartilhe seu primeiro projeto ou dica!' : s.k == 'aviso' ? 'Os avisos da Equipe CodeUp aparecem aqui.' : `Seja ${fm('o primeiro', 'a primeira')} a compartilhar algo com a turma!`}</small></div>`;
+  return muComposer() + `<div class=mufl role=tablist aria-label="Filtrar posts">${F.map(([k, n]) => `<button role=tab aria-selected=${cur == k} class="${cur == k ? 'on' : ''}" onclick="muFilter('${k}')">${n}</button>`).join('')}</div>`
+    + (pin ? `<div class=sec>${ic('star', 14)} Destaques da Equipe</div>${s.pinned.map(muCard).join('')}${s.items.length ? '<div class=sec>Mais recentes</div>' : ''}` : '') + list;
+}
+// aba Conquistas: as suas (para compartilhar) e as da turma (para ver e curtir)
+function muConq() {
+  const s = muSt(), m = S.me, ach = achList(), got = ach.filter(a => a[2]).length, shared = s.shared || [], sh = s.sh && achBy(s.sh);
+  const tile = a => { const done = shared.includes(a[3]);
+    return `<div class="mqt ${done ? 'sh' : a[2] ? 'on' : 'lk'}"><span class=mqi>${ic(a[2] ? a[0] : 'lock', 26)}</span><b>${esc(a[1])}</b>${done ? `<span class=mqs2>${ic('check', 13)} Compartilhada</span>` : a[2] ? `<button class="btn pri sm" onclick="muAch('${a[3]}')">${ic('chat', 14)} Compartilhar</button>` : `<small>${esc(achBy(a[3])[3])}</small>`}</div>`; };
+  const panel = sh ? `<div class="panel mqsp"><div class=mqbd><span class=mqi>${ic(sh[1], 28)}</span><div><small>Você vai compartilhar</small><b>${esc(sh[2])}</b></div></div>
+      <textarea id=mucq class=muta maxlength=200 rows=3 placeholder="Quer dizer algo? (opcional) Ex.: Foi difícil, mas consegui!" oninput="muSt().cq=this.value" aria-label="Mensagem opcional">${esc(s.cq || '')}</textarea>
+      <div class=mucs><button class="btn ghost" onclick=muAchCancel()>Cancelar</button><button class="btn pri" id=muqsend onclick=muAchSend()>Compartilhar</button></div></div>` : '';
+  const list = s.err ? `<div class=panel><p>Não foi possível carregar as conquistas agora.</p><button class="btn pri block" onclick=muReload()>Tentar de novo</button></div>`
+    : s.items.length ? s.items.map(muCard).join('') + (s.more ? `<button class="btn ghost block" id=mumore onclick=muMore()>Ver mais conquistas</button>` : '')
+    : `<div class="panel rkem">${poseChip('pensando', 76)}<b>Ninguém compartilhou ainda</b><small>Seja ${fm('o primeiro', 'a primeira')} a mostrar uma conquista para a turma!</small></div>`;
+  return (m.verified ? '' : `<div class="panel mucv">${ic('info', 20)}<div class=bd><b>Confirme seu e-mail para compartilhar</b><small>Você já pode ver as conquistas da turma. Enviamos um link para ${esc(m.email)}.</small></div><button class="btn ghost" onclick=resendVerify()>Reenviar e-mail</button></div>`)
+    + `<div class=sec>Minhas conquistas <span class=cnt>${got} de ${ach.length}</span></div>` + panel + `<div class=mqg>${ach.map(tile).join('')}</div><div class=sec>Conquistas da turma</div>` + list;
+}
+async function muTab(v) { const s = muSt(); if (s.v == v) return; s.v = v; s.k = ''; s.mine = false; s.sh = null; s.open = false; await muReload(); }
+function muAch(id) {
+  const s = muSt(); if (!S.me.verified) return toast('Confirme seu e-mail para compartilhar.', true);
+  s.sh = id; s.cq = ''; render(); setTimeout(() => { const p = $('.mqsp'); if (p) { p.scrollIntoView({ block: 'center', behavior: 'smooth' }); const t = $('#mucq'); if (t) t.focus({ preventScroll: true }); } }, 60);
+}
+function muAchCancel() { const s = muSt(); s.sh = null; s.cq = ''; render(); }
+async function muAchSend() {
+  const s = muSt(), id = s.sh, b = $('#muqsend'); if (!id) return; if (b) b.disabled = true;
+  try { await api('mural/new', { body: { kind: 'conquista', ach: id, text: (s.cq || '').trim() } }); s.sh = null; s.cq = ''; await muFetch(); render(); toast('Conquista compartilhada com a turma!'); }
+  catch (e) { fail(e); if (b) b.disabled = false; if (e.status == 409) { s.shared = [...new Set([...(s.shared || []), id])]; s.sh = null; render(); } }
 }
 const muFocus = () => setTimeout(() => { const t = $('#mut'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 60);
 function muOpen() { muSt().open = true; render(); muFocus(); }
 function muCancel() { muSt().open = false; render(); }
-function muKind(k) { if (MU_KIND[k]) { muSt().draft.kind = k; render(); muFocus(); } }
+function muKind(k) { if (MU_POST.includes(k)) { muSt().draft.kind = k; render(); muFocus(); } }
 function muType(el) { muSt().draft.text = el.value; const c = $('#mucn'); if (c) c.textContent = el.value.length + '/' + MU_MAX; }
 function muIdea(i) { const x = muIdeas()[i]; if (!x) return; const d = muSt().draft; d.kind = x.kind; d.text = x.text; render(); muFocus(); }
 async function muSend() {
@@ -808,9 +847,9 @@ async function muSend() {
   try { await api('mural/new', { body: { kind: d.kind, text, link: d.link.trim() } }); s.draft = { kind: d.kind, text: '', link: '' }; s.open = false; s.k = ''; s.mine = false; await muFetch(); render(); window.scrollTo(0, 0); toast('Publicado no Mural!'); }
   catch (e) { fail(e); if (b) b.disabled = false; }
 }
-function muPaint(id) { const r = muSt().items.find(x => x.id == id), el = document.getElementById('mu-' + id); if (r && el) el.outerHTML = muCard(r); }
+function muPaint(id) { const r = muFind(id), el = document.getElementById('mu-' + id); if (r && el) el.outerHTML = muCard(r); }
 async function muLike(id) {
-  const r = muSt().items.find(x => x.id == id); if (!r) return;
+  const r = muFind(id); if (!r) return;
   try { const j = await api(`mural/${id}/like`, { body: {} }); r.likes = j.likes; r.liked = j.liked; muPaint(id); } catch (e) { fail(e); if (e.status == 404) muReload(); }
 }
 async function muRep(id) {
@@ -819,13 +858,10 @@ async function muRep(id) {
 }
 async function muDel(id) {
   if (!confirm('Apagar este post? Isso não pode ser desfeito.')) return;
-  try { await api('mural/' + id, { method: 'DELETE' }); const s = muSt(); s.items = s.items.filter(x => x.id != id); toast('Post apagado.'); render(); } catch (e) { fail(e); }
+  try { const r = muFind(id); await api('mural/' + id, { method: 'DELETE' }); const s = muSt(); s.items = s.items.filter(x => x.id != id); if (r && r.ach) s.shared = (s.shared || []).filter(x => x != r.ach); toast('Post apagado.'); render(); } catch (e) { fail(e); }
 }
-// botão "Compartilhar no Mural" do perfil: abre o Mural com um texto pronto sobre as conquistas
-async function muShare() {
-  const s = muSt(), got = achList().filter(a => a[2]).map(a => a[1]); if (!got.length) return;
-  s.draft = { kind: 'conquista', text: `Minhas conquistas no CodeUp: ${got.join(', ')}.`.slice(0, MU_MAX), link: '' }; s.open = true; s.k = ''; s.mine = false; await go('mu'); muFocus();
-}
+// botão "Compartilhar minhas conquistas" do perfil: abre o Mural direto na aba Conquistas
+async function muShare() { const s = muSt(); s.v = 'conq'; s.k = ''; s.mine = false; s.sh = null; s.open = false; await go('mu'); }
 
 function profileView(L, T) {
   const t = ['res', 'per', 'aju'].includes(S.pft) ? S.pft : 'res';
@@ -846,18 +882,18 @@ function pfProg() {
   return `<div class="panel pfg"><div class=pfp><div class=ph><span>${nxt ? 'Próximo título: ' + nxt.title : 'Você chegou ao topo: Lenda!'}</span><b>${nxt ? 'faltam ' + nf(nxt.xp - m.xp) + ' XP' : nf(m.xp) + ' XP'}</b></div><div class=bar><i style="width:${nxt ? Math.round((m.xp - tier.xp) / (nxt.xp - tier.xp) * 100) : 100}%"></i></div></div>
     <div class=pfp><div class=ph><span>Nível ${lvl} → ${lvl + 1}</span><b>${m.xp % 100} / 100 XP</b></div><div class="bar thin"><i style="width:${m.xp % 100}%"></i></div></div></div>`;
 }
-// as conquistas do perfil: [ícone, nome, já ganhou?] (o Mural usa a mesma lista para sugerir posts)
+// as conquistas do perfil: [ícone, nome, já ganhou?, id] (o Mural compartilha a partir desta lista)
 function achList() {
   const m = S.me, n = (S.ls || []).filter(done).length, np = Object.keys(m.passed).length, T = m.track;
-  return [['target', 'Primeira lição', n >= 1], ['flame', 'Sequência de 3 dias', m.streak >= 3], ['cap', 'Básico aprovado', np >= 1], ['code', 'Intermediário aprovado', COURSES.some(t => passedLv(t, 2))],
-    ['trophy', 'Avançado aprovado', COURSES.some(t => passedLv(t, 3))], ['award', 'Curso concluído', COURSES.some(trackPassed)], ['chart', 'Meio caminho', T ? trackPct(T) >= 50 : false], ['bolt', '1.000 XP', m.xp >= 1000]];
+  const got = [n >= 1, m.streak >= 3, np >= 1, COURSES.some(t => passedLv(t, 2)), COURSES.some(t => passedLv(t, 3)), COURSES.some(trackPassed), T ? trackPct(T) >= 50 : false, m.xp >= 1000];
+  return ACHS.map((a, i) => [a[1], a[2], got[i], a[0]]);
 }
 function pfRes(L, T) {
   const m = S.me, n = L.filter(done).length, np = Object.keys(m.passed).length, ach = achList();
   const kp = (i, v, l) => `<div class=kp><span class=kpi>${ic(i, 17)}</span><b>${v}</b><small>${l}</small></div>`;
   return `${pfProg()}<div class=kpg>${kp('flame', m.streak, 'dias de treino') + kp('file', n, 'lições feitas') + kp('cap', np, 'provas aprovadas') + kp('bolt', nf(m.xp), 'XP total') + kp('chart', nf(m.wk), 'XP na semana') + kp('gem', nf(m.gems || 0), 'diamantes')}</div>
     <div class=sec>Conquistas <span class=cnt>${ach.filter(a => a[2]).length} de ${ach.length}</span></div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
-    ${muOn() && ach.some(a => a[2]) ? `<button class="btn ghost block" onclick=muShare()>${ic('chat', 17)} Compartilhar no Mural</button>` : ''}
+    ${muOn() && ach.some(a => a[2]) ? `<button class="btn ghost block" onclick=muShare()>${ic('chat', 17)} Compartilhar minhas conquistas</button>` : ''}
     ${tiersView()}`;
 }
 function pfChar() {

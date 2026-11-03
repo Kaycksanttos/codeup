@@ -142,3 +142,4 @@ td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ---------- mural (moderação) ---------- */
 .mrow{margin-bottom:12px}.mp{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;line-height:1.45}.mrow a{color:var(--acc);word-break:break-all}
+.mcm{margin-top:8px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--acc,#4f8cff) 14%,transparent);font-size:13.5px;line-height:1.4;word-break:break-word}.mcm b{color:var(--acc,#4f8cff);margin-right:4px}.mcm .btn{padding:2px 6px;margin-left:4px;vertical-align:middle}
