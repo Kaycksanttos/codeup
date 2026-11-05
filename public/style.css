@@ -1444,3 +1444,10 @@ body.wild .mqt{background:linear-gradient(180deg,var(--gl1),var(--gl2));border:1
 body.wild .mqt.on,body.wild .mqt.sh{border-color:color-mix(in srgb,var(--gold) 55%,var(--gline))}
 body.neo .mqt{background-color:rgba(255,255,255,.88);border:2px solid #e2e8fa;box-shadow:0 8px 22px rgba(70,80,160,.08)}
 body.neo .mqt.on,body.neo .mqt.sh{border-color:var(--gold);background:linear-gradient(180deg,#fff7e8,#fff)}
+
+/* círculo de explicar o código (depois das lições 6, 13, 19 e 26): uma lição só, redondo e em verde-água para não se confundir com lição, projeto nem prova */
+body .tl .ti.cp.ec .rail span.nd{border-radius:50%}
+body .tl .ti.cp.ec.av .rail span.nd{background:linear-gradient(145deg,#2dd4bf,#0891b2);color:#fff;box-shadow:0 7px 0 #0e7490,0 0 0 7px rgba(45,212,191,.22);animation:ecp 2.2s ease-in-out infinite}
+@keyframes ecp{50%{box-shadow:0 7px 0 #0e7490,0 0 0 13px rgba(45,212,191,.08)}}
+body.wild .tl .ti.ec{--cp-a:#a5f3fc;--cp-b:#0891b2;--cp-rgb:45,212,191;--cp-line:#cffafe}
+@media (prefers-reduced-motion:reduce){body .tl .ti.cp.ec.av .rail span.nd{animation:none}}

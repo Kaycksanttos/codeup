@@ -68,15 +68,24 @@ try { seedTables = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 's
 const seedKey = s => require('crypto').createHash('sha1').update(String(s || '')).digest('hex').slice(0, 10);
 lessons.forEach(x => { const r = RD[x.id]; if (r) { x.read = r; if (x.type === 'sql') x.read.seedKey = seedKey(r.seed || x.seed); } });
 
-// 3ª ATIVIDADE (só Python e SQL, níveis Intermediário e Avançado): "explicar o código" com as próprias palavras. Os itens ficam em content/ex-*.js (um por lição, pelo id),
-// são corrigidos por conceitos (veja explain.js) e conferidos por `npm run check:explicar`.
+// EXPLICAR O CÓDIGO (só Python e SQL, níveis Intermediário e Avançado): o aluno escreve com as próprias palavras o que um código faz. Não é atividade de dentro da lição: é um CÍRCULO PRÓPRIO
+// no mapa, de uma lição só, a cada 6 ou 7 lições (depois das lições 6, 13, 19 e 26 — veja EC_AFTER). Os itens ficam em content/ex-*.js (um por lição, pelo id; cada círculo usa o item da
+// lição em que ele aparece), são corrigidos por conceitos (veja explain.js) e conferidos por `npm run check:explicar`.
 //   { code, kind: 'faz' | 'traz', q?, groups: ['!rótulo :: raiz|raiz', ...], need?, model, alt?, facts?, seed? (SQL) }
 const EXPLAIN = require('./explain');
 const EX = {};
 for (const tr of TRACKS) FILES[tr].forEach(f => {
   try { Object.assign(EX, require('./content/ex-' + f)); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND' || !/ex-/.test(e.message)) throw e; }
 });
-lessons.forEach(x => { const r = EX[x.id]; if (r && x.read && x.lv >= 2 && (x.type === 'python' || x.type === 'sql')) { x.expl = EXPLAIN.compile(r); if (x.type === 'sql') x.expl.seedKey = seedKey(r.seed || x.seed); } });
+lessons.forEach(x => { const r = EX[x.id]; if (r && x.read && x.lv >= 2 && (x.type === 'python' || x.type === 'sql')) { x.expl = EXPLAIN.compile(r); if (x.type === 'sql') x.expl.seedKey = seedKey(r.seed || x.seed); } });   // o item compilado de cada lição (a lição em si não tem atividade de explicar)
+const EC_AFTER = [6, 13, 19, 26];        // o círculo de explicar vem depois das lições 6, 13, 19 e 26 (a cada 6 ou 7 lições); fica longe dos projetos (5, 10, 15...) e dos checkpoints (10 e 20)
+const EC_XP = 25, EC_GEMS = 3;           // pontos e diamantes do círculo (uma vez só)
+const explains = [];
+for (const x of lessons) {
+  if (!x.expl || !EC_AFTER.includes(x.n)) continue;
+  const bl = lessons.filter(l => l.track === x.track && l.lv === x.lv && l.n > (EC_AFTER[EC_AFTER.indexOf(x.n) - 1] || 0) && l.n <= x.n);   // as lições que vieram desde o círculo anterior
+  explains.push({ id: x.id.replace(/^([a-z]+-\d+-)0*(\d+)$/, 'ec-$1$2'), ec: true, src: x.id, k: EC_AFTER.indexOf(x.n) + 1, after: x.n, xp: EC_XP, title: 'Explicar o código', type: x.type, track: x.track, level: x.level, lv: x.lv, expl: x.expl, cobre: bl.map(l => l.title) });
+}
 
 // provas de checkpoint e prova final: ficam fora de `lessons` para não mudar a contagem das 30 lições do nível
 const tests = [...require('./content/checkpoints'), ...require('./content/cp-xl'), ...require('./content/cp-pbi'), ...require('./content/cp-da')].map(fill);
@@ -97,4 +106,4 @@ const ENUN = require('./content/enunciados');
 for (const x of [...lessons, ...tests, ...projects]) if (ENUN[x.id]) x.task = ENUN[x.id];
 
 module.exports = lessons;
-Object.assign(module.exports, { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });
+Object.assign(module.exports, { checkpoints, finals, tests, projects, explains, EC_AFTER, EC_XP, EC_GEMS, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });

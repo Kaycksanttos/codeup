@@ -264,6 +264,7 @@ module.exports = function mountAdmin(app, X) {
         for (const L of all ? lvs(t) : [lv]) {
           lessons.filter(l => l.track === t && l.lv === L).forEach(l => { delete u.done[l.id]; for (const f of ['ex', 'ler', 'exp']) delete (u[f] || {})[l.id]; delete u.attempts[l.id]; });
           [...checkpoints, ...finals, ...projects].filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; delete u.cptry[c.id]; });
+          (lessons.explains || []).filter(c => c.track === t && c.lv === L).forEach(c => { delete (u.ecdone || {})[c.id]; delete (u.etries || {})[c.id]; });   // os círculos de explicar o código do nível também
           delete u.passed[`${t}-${L}`]; delete u.exams[`${t}-${L}`];
         }
         audit(req, 'zerou-progresso', who, `${t} ${all ? 'todos os níveis' : 'nível ' + lv}`); break;

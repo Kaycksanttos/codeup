@@ -5,7 +5,7 @@ const { Worker } = require('worker_threads');
 const lessons = require('./lessons');
 const EXPLAIN = require('./explain');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
-const { checkpoints, finals, tests, projects, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
+const { checkpoints, finals, tests, projects, explains, EC_GEMS: R_EC_GEMS, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
 const TRACK_NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
 const xlcheck = require('./xlcheck');   // correção das atividades de Excel (compara os resultados das fórmulas)
 const daxcheck = require('./daxcheck'), quizcheck = require('./quizcheck');   // Power BI e DAX: medidas DAX (compara os resultados nos visuais) e quizzes (escolher, ordenar, ligar, número, montar visual, escrever)
@@ -82,7 +82,7 @@ async function initDb() {
   Object.assign(DB, await store.load());
   DB.users ??= {}; DB.sessions ??= {}; DB.resets ??= {}; DB.verifies ??= {}; DB.asessions ??= {}; DB.audit ??= {}; DB.settings ??= {}; DB.meta ??= {}; DB.posts ??= {};
   delete DB.certs;                                          // o certificado foi retirado do app: apaga os registros antigos (eles guardavam o nome da pessoa)
-  for (const u of Object.values(DB.users)) delete u.certs;
+  for (const u of Object.values(DB.users)) { delete u.certs; ensure(u); }               // ensure() também faz a migração do círculo de explicar (uma vez por aluno)
   prune(); await flush(); store.backup();
   setInterval(flush, 1000).unref(); setInterval(() => flush().then(() => store.backup()), 3600e3).unref(); setInterval(prune, 6 * 3600e3).unref();
   console.log(`Dados em: ${store.kind}`);
@@ -131,20 +131,20 @@ const cosState = u => ({ xp: u.xp, days: daysOf(u), own: u.own, gems: u.gems || 
 const cosOwned = u => R.ownedCostumes(cosState(u)).filter(k => R.costume(k).guide === u.guide);   // as de outro personagem ficam guardadas, mas não valem
 const cosWorn = u => { const c = R.costume(u.cost); return c && c.guide === u.guide && R.costumeState(c, cosState(u)) === 'own' ? c.key : null; };
 const pub = u => ({
-  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, ex: u.ex || {}, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, days: daysOf(u), own: cosOwned(u), cos: cosWorn(u), hasPassword: !!u.pass, google: !!u.googleId,
+  name: u.name, email: u.email, sex: u.sex || null, verified: u.verified !== false, xp: u.xp, done: u.done, ex: u.ex || {}, cps: Object.keys(u.cpdone || {}).filter(id => ACT.has(id)), ecs: Object.keys(u.ecdone || {}).filter(id => ACT.has(id)), gems: u.gems || 0, streak: u.streak || 0, days: daysOf(u), own: cosOwned(u), cos: cosWorn(u), hasPassword: !!u.pass, google: !!u.googleId,
   track: u.track || null, guide: u.guide || null, gname: u.gname || null, frame: u.frame || null, color: R.pick('color', u.xp, u.color, u.guide), sticker: R.pick('sticker', u.xp, u.sticker), bg: R.pick('bg', u.xp, u.bg), outfit: R.pick('outfit', u.xp, u.outfit), rankOff: !!u.rankOff, wk: u.wk && u.wk.w === weekId() ? u.wk.xp : 0, passed: u.passed || {}, fails: u.fails || {},
   unlocked: Object.fromEntries(TRACKS.filter(t => unlocked(u, t)).map(t => [t, true])),
   away: u.away ? { days: Math.max(1, Math.floor((Date.now() - Date.parse(u.away.from)) / 864e5)) } : null          // dias sem entrar (só enquanto a tela "dormindo" não foi vista)
 });
-// ---------- as ATIVIDADES de cada lição: x) executar (teoria + prática) · r) ler o código · e) explicar o código (só Python/SQL Intermediário e Avançado) ----------
+// ---------- as ATIVIDADES de cada lição: x) executar (teoria + prática) · r) ler o código ----------
+// ("Explicar o código" não é mais atividade da lição: é um círculo próprio no mapa, de uma lição só — veja `explains` mais abaixo.)
 // A ORDEM em que aparecem é sorteada por aluno e por lição (e fica guardada: o sorteio é sempre o mesmo para a mesma pessoa e lição). Cada atividade só abre quando as que vêm
-// antes dela na ordem estão feitas. `u.ex[id]` = executar feita · `u.ler[id]` = ler feita · `u.exp[id]` = explicar feita · `u.done[id]` = lição concluída (todas feitas; é o que libera
+// antes dela na ordem estão feitas. `u.ex[id]` = executar feita · `u.ler[id]` = ler feita · `u.done[id]` = lição concluída (todas feitas; é o que libera
 // a próxima lição). Quem já tinha a lição concluída antes de existirem as atividades novas continua concluído (e já tinha ganhado o XP). O XP da lição se divide entre as atividades.
 const hasRead = l => !!(l && l.read && !l.cp && !l.fin);
-const hasExpl = l => !!(l && l.expl && hasRead(l));
-const actsOf = l => !hasRead(l) ? [] : hasExpl(l) ? ['x', 'r', 'e'] : ['x', 'r'];
-const ACT_NAME = { x: 'executar o código', r: 'ler o código', e: 'explicar o código' };
-const ACT_FLAG = { x: 'ex', r: 'ler', e: 'exp' };
+const actsOf = l => hasRead(l) ? ['x', 'r'] : [];
+const ACT_NAME = { x: 'executar o código', r: 'ler o código' };
+const ACT_FLAG = { x: 'ex', r: 'ler' };
 const actDone = (u, l, a) => !!(u.done[l.id] || (u[ACT_FLAG[a]] || {})[l.id]);
 const exDone = (u, l) => actDone(u, l, 'x');
 // "Como funciona" é a 1ª parte (arco) do círculo de toda lição com exemplo e vem sempre antes das outras atividades. Não dá XP, não trava nenhuma atividade e não entra na conclusão da lição:
@@ -160,20 +160,17 @@ function actBefore(u, l, a) {                                                   
   return null;
 }
 const ordMsg = b => `Antes, faça a atividade de ${ACT_NAME[b]}.`;
-const xpShare = (l, a) => {                                                            // 2 atividades: metade (arredondada para cima) para executar e o resto para ler · 3: um terço, depois o resto dividido
-  const n = actsOf(l).length, x = Math.ceil(l.xp / n); if (n < 3) return a === 'x' ? x : l.xp - x;
-  const r = Math.ceil((l.xp - x) / 2); return a === 'x' ? x : a === 'r' ? r : l.xp - x - r;
-};
-const GEMS = { 2: { x: 2, r: 3 }, 3: { x: 2, r: 2, e: 1 } };                          // diamantes: 5 por lição, divididos entre as atividades
+const xpShare = (l, a) => { const x = Math.ceil(l.xp / 2); return a === 'x' ? x : l.xp - x; };   // metade (arredondada para cima) do XP para executar e o resto para ler
+const GEMS = { x: 2, r: 3 };                                                           // diamantes: 5 por lição, divididos entre as duas atividades
 function award(u, l, a) {                                                              // XP e diamantes de uma atividade, só na 1ª vez (devolve o XP ganho)
   const f = l.id + ':' + a; if (u.xpd[l.id] || u.xpd[f]) return 0;
-  u.xpd[f] = 1; const g = xpShare(l, a); gainXp(u, g); u.gems = (u.gems || 0) + GEMS[actsOf(l).length][a]; return g;
+  u.xpd[f] = 1; const g = xpShare(l, a); gainXp(u, g); u.gems = (u.gems || 0) + GEMS[a]; return g;
 }
 function finishLesson(u, l, code) {                                                    // todas as atividades feitas? então a lição conclui (libera a próxima)
   if (u.done[l.id] || !actsOf(l).every(a => actDone(u, l, a))) return false;
   u.done[l.id] = { code: code ?? ((u.ex || {})[l.id] || {}).code ?? '', date: new Date().toISOString() }; return true;
 }
-const clearActs = (u, id) => { delete u.done[id]; for (const f of Object.values(ACT_FLAG)) delete (u[f] || {})[id]; };   // recomeçar a lição: apaga todas as atividades
+const clearActs = (u, id) => { delete u.done[id]; for (const f of ['ex', 'ler', 'exp']) delete (u[f] || {})[id]; };   // ('exp' é de quando explicar era atividade da lição)   // recomeçar a lição: apaga todas as atividades
 function tickStreak(u) {                                                                // a sequência de dias vale uma vez por dia, na 1ª atividade certa do dia
   const today = day(new Date()), yest = day(new Date(Date.now() - 864e5)); let streakUp = 0, gemBonus = 0;
   if (u.last !== today) {
@@ -191,14 +188,17 @@ function readPub(u, l) {                                                        
   return { ...readMeta(l), k: r.k, q: r.q, code: r.code, sheet: r.sheet, ask: r.ask, table: r.table, chart: r.chart, text: r.text, diagram: r.diagram, data: r.data, lang: r.lang, model: r.model, unit: r.unit, tables: names.length ? names : undefined, opts: r.k === 'mc' ? shuffled([r.ok, ...r.no], u.id + l.id) : undefined, done: !!u.done[l.id] };
 }
 const idx = id => lessons.findIndex(l => l.id === String(id));
-const ACT = new Map([...lessons, ...tests, ...projects].map(l => [l.id, l]));       // lições + checkpoints + provas finais + projetos
+const ACT = new Map([...lessons, ...tests, ...projects, ...explains].map(l => [l.id, l]));       // lições + checkpoints + provas finais + projetos + círculos de explicar
 const CP_AFTER = new Map(checkpoints.map(c => [`${c.track}-${c.lv}-${c.after}`, c]));   // checkpoint que vem depois da lição 10 e da 20
 const actOf = id => ACT.get(String(id));
 const PJ_AT = new Map(projects.map(p => [`${p.track}-${p.lv}-${p.after}`, p]));          // projeto que vem depois da lição 5, 10, 15, 20, 25 e 30
+// CÍRCULO DE EXPLICAR O CÓDIGO: depois das lições 6, 13, 19 e 26 do Intermediário e do Avançado de Python e SQL. Obrigatório (a lição seguinte só abre com ele feito); a conclusão fica em `u.ecdone`.
+const EC_AT = new Map(explains.map(e => [`${e.track}-${e.lv}-${e.after}`, e]));
+const ecDone = (u, track, lv, n) => { const e = EC_AT.get(`${track}-${lv}-${n}`); return !e || !!(u.ecdone || {})[e.id]; };
 const pjDone = (u, track, lv, n) => { const p = PJ_AT.get(`${track}-${lv}-${n}`); return !p || !!(u.cpdone || {})[p.id]; };   // o projeto feito fica guardado junto com os checkpoints (cpdone)
 const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
 const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
-const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cf ??= {}; u.cpdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; return u; };
+const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cf ??= {}; u.cpdone ??= {}; u.ecdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; if (!u.ecm) migrateEc(u); return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
 const key = (track, lv) => `${track}-${lv}`;
@@ -215,8 +215,10 @@ function lockOf(u, l) {
     const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); if (!(prev && u.done[prev.id])) return 'seq';
     return pjDone(u, l.track, l.lv, l.after) ? null : 'pj';
   }
+  if (l.ec) return (u.ecdone || {})[l.id] || u.done[l.src] ? null : 'seq';                  // o círculo de explicar libera quando a lição dele (6, 13, 19 ou 26) está feita
   if (l.proj) { const prev = lessons.find(x => x.track === l.track && x.lv === l.lv && x.n === l.after); return prev && u.done[prev.id] ? null : 'seq'; }   // o projeto libera quando a lição dele (5, 10, 15...) está feita
   if (l.n > 1 && !u.done[lessons[idx(l.id) - 1].id]) return 'seq';
+  if (!u.done[l.id] && l.n > 1 && !ecDone(u, l.track, l.lv, l.n - 1)) return 'ec';           // as lições 7, 14, 20 e 27 só abrem depois do círculo de explicar o código que vem antes delas
   if (!u.done[l.id] && l.n > 1 && (l.n - 1) % 5 === 0) {                                   // as lições 6, 11, 16, 21 e 26 só liberam com o projeto da lição anterior; a 11 e a 21 também com o checkpoint
     const c = (l.n - 1) % 10 === 0 ? cpBefore(l) : null;
     if (!(c && u.cpdone[c.id]) && !pjDone(u, l.track, l.lv, l.n - 1)) return 'pj';         // (quem já passou no checkpoint antes de existirem os projetos não é barrado)
@@ -225,13 +227,22 @@ function lockOf(u, l) {
   return null;
 }
 const cpBefore = l => CP_AFTER.get(`${l.track}-${l.lv}-${l.n - 1}`);   // checkpoint que vem logo antes da lição l (ou undefined)
-const LOCK_MSG = { off: 'Este curso não está disponível no momento.', level: 'Passe na prova final do nível anterior para liberar este nível.', seq: 'Conclua a lição anterior para liberar esta.', pj: 'Faça o projeto das últimas 5 lições para liberar esta lição.', cp: 'Passe no checkpoint (a prova com o que você aprendeu nas últimas 10 lições) para liberar esta lição.' };
-const lockMsg = (lock, l) => lock === 'seq' && (l.cp || l.fin || l.proj) ? (l.fin ? 'Conclua as 30 lições do nível para liberar a prova final.' : l.proj ? `Conclua a lição ${l.after} para liberar este projeto.` : `Conclua a lição ${l.after} para liberar este checkpoint.`)
+const LOCK_MSG = { off: 'Este curso não está disponível no momento.', level: 'Passe na prova final do nível anterior para liberar este nível.', seq: 'Conclua a lição anterior para liberar esta.', pj: 'Faça o projeto das últimas 5 lições para liberar esta lição.', ec: 'Faça o círculo de explicar o código para liberar esta lição.', cp: 'Passe no checkpoint (a prova com o que você aprendeu nas últimas 10 lições) para liberar esta lição.' };
+const lockMsg = (lock, l) => lock === 'seq' && (l.cp || l.fin || l.proj || l.ec) ? (l.fin ? 'Conclua as 30 lições do nível para liberar a prova final.' : l.proj ? `Conclua a lição ${l.after} para liberar este projeto.` : l.ec ? `Conclua a lição ${l.after} para liberar este círculo.` : `Conclua a lição ${l.after} para liberar este checkpoint.`)
   : lock === 'pj' && (l.cp || l.fin) ? `Faça o projeto da lição ${l.after} para liberar ${l.fin ? 'a prova final' : 'este checkpoint'}.` : LOCK_MSG[lock];
 const isTest = l => !!(l.cp || l.fin);
 const chancesLeft = (u, l) => Math.max(0, l.chances - ((u.cptry || {})[l.id] || 0));    // chances que ainda restam nesta prova
 const levelDone = (u, track, lv) => levelLessons(track, lv).every(l => u.done[l.id]);
 const trackDone = (u, track) => Array.from({ length: LEVELS_OF[track] || 3 }, (_, i) => i + 1).every(lv => u.passed[key(track, lv)]);   // curso concluído = prova final de todos os níveis que ele tem
+// MIGRAÇÃO (roda uma vez por aluno): antes, "explicar o código" era a 3ª atividade da lição. Agora a lição tem 2 atividades e o explicar virou um círculo próprio.
+//  • quem já tinha a lição do círculo concluída (ou já tinha explicado) fica com o círculo feito: não precisa explicar de novo;
+//  • quem só faltava explicar numa lição passa a ter a lição concluída (senão ficaria preso numa atividade que não existe mais).
+function migrateEc(u) {
+  u.ecdone ??= {};
+  for (const e of explains) if (!u.ecdone[e.id] && (u.done[e.src] || (u.exp || {})[e.src])) u.ecdone[e.id] = { date: new Date().toISOString(), migrated: true };
+  for (const l of lessons) if (!u.done[l.id] && hasRead(l) && actsOf(l).every(a => actDone(u, l, a))) finishLesson(u, l);
+  u.ecm = 1;
+}
 const findUser = email => Object.values(DB.users).find(u => u.email === email);
 const MAX_SESSIONS = 10;
 const tokOf = req => sha(String(req.headers['x-token'] || ''));
@@ -763,9 +774,13 @@ app.get('/api/checkpoints', auth, (req, res) =>
 app.get('/api/projects', auth, (req, res) =>
   res.json(projects.map(p => ({ id: p.id, title: p.title, type: p.type, track: p.track, lv: p.lv, k: p.k, after: p.after, xp: p.xp, proj: true, lock: lockOf(req.u, p) }))));
 
+// círculos de explicar o código (depois das lições 6, 13, 19 e 26 do Intermediário e do Avançado de Python e SQL). A conclusão fica em `ecs` do perfil
+app.get('/api/explains', auth, (req, res) =>
+  res.json(explains.map(e => ({ id: e.id, title: e.title, type: e.type, track: e.track, lv: e.lv, k: e.k, after: e.after, xp: e.xp, ec: true, lock: lockOf(req.u, e) }))));
+
 app.get('/api/lessons/:id', auth, (req, res) => {
   const l = actOf(req.params.id);
-  if (!l) return res.sendStatus(404);
+  if (!l || l.ec) return res.sendStatus(404);
   const lock = lockOf(req.u, l);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
   const qz = l.type === 'quiz' ? { qz: quizcheck.pub(l, req.u.id) } : {};              // quiz: as perguntas sem gabarito (opções embaralhadas do mesmo jeito para a mesma pessoa)
@@ -850,7 +865,7 @@ const ENGINE_MSG = 'O corretor de SQL do servidor não está funcionando agora (
 // Conferência ao vivo enquanto o aluno digita: corrige igual ao /api/submit, mas NÃO grava nada (sem XP, sem tentativa).
 app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
   const l = actOf(req.body.id);
-  if (!l) return res.sendStatus(404);
+  if (!l || l.ec) return res.sendStatus(404);
   const lock = lockOf(req.u, l);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
   if (isTest(l)) return res.status(403).json({ error: 'Nas provas a conferência só acontece quando você entrega a resposta.' });   // sem conferência livre: cada entrega gasta uma chance
@@ -861,7 +876,7 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
 
 app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   const l = actOf(req.body.id);
-  if (!l) return res.sendStatus(404);
+  if (!l || l.ec) return res.sendStatus(404);
   const u = req.u, k = l.id, lock = lockOf(u, l), test = isTest(l), lk = key(l.track, l.lv);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
   const before = !test && hasRead(l) ? actBefore(u, l, 'x') : null;                    // lição com várias atividades: a de executar só abre depois das que vêm antes dela na ordem sorteada
@@ -895,6 +910,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
     u.cptry[k] = (u.cptry[k] || 0) + 1;
     if (u.cptry[k] >= l.chances) {                                                     // acabaram as chances: volta `back` lições para relembrar (o XP já ganho fica)
       levelLessons(l.track, l.lv).filter(x => x.n >= l.backFrom && x.n <= l.after).forEach(x => clearActs(u, x.id));
+      explains.filter(e => e.track === l.track && e.lv === l.lv && e.after >= l.backFrom && e.after <= l.after).forEach(e => delete u.ecdone[e.id]);   // o círculo de explicar que ficava nesse trecho também recomeça (o XP já ganho fica)
       delete u.cptry[k]; u.fails[l.fin ? lk : k] = (u.fails[l.fin ? lk : k] || 0) + 1;
       rewind = { from: l.backFrom, to: l.after, back: l.back };
     }
@@ -914,7 +930,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
 // A resposta certa nunca vai para o navegador; as erradas não gastam nada (é treino de leitura), então dá para tentar de novo.
 function actLesson(req, res, a) {                                                       // confere lição, bloqueios e ordem; devolve a lição ou responde o erro
   const l = actOf(req.params.id || req.body.id);
-  if (!l || !(a === 'e' ? hasExpl(l) : hasRead(l))) { res.sendStatus(404); return null; }
+  if (!l || !(a === 'e' ? l.ec : hasRead(l))) { res.sendStatus(404); return null; }
   const lock = lockOf(req.u, l);
   if (lock) { res.status(409).json({ error: lockMsg(lock, l), lock }); return null; }
   const before = actBefore(req.u, l, a);
@@ -942,12 +958,20 @@ app.post('/api/read', auth, limit(240 * RELAX, 60e3), (req, res) => {
   res.json({ ...actDoneRes(req, l, 'r'), tries: u.rtries[k], why: r.why });
 });
 
-// ---------- atividade de EXPLICAR o código (só Python/SQL, Intermediário e Avançado) ----------
+// ---------- círculo de EXPLICAR o código (só Python/SQL, Intermediário e Avançado: depois das lições 6, 13, 19 e 26) ----------
 // O aluno escreve com as próprias palavras o que o código faz (ou o que ele traz). O servidor confere os conceitos (explain.js). Errar não gasta nada: mostra o que faltou e,
 // depois de 3 tentativas, uma explicação de exemplo. Acertou = mostra uma boa explicação e conta a atividade.
 function explainPub(u, l) {
   const e = l.expl, code = e.code || '', names = l.type === 'sql' ? (lessons.seedTables[e.seedKey] || []).filter(t => new RegExp('\\b' + t.name + '\\b', 'i').test(code)) : [];
-  return { ...readMeta(l), kind: e.kind, q: e.q || (e.kind === 'traz' ? (l.type === 'sql' ? 'Explique com suas palavras o que esta consulta traz como resultado.' : 'Explique com suas palavras o que aparece na tela quando este código roda.') : 'Explique com suas palavras o que este código faz.'), code, tables: names.length ? names : undefined, minw: EXPLAIN.MINW, done: !!u.done[l.id] };
+  return { ...readMeta(l), kind: e.kind, q: e.q || (e.kind === 'traz' ? (l.type === 'sql' ? 'Explique com suas palavras o que esta consulta traz como resultado.' : 'Explique com suas palavras o que aparece na tela quando este código roda.') : 'Explique com suas palavras o que este código faz.'), code, tables: names.length ? names : undefined, minw: EXPLAIN.MINW, after: l.after, cobre: l.cobre, done: !!(u.ecdone || {})[l.id] };
+}
+// o aluno explicou direito: o círculo conta (XP e diamantes só na 1ª vez, mesmo se o trecho for refeito) e libera a lição seguinte
+function ecDoneRes(req, l, txt) {
+  const u = req.u, gems0 = u.gems || 0, own0 = new Set(cosOwned(u)), first = !(u.ecdone || {})[l.id];
+  const { streakUp, gemBonus } = tickStreak(u); let gained = 0;
+  if (first) { (u.ecdone ??= {})[l.id] = { date: new Date().toISOString(), txt }; if (!u.xpd[l.id]) { u.xpd[l.id] = 1; gained = l.xp; gainXp(u, gained); u.gems = (u.gems || 0) + R_EC_GEMS; } }
+  save();
+  return { ok: true, gained, streakUp: streakUp || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(x => !own0.has(x)), ...pub(u) };
 }
 app.get('/api/lessons/:id/explain', auth, (req, res) => { const l = actLesson(req, res, 'e'); if (l) res.json(explainPub(req.u, l)); });
 app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
@@ -961,7 +985,7 @@ app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
     return res.json({ ok: false, tries: u.etries[k] || 0, short: g.short || undefined, copy: g.copy || undefined, got: g.got, total: g.total, miss: g.miss, model: (u.etries[k] || 0) >= 3 ? e.model : undefined });
   }
   u.etries[k] = (u.etries[k] || 0) + 1;
-  res.json({ ...actDoneRes(req, l, 'e', { txt }), tries: u.etries[k], model: e.model });
+  res.json({ ...ecDoneRes(req, l, txt), tries: u.etries[k], model: e.model });
 });
 
 // ============================================================================
