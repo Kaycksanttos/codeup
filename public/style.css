@@ -805,7 +805,7 @@ body .fxo.sleep.awake{--fc:#fde68a;background:radial-gradient(120% 90% at 50% 34
 .pfb{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.pfb .badge{margin:0;display:inline-flex;align-items:center;gap:5px}
 .pfg{margin:2px 0 0;padding:14px 16px}.pfp+.pfp{margin-top:15px}.pfp .ph{align-items:baseline;gap:8px}
 body .bar.thin{height:7px;margin-top:8px}
-.pseg.pft{grid-template-columns:repeat(3,1fr);margin-top:2px}
+.pseg.pft{grid-template-columns:repeat(3,1fr);margin-top:2px}.pseg.mus{grid-template-columns:repeat(3,1fr)}
 .kpg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 2px}
 .kp{display:flex;flex-direction:column;gap:2px;min-width:0;padding:12px 12px 11px;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
 .kp .kpi{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;margin-bottom:7px;color:var(--acc2,var(--acc));background:color-mix(in srgb,var(--acc) 15%,transparent)}
@@ -1472,3 +1472,21 @@ body.wild .tl .ti.ec{--cp-a:#a5f3fc;--cp-b:#0891b2;--cp-rgb:45,212,191;--cp-line
 .hcl .hct{min-width:0;overflow-wrap:anywhere}.hcl small{display:block;margin-top:3px;font-size:12.5px;opacity:.88}
 .hcl .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 body.neo .hcl li{background:rgba(26,32,64,.07)}
+
+/* Cartões de progresso (a "imagem" do XP e do tempo de estudo, no Mural). O cartão é sempre escuro: fica igual em todos os estilos do app. */
+.shc{--tc:#38bdf8;position:relative;overflow:hidden;border-radius:22px;padding:16px 16px 13px;margin:2px 0 4px;color:#fff;text-align:left;
+  background:radial-gradient(120% 95% at 100% 0%,color-mix(in srgb,var(--tc) 50%,transparent),transparent 62%),linear-gradient(160deg,#17233f,#0a0f1d 72%);
+  border:1px solid color-mix(in srgb,var(--tc) 45%,#2a3350);box-shadow:0 12px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.08)}
+.shc .shh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.shc .shl{font-weight:900;letter-spacing:.3px;font-size:15px}.shc .shl b{color:var(--tc)}
+.shc .sht{display:inline-flex;align-items:center;gap:5px;min-width:0;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.13)}
+.shc .shm{display:flex;align-items:center;gap:14px}.shc .shm .av{flex:none}
+.shc .shn{display:flex;flex-direction:column;min-width:0}.shc .shn b{font-size:44px;line-height:1;font-weight:900;letter-spacing:-1px;overflow-wrap:anywhere}
+.shc .shn span{margin-top:5px;font-size:13px;font-weight:800;color:rgba(255,255,255,.78)}
+.shc .shf{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.shc .shf span{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15)}.shc .shf svg{flex:none;color:var(--tc)}
+.shc .shw{margin-top:10px;font-size:12px;font-weight:700;color:rgba(255,255,255,.62);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shbox{margin:0 0 16px}.shact{margin-top:10px}.shact .btn{justify-content:center}.shact .mucs{margin-top:8px}.shact .muta{margin:0}
+.muc.k-progresso .muk{background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
+.muc .shc{margin:2px 0 8px}
+@media (max-width:340px){.shc .shn b{font-size:36px}}

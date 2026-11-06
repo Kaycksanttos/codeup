@@ -2819,3 +2819,53 @@ test('mural: arquivos do app — aba Conquistas, conquista só da lista, Equipe 
   for (const a of ['mu-new', 'mu-cm', 'mu-pin', 'mu-cmdel']) assert.match(adm, new RegExp(a), 'painel do dono: ' + a); assert.match(adm, /Avisos da Equipe/);
   assert.match(adm, /esc\(c\.text\)/, 'comentário escapado no painel');
 });
+
+test('mural: cartões de progresso (XP e tempo de estudo): números do servidor, um de cada por dia, só quem tem o que mostrar', async () => {
+  const email = 'mu-cartao1@teste.com', tk = await regP(email, 'Carla Cartão Souza', { sex: 'f', guide: 'tay', gname: 'Tay' });
+  const bad = async (body, st, re) => { const x = await postMu(tk, { kind: 'progresso', ...body }); assert.equal(x.status, st, JSON.stringify(body)); if (re) assert.match(x.j.error, re); };
+  await bad({ card: 'xp' }, 403, /Faça algumas lições/); await bad({ card: 'tempo' }, 403, /Estude pelo menos um dia/);       // ainda não tem o que mostrar
+  await bad({}, 400, /Escolha um cartão/); await bad({ card: 'nao-existe' }, 400); await bad({ card: '__proto__' }, 400); await bad({ card: 'constructor' }, 400);
+  assert.equal((await mural(tk)).cards, undefined, 'a prévia dos cartões só vem na aba Progresso');
+  await call('/api/track', { token: tk, body: { track: 'sql' } }); await doRange(tk, 'sql', 1, 1, 1); await setXp(email, 1250);
+  const pv = (await mural(tk, '?k=progresso')).cards;
+  assert.equal(pv.xp.xp, 1250); assert.equal(pv.xp.lvl, 13); assert.equal(pv.xp.tier, Rw.tierOf(1250)); assert.ok(pv.xp.lessons >= 1);
+  assert.ok(pv.tempo.days >= 1 && pv.tempo.streak >= 1 && pv.tempo.since === 0 && pv.tempo.xp === 1250, JSON.stringify(pv.tempo)); assert.deepEqual(pv.today, []); assert.ok(pv.min.xp > 0 && pv.min.tempo > 0);
+  await bad({ card: 'xp', text: 'a'.repeat(201) }, 400, /passou de 200/);
+  // o navegador não manda número nenhum: o que ele mandar de "retrato", link, aviso ou dono é ignorado
+  const x = await postMu(tk, { kind: 'progresso', card: 'xp', snap: { xp: 999999, lvl: 9999, tier: 9 }, xp: 99999, days: 9999, link: 'https://exemplo.com/x', staff: true, pin: true, uid: 'outro', text: 'Bora, turma! <b>oi</b>' });
+  assert.equal(x.status, 200, JSON.stringify(x.j)); const it = x.j.item;
+  assert.deepEqual([it.kind, it.card, it.mine], ['progresso', 'xp', true]); assert.equal(it.snap.xp, 1250); assert.equal(it.snap.lvl, 13); assert.equal(it.snap.tier, Rw.tierOf(1250));
+  assert.ok(!it.link && !it.staff && !it.pin, 'cartão não leva link, nem vira aviso ou destaque'); assert.equal(it.text, 'Bora, turma! <b>oi</b>', 'a mensagem é opcional e a tela escapa o HTML'); assert.ok(!it.auto);
+  assert.deepEqual(Object.keys(it.snap).sort(), ['exams', 'lessons', 'lvl', 'tier', 'xp'], 'só números do cartão de XP');
+  await bad({ card: 'xp' }, 409, /já compartilhou esse cartão hoje/);                                                         // um de cada tipo por dia
+  const t = await postMu(tk, { kind: 'progresso', card: 'tempo' }); assert.equal(t.status, 200, JSON.stringify(t.j));
+  assert.equal(t.j.item.text, '1 dia de estudo no CodeUp!', 'sem mensagem, o servidor escreve a frase'); assert.equal(t.j.item.auto, true); assert.deepEqual(Object.keys(t.j.item.snap).sort(), ['days', 'since', 'streak', 'xp']);
+  assert.deepEqual((await mural(tk, '?k=progresso')).cards.today.sort(), ['tempo', 'xp']);
+  // o cartão é uma foto do momento: ganhar mais XP depois não muda o que já foi postado
+  await setXp(email, 5000); const lst = (await mural(tk, '?k=progresso')).items; assert.equal(lst.length, 2); assert.equal(lst.find(i => i.card === 'xp').snap.xp, 1250); assert.equal((await mural(tk, '?k=progresso')).cards.xp.xp, 5000, 'a prévia segue o XP de agora');
+  assert.ok((await mural(tk, '?k=conquista')).items.every(i => i.kind === 'conquista' && !i.mine), 'os cartões não aparecem como conquista'); assert.equal((await mural(tk, '?mine=1')).items.length, 2);
+  // outra pessoa vê o cartão (sem e-mail nem id), curte e denuncia como qualquer post
+  const o = await regP('mu-cartao2@teste.com', 'Otávio Outro'), vis = (await mural(o, '?k=progresso')).items.find(i => i.card === 'xp');
+  assert.ok(vis && vis.mine === false && vis.name === 'Carla S.' && vis.snap.xp === 1250); assert.ok(!JSON.stringify(vis).includes('@'), 'sem e-mail'); assert.ok(!('uid' in vis));
+  assert.equal((await call('/api/mural/' + vis.id + '/like', { token: o, body: {} })).status, 200);
+  // quem não confirmou o e-mail só lê
+  const un = (await call('/api/register', { body: { name: 'Sem Confirmar', email: 'mu-cartao3@teste.com', password: 'segredo1', accept: true } })).j;
+  assert.equal((await postMu(un.token, { kind: 'progresso', card: 'xp' })).status, 403); assert.equal((await postMu(null, { kind: 'progresso', card: 'xp' })).status, 401);
+  // apagar o cartão libera um novo no mesmo dia (com o número de agora); o que foi postado vai na exportação dos dados
+  const ex = (await call('/api/export', { token: tk })).j.mural.find(m => m.cartao && m.cartao.tipo === 'Meu XP'); assert.equal(ex.cartao.xp, 1250);
+  assert.equal((await call('/api/mural/' + it.id, { method: 'DELETE', token: tk })).status, 200);
+  const again = await postMu(tk, { kind: 'progresso', card: 'xp' }); assert.equal(again.status, 200); assert.equal(again.j.item.snap.xp, 5000); assert.equal(again.j.item.text, 'Cheguei a 5.000 XP no CodeUp!');
+  // o painel do dono lista o cartão com a frase (nunca vazio)
+  assert.ok((await A('mural?f=all')).j.rows.some(r => r.kind === 'progresso' && r.text === 'Cheguei a 5.000 XP no CodeUp!'));
+});
+test('mural: arquivos do app — cartões de progresso (aba Progresso, atalho no Perfil, números só do servidor, texto escapado)', async () => {
+  const rd = f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8'), ui = rd('app.js'), css = rd('style.css');
+  for (const f of ['function shCard(', 'function muProg(', 'function muShc(', 'function muShcSend(', 'function muShareProg(', "['prog', 'Progresso']", "['progresso', 'Progresso']", 'Compartilhar meu progresso', 'Meus cartões', 'Cartões da turma']) assert.ok(ui.includes(f), f);
+  assert.match(ui, /body: \{ kind: 'progresso', card: k, text:/, 'o navegador manda só o tipo do cartão e a mensagem: os números são do servidor');
+  assert.ok(!/kind: 'progresso'[^}]*(xp|days|snap)/.test(ui.slice(ui.indexOf('async function muShcSend'), ui.indexOf('async function muTab'))), 'nenhum número vai no pedido');
+  const sh = ui.slice(ui.indexOf('function shCard('), ui.indexOf('function muCard('));
+  assert.match(sh, /esc\(K\[0\]\)/); assert.match(sh, /esc\(T\.title\)/); assert.match(sh, /esc\(name\)/, 'nome escapado'); assert.ok(!/\$\{sn\.\w+\}/.test(sh), 'número do retrato nunca entra cru no HTML (só por nf/shNum)');
+  assert.match(ui, /shCard\(r\.card, r\.snap, faceOf\(r, 64\), r\.name\)/, 'no Mural o cartão usa o rosto e o nome curto que vêm do servidor');
+  assert.match(ui, /r\.auto \? ''/, 'a frase automática não repete o que o cartão já mostra');
+  for (const c of ['.shc{', '.shc .shn b', '.shc .shf', '.shbox{', '.pseg.mus{']) assert.ok(css.includes(c), 'estilo ' + c);
+});

@@ -809,6 +809,7 @@ const MU_MAX = 500, MU_KIND = {
   projeto: ['Projeto', 'brief', 'Conte o que você montou e o que aprendeu. Ex.: "Fiz um painel de vendas em Power BI com 3 gráficos."'],
   conquista: ['Conquista', 'trophy', ''],
   dica: ['Dica', 'bulb', 'Ensine algo que ajudou você. Ex.: "Use LIMIT 5 para espiar a tabela antes de rodar tudo."'],
+  progresso: ['Progresso', 'chart', ''],
   aviso: ['Aviso', 'shield', '']
 }, MU_POST = ['projeto', 'dica'];     // o aluno escreve projeto e dica; conquista só se compartilha da lista abaixo; aviso é só da Equipe (painel do dono)
 // as conquistas do app: [id, ícone, nome, como ganhar]. O servidor tem a mesma lista e confere se a pessoa realmente ganhou antes de deixar compartilhar.
@@ -816,12 +817,12 @@ const ACHS = [['primeira', 'target', 'Primeira lição', 'Conclua uma lição.']
   ['avancado', 'trophy', 'Avançado aprovado', 'Passe na prova final de um Avançado.'], ['curso', 'award', 'Curso concluído', 'Passe em todas as provas finais de um curso.'], ['meio', 'chart', 'Meio caminho', 'Chegue a 50% do seu curso.'], ['xp1000', 'bolt', '1.000 XP', 'Junte 1.000 XP.']];
 const achBy = id => ACHS.find(x => x[0] == id);
 const muOn = () => !S.cfg || S.cfg.mural !== false;
-const muSt = () => S.mu || (S.mu = { v: 'feed', items: [], pinned: [], shared: [], more: false, next: null, k: '', mine: false, on: true, err: false, open: false, sh: null, cq: '', draft: { kind: 'projeto', text: '', link: '' } });
+const muSt = () => S.mu || (S.mu = { v: 'feed', items: [], pinned: [], shared: [], more: false, next: null, k: '', mine: false, on: true, err: false, open: false, sh: null, cq: '', cards: null, shc: null, cm: '', draft: { kind: 'projeto', text: '', link: '' } });
 const muFind = id => { const s = muSt(); return s.items.find(x => x.id == id) || (s.pinned || []).find(x => x.id == id); };
 const muAgo = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.max(0, Math.round((Date.now() - t) / 6e4)); if (m < 1) return 'agora'; if (m < 60) return `há ${m} min`; if (m < 1440) return `há ${Math.round(m / 60)} h`; if (m < 2880) return 'ontem'; if (m < 43200) return `há ${Math.round(m / 1440)} dias`; return new Date(t).toLocaleDateString('pt-BR'); };
 async function muFetch(more) {
-  const s = muSt(), q = new URLSearchParams(), conq = s.v == 'conq'; if (conq) q.set('k', 'conquista'); else { if (s.k) q.set('k', s.k); if (s.mine) q.set('mine', '1'); } if (more && s.next) q.set('before', s.next);
-  try { const r = await api('mural' + (q.toString() ? '?' + q : '')); s.on = r.on !== false; s.items = more ? s.items.concat(r.items || []) : (r.items || []); if (!more) s.pinned = r.pinned || []; s.shared = r.shared || s.shared || []; s.more = !!r.more; s.next = r.next || null; s.err = false; }
+  const s = muSt(), q = new URLSearchParams(), conq = s.v == 'conq', prog = s.v == 'prog'; if (conq) q.set('k', 'conquista'); else if (prog) q.set('k', 'progresso'); else { if (s.k) q.set('k', s.k); if (s.mine) q.set('mine', '1'); } if (more && s.next) q.set('before', s.next);
+  try { const r = await api('mural' + (q.toString() ? '?' + q : '')); s.on = r.on !== false; s.items = more ? s.items.concat(r.items || []) : (r.items || []); if (!more) s.pinned = r.pinned || []; s.shared = r.shared || s.shared || []; if (prog && !more) s.cards = r.cards || null; s.more = !!r.more; s.next = r.next || null; s.err = false; }
   catch (e) { if (e.silent) throw e; if (more) return fail(e); s.err = true; s.items = []; s.pinned = []; s.more = false; }
 }
 async function muReload() { try { await muFetch(); render(); } catch (e) { } }
@@ -846,6 +847,20 @@ function muComposer() {
     <p class=munote>${ic('shield', 13)} Aparecem só o seu primeiro nome, a inicial do sobrenome e o seu personagem. O e-mail nunca aparece. Não poste senhas nem dados pessoais.</p>
     <div class=mucs><button class="btn ghost" onclick=muCancel()>Cancelar</button><button class="btn pri" id=musend onclick=muSend()>Publicar</button></div></div>`;
 }
+// ---- o CARTÃO de progresso (a "imagem" do XP e do tempo de estudo). Os números vêm do servidor; aqui só desenhamos. Tudo que é texto passa por esc() e número por nf(Number()).
+const SH = { xp: ['Meu XP', 'bolt', 'XP'], tempo: ['Meu tempo de estudo', 'flame', 'dias de estudo'] };
+const shNum = v => Math.max(0, Math.floor(Number(v) || 0));
+const shChip = (i, t) => `<span>${ic(i, 14)}${t}</span>`;
+function shCard(card, sn, face, name) {
+  const K = SH[card]; if (!K || !sn) return '';
+  const xp = shNum(sn.xp), ti = Math.min(CR.TIERS.length - 1, card == 'xp' && Number.isFinite(sn.tier) ? Math.max(0, sn.tier) : CR.tierOf(xp)), T = CR.TIERS[ti], big = card == 'xp' ? xp : shNum(sn.days), unit = card == 'tempo' && big == 1 ? 'dia de estudo' : K[2];
+  const chips = card == 'xp'
+    ? [shChip('crown', esc(T.title)), shChip('chart', 'Nível ' + nf(shNum(sn.lvl))), shChip('file', nf(shNum(sn.lessons)) + (shNum(sn.lessons) == 1 ? ' lição' : ' lições')), shNum(sn.exams) ? shChip('cap', nf(shNum(sn.exams)) + (shNum(sn.exams) == 1 ? ' prova' : ' provas')) : '']
+    : [shNum(sn.streak) ? shChip('flame', nf(shNum(sn.streak)) + (shNum(sn.streak) == 1 ? ' dia seguido' : ' dias seguidos')) : '', shChip('clock', shNum(sn.since) ? 'No CodeUp há ' + nf(shNum(sn.since)) + (shNum(sn.since) == 1 ? ' dia' : ' dias') : 'Começou hoje'), shChip('bolt', nf(xp) + ' XP'), shChip('crown', esc(T.title))];
+  return `<div class="shc k-${card}" style="--tc:${T.color}" role=img aria-label="${esc(K[0])}: ${nf(big)} ${esc(unit)}"><div class=shh><span class=shl>Code<b>Up</b></span><span class=sht>${ic(K[1], 14)} ${esc(K[0])}</span></div>
+    <div class=shm>${face}<div class=shn><b>${nf(big)}</b><span>${esc(unit)}</span></div></div>
+    <div class=shf>${chips.join('')}</div><div class=shw>${esc(name)}</div></div>`;
+}
 function muCard(r) {
   const K = MU_KIND[r.kind] || MU_KIND.dica, link = typeof r.link == 'string' && /^https:\/\//i.test(r.link) ? r.link : '', host = (() => { try { return new URL(link).hostname.replace(/^www\./, ''); } catch { return ''; } })(), id = esc(r.id), A = r.ach && achBy(r.ach);
   const who = r.staff ? `<span class=mst>${ic('shield', 22)}</span><div class=bd><b>Equipe CodeUp <span class="badge gold">${ic('check', 11)} oficial</span></b><small>${r.pin ? 'Destaque · ' : ''}${esc(muAgo(r.at))}</small></div>`
@@ -854,7 +869,8 @@ function muCard(r) {
   return `<article class="panel muc k-${esc(r.kind)}${r.staff ? ' staff' : ''}${r.hidden ? ' hid' : ''}" id="mu-${id}"><header class=muh>${who}<span class=muk>${ic(K[1], 14)} ${K[0]}</span></header>
     ${r.hidden ? `<div class=muhid>${ic('info', 15)}<span>Este post está escondido e em análise. Só você o vê por enquanto.</span></div>` : ''}
     ${A ? `<div class=mqbd><span class=mqi>${ic(A[1], 28)}</span><div><small>Conquista desbloqueada</small><b>${esc(A[2])}</b></div></div>` : ''}
-    ${auto ? '' : `<p class=mup>${esc(r.text)}</p>`}${link && host ? `<a class=mul href="${esc(link)}" target=_blank rel="noopener noreferrer nofollow ugc">${ic('link', 15)}<span>${esc(host)}</span></a>` : ''}
+    ${r.kind == 'progresso' && r.snap ? shCard(r.card, r.snap, faceOf(r, 64), r.name) : ''}
+    ${auto || r.auto ? '' : `<p class=mup>${esc(r.text)}</p>`}${link && host ? `<a class=mul href="${esc(link)}" target=_blank rel="noopener noreferrer nofollow ugc">${ic('link', 15)}<span>${esc(host)}</span></a>` : ''}
     ${(r.cm || []).length ? `<div class=mucm>${r.cm.map(c => `<div class=mucmi><span class=mst>${ic('shield', 13)}</span><div><b>Equipe CodeUp</b><span>${esc(c.text)}</span><small>${esc(muAgo(c.at))}</small></div></div>`).join('')}</div>` : ''}
     <footer class=muf><button class="mulk${r.liked ? ' on' : ''}" onclick="muLike('${id}')" aria-pressed=${!!r.liked} aria-label="${r.liked ? 'Descurtir' : 'Curtir'} (${r.likes} ${r.likes == 1 ? 'curtida' : 'curtidas'})">${ic('heart', 19)}<b>${r.likes}</b></button><span class=grow></span>
     ${r.staff ? '' : r.mine ? `<button class=mua onclick="muDel('${id}')">${ic('trash', 15)} Apagar</button>` : r.reported ? `<span class=mua>${ic('check', 15)} Denunciado</span>` : `<button class=mua onclick="muRep('${id}')">${ic('flag', 15)} Denunciar</button>`}</footer></article>`;
@@ -862,11 +878,11 @@ function muCard(r) {
 function muView() {
   const s = muSt(), head = `<h2 class=ttl>Mural</h2><p class=sub>A turma mostra o que construiu e conquistou. Compartilhe o seu e inspire quem está começando.</p>`;
   if (!muOn() || !s.on) return head + `<div class="panel rkem">${poseChip('pensando', 76)}<b>O Mural está em pausa</b><small>Volte daqui a pouco. Os posts ficam guardados.</small></div>`;
-  const seg = `<div class=pseg role=tablist aria-label="Seções do Mural">${[['feed', 'Mural'], ['conq', 'Conquistas']].map(([k, n]) => `<button role=tab aria-selected=${s.v == k} class="${s.v == k ? 'on' : ''}" onclick="muTab('${k}')">${n}</button>`).join('')}</div>`;
-  return head + seg + (s.v == 'conq' ? muConq() : muFeed()) + `<div class="panel rkpv">${ic('shield', 20)}<div class=bd><b>Combinado da turma</b><small>Aparecem só o seu primeiro nome, a inicial do sobrenome e o personagem, nunca o e-mail. Não poste senhas nem dados pessoais. Post ofensivo pode ser denunciado e removido.</small></div></div>`;
+  const seg = `<div class="pseg mus" role=tablist aria-label="Seções do Mural">${[['feed', 'Mural'], ['conq', 'Conquistas'], ['prog', 'Progresso']].map(([k, n]) => `<button role=tab aria-selected=${s.v == k} class="${s.v == k ? 'on' : ''}" onclick="muTab('${k}')">${n}</button>`).join('')}</div>`;
+  return head + seg + (s.v == 'conq' ? muConq() : s.v == 'prog' ? muProg() : muFeed()) + `<div class="panel rkpv">${ic('shield', 20)}<div class=bd><b>Combinado da turma</b><small>Aparecem só o seu primeiro nome, a inicial do sobrenome e o personagem, nunca o e-mail. Não poste senhas nem dados pessoais. Post ofensivo pode ser denunciado e removido.</small></div></div>`;
 }
 function muFeed() {
-  const s = muSt(), F = [['', 'Tudo'], ['aviso', 'Avisos'], ['projeto', 'Projetos'], ['dica', 'Dicas'], ['mine', 'Meus posts']], cur = s.mine ? 'mine' : s.k, pin = !s.k && !s.mine && (s.pinned || []).length;
+  const s = muSt(), F = [['', 'Tudo'], ['aviso', 'Avisos'], ['projeto', 'Projetos'], ['dica', 'Dicas'], ['progresso', 'Progresso'], ['mine', 'Meus posts']], cur = s.mine ? 'mine' : s.k, pin = !s.k && !s.mine && (s.pinned || []).length;
   const list = s.err ? `<div class=panel><p>Não foi possível carregar o Mural agora.</p><button class="btn pri block" onclick=muReload()>Tentar de novo</button></div>`
     : s.items.length ? s.items.map(muCard).join('') + (s.more ? `<button class="btn ghost block" id=mumore onclick=muMore()>Ver mais posts</button>` : '')
     : pin ? '' : `<div class="panel rkem">${poseChip('pensando', 76)}<b>${s.mine ? 'Você ainda não postou' : s.k == 'aviso' ? 'Nenhum aviso por enquanto' : 'Ainda não há posts aqui'}</b><small>${s.mine ? 'Compartilhe seu primeiro projeto ou dica!' : s.k == 'aviso' ? 'Os avisos da Equipe CodeUp aparecem aqui.' : `Seja ${fm('o primeiro', 'a primeira')} a compartilhar algo com a turma!`}</small></div>`;
@@ -887,7 +903,35 @@ function muConq() {
   return (m.verified ? '' : `<div class="panel mucv">${ic('info', 20)}<div class=bd><b>Confirme seu e-mail para compartilhar</b><small>Você já pode ver as conquistas da turma. Enviamos um link para ${esc(m.email)}.</small></div><button class="btn ghost" onclick=resendVerify()>Reenviar e-mail</button></div>`)
     + `<div class=sec>Minhas conquistas <span class=cnt>${got} de ${ach.length}</span></div>` + panel + `<div class=mqg>${ach.map(tile).join('')}</div><div class=sec>Conquistas da turma</div>` + list;
 }
-async function muTab(v) { const s = muSt(); if (s.v == v) return; s.v = v; s.k = ''; s.mine = false; s.sh = null; s.open = false; await muReload(); }
+// aba Progresso: os SEUS cartões (prévia do que vai ser postado) e os cartões da turma
+function muProg() {
+  const s = muSt(), m = S.me, c = s.cards, today = c && c.today || [], me = (() => { const p = String(m.name || '').trim().split(/\s+/).filter(Boolean); return !p.length ? 'Aluno' : p[0].slice(0, 16) + (p.length > 1 ? ' ' + p[p.length - 1].charAt(0).toUpperCase() + '.' : ''); })();
+  const mine = !c ? `<div class=panel><p>Não foi possível carregar os seus cartões agora.</p><button class="btn pri block" onclick=muReload()>Tentar de novo</button></div>`
+    : ['xp', 'tempo'].map(k => {
+      const sn = c[k], ok = (k == 'xp' ? sn.xp : sn.days) >= ((c.min || {})[k] || 1), did = today.includes(k), open = s.shc == k;
+      const act = did ? `<span class=mqs2>${ic('check', 13)} Compartilhado hoje. Volte amanhã com números maiores!</span>`
+        : !ok ? `<small class=mut>${k == 'xp' ? 'Faça algumas lições para liberar este cartão.' : 'Estude um dia para liberar este cartão.'}</small>`
+        : open ? `<textarea id=mucm class=muta maxlength=200 rows=2 placeholder="Quer dizer algo? (opcional) Ex.: Bora, turma!" oninput="muSt().cm=this.value" aria-label="Mensagem opcional">${esc(s.cm || '')}</textarea><div class=mucs><button class="btn ghost" onclick=muShcCancel()>Cancelar</button><button class="btn pri" id=mushsend onclick=muShcSend()>Compartilhar na turma</button></div>`
+        : `<button class="btn pri block" onclick="muShc('${k}')">${ic('chat', 16)} Compartilhar este cartão</button>`;
+      return `<div class=shbox>${shCard(k, sn, avatar(64, 'ring'), me)}<div class=shact>${act}</div></div>`;
+    }).join('');
+  const list = s.err ? `<div class=panel><p>Não foi possível carregar os cartões agora.</p><button class="btn pri block" onclick=muReload()>Tentar de novo</button></div>`
+    : s.items.length ? s.items.map(muCard).join('') + (s.more ? `<button class="btn ghost block" id=mumore onclick=muMore()>Ver mais cartões</button>` : '')
+    : `<div class="panel rkem">${poseChip('pensando', 76)}<b>Ninguém compartilhou ainda</b><small>Seja ${fm('o primeiro', 'a primeira')} a mostrar o seu progresso para a turma!</small></div>`;
+  return (m.verified ? '' : `<div class="panel mucv">${ic('info', 20)}<div class=bd><b>Confirme seu e-mail para compartilhar</b><small>Você já pode ver os cartões da turma. Enviamos um link para ${esc(m.email)}.</small></div><button class="btn ghost" onclick=resendVerify()>Reenviar e-mail</button></div>`)
+    + `<div class=sec>Meus cartões</div><p class=munote>${ic('shield', 13)} Só vai para o Mural se você tocar em Compartilhar. Os números são os de verdade: o CodeUp confere na hora.</p>` + mine + `<div class=sec>Cartões da turma</div>` + list;
+}
+function muShc(k) {
+  const s = muSt(); if (!S.me.verified) return toast('Confirme seu e-mail para compartilhar.', true);
+  s.shc = k; s.cm = ''; render(); setTimeout(() => { const t = $('#mucm'); if (t) { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); t.focus({ preventScroll: true }); } }, 60);
+}
+function muShcCancel() { const s = muSt(); s.shc = null; s.cm = ''; render(); }
+async function muShcSend() {
+  const s = muSt(), k = s.shc, b = $('#mushsend'); if (!k) return; if (b) b.disabled = true;
+  try { await api('mural/new', { body: { kind: 'progresso', card: k, text: (s.cm || '').trim() } }); s.shc = null; s.cm = ''; await muFetch(); render(); toast('Cartão compartilhado com a turma!'); }
+  catch (e) { fail(e); if (b) b.disabled = false; if (e.status == 409) { s.shc = null; muReload(); } }
+}
+async function muTab(v) { const s = muSt(); if (s.v == v) return; s.v = v; s.k = ''; s.mine = false; s.sh = null; s.shc = null; s.open = false; await muReload(); }
 function muAch(id) {
   const s = muSt(); if (!S.me.verified) return toast('Confirme seu e-mail para compartilhar.', true);
   s.sh = id; s.cq = ''; render(); setTimeout(() => { const p = $('.mqsp'); if (p) { p.scrollIntoView({ block: 'center', behavior: 'smooth' }); const t = $('#mucq'); if (t) t.focus({ preventScroll: true }); } }, 60);
@@ -925,7 +969,9 @@ async function muDel(id) {
   try { const r = muFind(id); await api('mural/' + id, { method: 'DELETE' }); const s = muSt(); s.items = s.items.filter(x => x.id != id); if (r && r.ach) s.shared = (s.shared || []).filter(x => x != r.ach); toast('Post apagado.'); render(); } catch (e) { fail(e); }
 }
 // botão "Compartilhar minhas conquistas" do perfil: abre o Mural direto na aba Conquistas
-async function muShare() { const s = muSt(); s.v = 'conq'; s.k = ''; s.mine = false; s.sh = null; s.open = false; await go('mu'); }
+async function muShare() { const s = muSt(); s.v = 'conq'; s.k = ''; s.mine = false; s.sh = null; s.shc = null; s.open = false; await go('mu'); }
+// botão "Compartilhar meu progresso" do perfil: abre o Mural direto na aba Progresso
+async function muShareProg() { const s = muSt(); s.v = 'prog'; s.k = ''; s.mine = false; s.sh = null; s.shc = null; s.open = false; await go('mu'); }
 
 function profileView(L, T) {
   const t = ['res', 'per', 'aju'].includes(S.pft) ? S.pft : 'res';
@@ -957,6 +1003,7 @@ function pfRes(L, T) {
   const kp = (i, v, l) => `<div class=kp><span class=kpi>${ic(i, 17)}</span><b>${v}</b><small>${l}</small></div>`;
   return `${pfProg()}<div class=kpg>${kp('flame', m.streak, 'dias de treino') + kp('file', n, 'lições feitas') + kp('cap', np, 'provas aprovadas') + kp('bolt', nf(m.xp), 'XP total') + kp('chart', nf(m.wk), 'XP na semana') + kp('gem', nf(m.gems || 0), 'diamantes')}</div>
     <div class=sec>Conquistas <span class=cnt>${ach.filter(a => a[2]).length} de ${ach.length}</span></div><div class=ach>${ach.map(a => `<div class="${a[2] ? 'on' : ''}">${ic(a[0], 20)}<span>${a[1]}</span></div>`).join('')}</div>
+    ${muOn() && m.xp >= 10 ? `<button class="btn ghost block" onclick=muShareProg()>${ic('bolt', 17)} Compartilhar meu progresso</button>` : ''}
     ${muOn() && ach.some(a => a[2]) ? `<button class="btn ghost block" onclick=muShare()>${ic('chat', 17)} Compartilhar minhas conquistas</button>` : ''}
     ${tiersView()}`;
 }

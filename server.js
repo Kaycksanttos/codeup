@@ -624,7 +624,7 @@ app.post('/api/ranking/visibility', auth, (req, res) => {
 // Só texto (até 500 letras) e, se quiser, UM link https. Nada de imagens nem HTML: o texto sempre aparece como texto puro.
 // Segurança: só contas com e-mail confirmado postam · no máximo 5 posts por hora e 15 por dia por pessoa · não repete o mesmo texto ·
 // 3 denúncias de pessoas diferentes escondem o post até o dono revisar em /admin → Mural · o dono pode desligar o Mural em Ajustes.
-const MURAL_KINDS = ['projeto', 'conquista', 'dica'], MURAL_TEXT = 500, MURAL_PAGE = 20, MURAL_HIDE_AT = 3, MURAL_PER_HOUR = 5, MURAL_PER_DAY = 15;
+const MURAL_KINDS = ['projeto', 'conquista', 'dica', 'progresso'], MURAL_TEXT = 500, MURAL_PAGE = 20, MURAL_HIDE_AT = 3, MURAL_PER_HOUR = 5, MURAL_PER_DAY = 15;
 // Só o aluno posta (projeto, dica e conquista). Aviso, destaque e comentário são só da Equipe, pelo painel do dono (ver admin.js): o aluno não consegue criar nada disso.
 const MURAL_SHOW = [...MURAL_KINDS, 'aviso'], MURAL_PINS = 3, MURAL_CM_MAX = 20;
 // As conquistas do Perfil (mesmos ids e nomes do app). Quem compartilha precisa TER ganhado: o servidor confere com os dados da própria pessoa.
@@ -644,6 +644,20 @@ function achEarned(u) {
   if ((u.xp || 0) >= 1000) got.add('xp1000');
   return got;
 }
+// Cartões de progresso (a "imagem" do XP e do tempo de estudo): o aluno só escolhe SE quer compartilhar e qual cartão. Os números NÃO vêm do navegador:
+// o servidor monta o retrato na hora de postar e guarda junto do post, então ninguém consegue inventar XP nem dias. Um cartão de cada tipo por dia.
+const CARDS = { xp: 'Meu XP', tempo: 'Meu tempo de estudo' }, CARD_MSG = 200, CARD_MIN = { xp: 10, tempo: 1 };
+const cardSnap = (u, card) => {
+  const xp = Math.max(0, Math.floor(u.xp || 0)), today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
+  if (card === 'xp') return { xp, lvl: Math.floor(xp / 100) + 1, tier: R.tierOf(xp), lessons: lessons.filter(l => u.done && u.done[l.id]).length, exams: Object.keys(u.passed || {}).length };
+  const since = Math.max(0, Math.floor((Date.now() - (Date.parse(u.created) || Date.now())) / 864e5));
+  return { days: daysOf(u), streak: u.last === today || u.last === yest ? (u.streak || 0) : 0, since, xp };       // sequência só conta se ainda está valendo (hoje ou ontem)
+};
+const cardValue = (card, snap) => card === 'xp' ? snap.xp : snap.days;
+const cardAuto = (card, snap) => card === 'xp' ? `Cheguei a ${snap.xp.toLocaleString('pt-BR')} XP no CodeUp!` : `${snap.days} ${snap.days === 1 ? 'dia' : 'dias'} de estudo no CodeUp!`;
+const cardsToday = uid => Object.values(DB.posts || {}).filter(p => p.uid === uid && p.kind === 'progresso' && Date.now() - Date.parse(p.at) < 864e5).map(p => p.card);
+const SNAP_KEYS = ['xp', 'lvl', 'tier', 'lessons', 'exams', 'days', 'streak', 'since'];
+const snapOut = p => { if (p.kind !== 'progresso' || !CARDS[p.card] || !p.snap) return {}; const o = {}; for (const k of SNAP_KEYS) if (Number.isFinite(p.snap[k])) o[k] = p.snap[k]; return { card: p.card, snap: o, auto: p.auto ? true : undefined }; };
 const MURAL_KEEP = +process.env.MURAL_MAX_POSTS > 0 ? +process.env.MURAL_MAX_POSTS : 3000;      // só os 3000 posts mais novos ficam guardados
 const muralOn = () => settingsMain().mural !== false;
 function muralTrim() {                                                                          // apaga os mais antigos quando passa do limite
@@ -673,7 +687,7 @@ const muralItem = (p, me) => {
   const base = { id: p.id, kind: p.kind, text: p.text, link: p.link || undefined, at: p.at, likes: lk.length, liked: lk.includes(me.id), pin: p.pin ? true : undefined, cm: cm.length ? cm : undefined };
   if (p.staff) return { ...base, name: 'Equipe CodeUp', staff: true };
   const a = DB.users[p.uid] || {};
-  return { ...base, ach: ACH[p.ach] ? p.ach : undefined, name: shortName(a.name), ...muralLook(a), mine: p.uid === me.id, hidden: p.hidden ? true : undefined, reported: !!(p.rep && p.rep[me.id]) || undefined };
+  return { ...base, ...snapOut(p), ach: ACH[p.ach] ? p.ach : undefined, name: shortName(a.name), ...muralLook(a), mine: p.uid === me.id, hidden: p.hidden ? true : undefined, reported: !!(p.rep && p.rep[me.id]) || undefined };
 };
 // limite por pessoa (e não por IP): { nome, quantas vezes, em quantos ms }
 const uLimit = (name, max, ms) => (req, res, next) => {
@@ -691,15 +705,25 @@ app.get('/api/mural', auth, uLimit('mural-ler', 90, 60e3), (req, res) => {
   const pinned = plain ? seen.filter(p => p.pin && !p.hidden).sort(desc).slice(0, MURAL_PINS) : [];                 // destaques da Equipe: só no "Tudo", em cima, uma vez
   const all = seen.filter(p => (!kind || p.kind === kind) && (!mine || p.uid === req.u.id) && (!before || muralKey(p) < before) && !pinned.includes(p)).sort(desc);
   const page = all.slice(0, MURAL_PAGE), shared = Object.values(DB.posts).filter(p => p.uid === req.u.id && ACH[p.ach]).map(p => p.ach);
-  res.json({ on: true, items: page.map(p => muralItem(p, req.u)), pinned: !before ? pinned.map(p => muralItem(p, req.u)) : undefined, shared, more: all.length > MURAL_PAGE, next: page.length ? muralKey(page[page.length - 1]) : null });
+  const cards = kind === 'progresso' && !before && !mine ? { xp: cardSnap(req.u, 'xp'), tempo: cardSnap(req.u, 'tempo'), min: CARD_MIN, today: cardsToday(req.u.id) } : undefined;   // a prévia dos SEUS cartões vem do servidor: é exatamente o que será postado
+  res.json({ on: true, cards, items: page.map(p => muralItem(p, req.u)), pinned: !before ? pinned.map(p => muralItem(p, req.u)) : undefined, shared, more: all.length > MURAL_PAGE, next: page.length ? muralKey(page[page.length - 1]) : null });
 });
 
 app.post('/api/mural/new', auth, muralGate, uLimit('mural-novo', 20, 3600e3), (req, res) => {
   if (needVerify(req.u, res)) return;
   const b = req.body || {}, kind = String(b.kind || ''), ach = String(b.ach || '');
   let text = muralClean(b.text), link = muralLink(b.link);
-  if (!MURAL_KINDS.includes(kind)) return res.status(400).json({ error: 'Escolha o tipo do post: projeto, conquista ou dica.' });
-  if (kind === 'conquista') {                                                                    // conquista não é texto livre: tem que ser uma da lista e a pessoa precisa tê-la ganhado
+  if (!MURAL_KINDS.includes(kind)) return res.status(400).json({ error: 'Escolha o tipo do post: projeto, conquista, dica ou progresso.' });
+  let card = '', snap = null, auto = false;
+  if (kind === 'progresso') {                                                                    // cartão de XP ou de tempo: escolhe o cartão, o servidor coloca os números
+    card = String(b.card || ''); link = '';
+    if (!Object.prototype.hasOwnProperty.call(CARDS, card)) return res.status(400).json({ error: 'Escolha um cartão para compartilhar: ' + Object.values(CARDS).join(' ou ') + '.' });
+    snap = cardSnap(req.u, card);
+    if (cardValue(card, snap) < CARD_MIN[card]) return res.status(403).json({ error: card === 'xp' ? 'Faça algumas lições para ter XP e compartilhar o cartão.' : 'Estude pelo menos um dia para compartilhar o cartão.' });
+    if (cardsToday(req.u.id).includes(card)) return res.status(409).json({ error: 'Você já compartilhou esse cartão hoje. Volte amanhã com números maiores!' });
+    if (text.length > CARD_MSG) return res.status(400).json({ error: `A mensagem passou de ${CARD_MSG} letras. Encurte um pouco.` });
+    if (!text) { text = cardAuto(card, snap); auto = true; }
+  } else if (kind === 'conquista') {                                                                    // conquista não é texto livre: tem que ser uma da lista e a pessoa precisa tê-la ganhado
     if (!Object.prototype.hasOwnProperty.call(ACH, ach)) return res.status(400).json({ error: 'Escolha uma conquista da sua lista para compartilhar.' });
     if (!achEarned(req.u).has(ach)) return res.status(403).json({ error: 'Você ainda não desbloqueou essa conquista.' });
     if (Object.values(DB.posts).some(p => p.uid === req.u.id && p.ach === ach)) return res.status(409).json({ error: 'Você já compartilhou essa conquista.' });
@@ -709,12 +733,12 @@ app.post('/api/mural/new', auth, muralGate, uLimit('mural-novo', 20, 3600e3), (r
   if (link === null) return res.status(400).json({ error: 'O link precisa ser um endereço https:// válido (ex.: https://github.com/voce/projeto).' });
   if ((text.match(/https?:\/\//gi) || []).length > 1) return res.status(400).json({ error: 'Use o campo "Link" para o endereço. No texto cabe no máximo um.' });
   const norm = s => s.toLowerCase().replace(/\s+/g, ' ');
-  if (kind !== 'conquista' && Object.values(DB.posts).some(p => p.uid === req.u.id && norm(p.text) === norm(text))) return res.status(409).json({ error: 'Você já publicou esse mesmo texto.' });
+  if (kind !== 'conquista' && kind !== 'progresso' && Object.values(DB.posts).some(p => p.uid === req.u.id && norm(p.text) === norm(text))) return res.status(409).json({ error: 'Você já publicou esse mesmo texto.' });
   const now = Date.now(), mp = (req.u.mp || []).filter(t => now - t < 864e5);
   if (mp.length >= MURAL_PER_DAY) return res.status(429).json({ error: `Você já postou ${MURAL_PER_DAY} vezes hoje. Volte amanhã!` });
   if (mp.filter(t => now - t < 3600e3).length >= MURAL_PER_HOUR) return res.status(429).json({ error: `Você já postou ${MURAL_PER_HOUR} vezes na última hora. Espere um pouco para postar de novo.` });
   const p = { id: crypto.randomBytes(8).toString('hex'), uid: req.u.id, kind, text, at: new Date(now).toISOString(), likes: [], rep: {} };
-  if (link) p.link = link; if (kind === 'conquista') p.ach = ach;
+  if (link) p.link = link; if (kind === 'conquista') p.ach = ach; if (kind === 'progresso') { p.card = card; p.snap = snap; if (auto) p.auto = true; }
   DB.posts[p.id] = p; req.u.mp = [...mp, now].slice(-MURAL_PER_DAY); muralTrim(); save();
   res.json({ item: muralItem(p, req.u) });
 });
@@ -744,7 +768,7 @@ app.delete('/api/mural/:id', auth, (req, res) => {
 // LGPD: portabilidade e exclusão
 app.get('/api/export', auth, (req, res) => {
   const { pass, id, googleId, ...data } = req.u;
-  data.mural = Object.values(DB.posts || {}).filter(p => p.uid === req.u.id).map(p => ({ id: p.id, tipo: p.kind, texto: p.text, link: p.link || null, conquista: ACH[p.ach] || null, em: p.at, curtidas: (p.likes || []).length }));
+  data.mural = Object.values(DB.posts || {}).filter(p => p.uid === req.u.id).map(p => ({ id: p.id, tipo: p.kind, texto: p.text, link: p.link || null, conquista: ACH[p.ach] || null, cartao: CARDS[p.card] ? { tipo: CARDS[p.card], ...p.snap } : null, em: p.at, curtidas: (p.likes || []).length }));
   res.set('Content-Disposition', 'attachment; filename="meus-dados-codeup.json"').json(data);
 });
 
