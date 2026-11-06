@@ -335,7 +335,7 @@ function showAuth() {
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
   const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados, com provas.</p></div></div>
-    <div class=feat><span>${ic('code', 16)} 300 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
+    <div class=feat><span>${ic('code', 16)} 330 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
   if (g) googleBtn();
@@ -546,13 +546,14 @@ const actNext = l => actOrd(l).find(a => !actDn(l, a)) || null;
 const actPos = (l, a) => actOrd(l).indexOf(a) + 1;
 const rowOf = id => (S.ls || []).find(x => x.id == id);
 // os nomes das atividades mudam com o tipo da lição: DAX (escrever a fórmula / ler a fórmula) e quiz (praticar / ler e interpretar)
-const ACT_BY = { dax: { x: ['Escrever a fórmula', 'escrever a fórmula', 'Hora de escrever uma fórmula DAX por conta própria: primeiro uma explicação rápida, depois a prática.'], r: ['Ler a fórmula', 'ler a fórmula', 'Você vai ver uma fórmula pronta e dizer o que ela devolve. Ler bem é metade de escrever bem.'] },
+const ACT_BY = { html: { x: ['Montar a página', 'montar a página', 'Hora de escrever HTML e CSS por conta própria: primeiro uma explicação rápida, depois a prática.'], r: ['Ler o código', 'ler o código', 'Você vai ver um código pronto e dizer como a página fica. Ler bem é metade de programar bem.'] },
+  dax: { x: ['Escrever a fórmula', 'escrever a fórmula', 'Hora de escrever uma fórmula DAX por conta própria: primeiro uma explicação rápida, depois a prática.'], r: ['Ler a fórmula', 'ler a fórmula', 'Você vai ver uma fórmula pronta e dizer o que ela devolve. Ler bem é metade de escrever bem.'] },
   quiz: { x: ['Praticar com perguntas', 'praticar', 'Hora de responder umas perguntas sobre o que você acabou de aprender: primeiro uma explicação rápida, depois a prática.'], r: ['Ler e interpretar', 'ler e interpretar', 'Você vai olhar um gráfico, uma tabela ou uma fórmula e responder o que ela mostra.'] } };
 const actNm = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[0] || ACT_NM[a], actSh = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[1] || ACT_SH[a];
 const actTag = (l, a) => { const m = rowOf(l.id); return m && (m.rd || m.cf) ? `Atividade ${actPos(m, a)} de ${actOrd(m).length} · ${actNm(l, a)}` : actNm(l, a); };
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
 const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
-const COURSES = ['python', 'sql', 'js', 'excel', 'powerbi', 'dados'];                                   // ordem dos cursos na tela Cursos
+const COURSES = ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados'];                                   // ordem dos cursos na tela Cursos
 const courseOn = t => !S.cfg || !S.cfg.courses || S.cfg.courses[t] !== false;   // o dono pode desativar cursos no painel (Ajustes → Cursos)
 const ACTIVE = () => COURSES.filter(courseOn);
 const lvs = t => { const n = Math.max(1, ...(S.ls || []).filter(l => l.track == t).map(l => l.lv)); return Array.from({ length: n }, (_, i) => i + 1); };   // níveis que o curso tem hoje (o Excel começa só com o Básico)
@@ -610,7 +611,7 @@ const CRS = {
   powerbi: { d: 'Modelo de dados, visuais e fórmulas DAX: medidas, CALCULATE e relatórios que contam histórias.', c: 'Dados' },
   dados: { d: 'Do olhar para os números a contar a história com eles: gráficos, insights e apresentação.', c: 'Dados' }
 };
-const SOON = [{ n: 'HTML e CSS', d: CRS.html.d, c: CRS.html.c, i: 'code' }];                 // cursos "em breve": { n, d, c, i }. O HTML e CSS entra em COURSES quando as lições chegarem
+const SOON = [];                 // cursos "em breve": { n, d, c, i } (hoje todos os cursos já têm lições; um curso novo fica aqui até as lições chegarem e então entra em COURSES)
 const CATI = { Todos: 'grid', Programação: 'code', Dados: 'db', Produtividade: 'chart', Outros: 'smile' };
 const CATS = () => ['Todos', ...['Programação', 'Dados', 'Produtividade', 'Outros'].filter(c => [...ACTIVE().map(t => CRS[t].c), ...SOON.map(x => x.c)].includes(c))];   // só aparecem categorias que têm curso
 const cnorm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -741,7 +742,7 @@ function countUp() {
   });
 }
 const TOUR = [
-  { t: 'Oi! Eu sou o guia do CodeUp', p: 'Aqui você aprende Python e SQL escrevendo código de verdade, um passo de cada vez. Quer um tour de 20 segundos?', sel: null },
+  { t: 'Oi! Eu sou o guia do CodeUp', p: 'Aqui você aprende programação e dados (Python, SQL, JavaScript, HTML e CSS, Excel e mais) escrevendo código de verdade, um passo de cada vez. Quer um tour de 20 segundos?', sel: null },
   { t: 'Este é o seu próximo passo', p: 'Toque na lição que brilha no mapa. Primeiro você lê a teoria, depois pratica, e quando terminar, você toca em Concluído para conferir.', sel: '.ti.cur' },
   { t: 'Estude todo dia', p: 'Cada dia seguido aumenta sua sequência, e cada lição dá XP. Pequenos treinos diários vencem maratonas.', sel: '.hd .chips-r' },
   { t: 'Seu menu', p: 'Em Cursos você escolhe entre Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados. No Ranking você vê sua posição e no Mural a turma mostra projetos e conquistas. Em Desafios ficam as provas. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
@@ -1221,7 +1222,7 @@ function taskHtml(t) {
   close(); return out.join('');
 }
 // resultado que o aluno acabou de acertar (a tabela do SQL ou a saída do Python), mostrado na tela de conclusão
-const resBox = () => S.lastRes ? `<div class="ob resbox"><div class=obh>${ic('check', 14)}<span>${S.cur && (S.cur.type == 'sql' || S.cur.type == 'dax') ? 'Seu resultado' : S.cur && S.cur.type == 'excel' ? 'Sua planilha' : S.cur && S.cur.type == 'quiz' ? 'Suas respostas' : 'Sua saída'}</span></div><div class=out>${S.lastRes}</div></div>` : '';
+const resBox = () => S.lastRes ? `<div class="ob resbox"><div class=obh>${ic('check', 14)}<span>${S.cur && (S.cur.type == 'sql' || S.cur.type == 'dax') ? 'Seu resultado' : S.cur && S.cur.type == 'excel' ? 'Sua planilha' : S.cur && S.cur.type == 'quiz' ? 'Suas respostas' : S.cur && S.cur.type == 'html' ? 'Sua página' : 'Sua saída'}</span></div><div class=out>${S.lastRes}</div></div>` : '';
 // Provas: os 2 checkpoints de cada nível (depois das lições 10 e 20, 2 chances) e a prova final (depois da 30, 3 chances). Uma tarefa completa com o que se aprendeu,
 // sem teoria, dica nem solução. Acabaram as chances: o aluno volta 5 lições (checkpoint) ou 10 (prova final) para relembrar.
 // Projeto (depois de cada 5 lições): um mini-projeto com o que o aluno aprendeu nas últimas 5. Não gasta chance nem faz voltar lição, e tem dica e solução, mas é obrigatório para seguir.
@@ -1242,7 +1243,7 @@ async function openTest(id) {
 // corações = chances que ainda restam numa prova
 const chHearts = (n, max, sz = 22) => Array.from({ length: max }, (_, i) => `<span class="ht ${i < n ? 'on' : ''}">${ic('heart', sz)}</span>`).join('');
 const testDone = l => l.fin ? passedLv(l.track, l.lv) : (S.me.cps || []).includes(l.id);
-const whatT = l => l.type == 'sql' ? 'uma consulta completa' : l.type == 'excel' ? 'uma planilha completa' : l.type == 'dax' ? 'um conjunto de fórmulas DAX' : l.type == 'quiz' ? 'uma sequência de perguntas' : 'um programa completo';
+const whatT = l => l.type == 'sql' ? 'uma consulta completa' : l.type == 'excel' ? 'uma planilha completa' : l.type == 'dax' ? 'um conjunto de fórmulas DAX' : l.type == 'quiz' ? 'uma sequência de perguntas' : l.type == 'html' ? 'uma página completa' : 'um programa completo';
 function testIntro() {
   delete document.body.dataset.calm;
   const l = S.cur, fin = !!l.fin, ok = testDone(l), left = l.left ?? l.chances, nxt = l.lv < lvs(l.track).length ? `o nível ${LV[l.lv]}` : 'a conclusão do curso';
@@ -1274,8 +1275,8 @@ function editor(l) {
 }
 const edBox = (q, value) => `<div class=ed><div class=edh><i></i><i></i><i></i><span>${q.type == 'sql' ? 'consulta.sql' : q.type == 'dax' ? 'medida.dax' : q.type == 'js' ? 'main.js' : q.type == 'html' ? (q.edit == 'css' ? 'estilo.css' : 'index.html') : 'main.py'}</span></div>
   <div class=edb><div class=gut id=gut>1</div><pre class=hlp id=hlp aria-hidden=true></pre><textarea id=ed wrap=off spellcheck=false autocapitalize=off autocomplete=off autocorrect=off>${esc(value)}</textarea></div></div>`;
-const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em <b>Concluído</b>.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', OUT0D = 'Escreva a fórmula e toque em <b>Concluído</b>: o corretor calcula a sua medida e compara com o resultado esperado.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta · "Dados" mostra as tabelas</div>', OUT0Q = 'Responda as perguntas e toque em <b>Concluído</b> para conferir. Errou? A explicação aparece e você pode tentar de novo.', OUT0X = 'Escreva as fórmulas nas células <b>verdes</b> e toque em <b>Concluído</b> para conferir.<div class=tn>Toque numa célula para escolher · Enter confirma · depois de = ou ( toque nas células para apontar</div>', DONE_BTN = `${ic('check', 18)} Concluído`;
-const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : S.cur.type == 'excel' || S.cur.type == 'quiz' ? 'Ajuda' : S.cur.type == 'dax' ? 'Conferência' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
+const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em <b>Concluído</b>.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', OUT0D = 'Escreva a fórmula e toque em <b>Concluído</b>: o corretor calcula a sua medida e compara com o resultado esperado.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta · "Dados" mostra as tabelas</div>', OUT0Q = 'Responda as perguntas e toque em <b>Concluído</b> para conferir. Errou? A explicação aparece e você pode tentar de novo.', OUT0X = 'Escreva as fórmulas nas células <b>verdes</b> e toque em <b>Concluído</b> para conferir.<div class=tn>Toque numa célula para escolher · Enter confirma · depois de = ou ( toque nas células para apontar</div>', OUT0H = 'Toque em <b>Página</b> para ver como o navegador mostra o que você escreveu. Quando terminar, toque em <b>Concluído</b>: o corretor confere cada item da tarefa.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', DONE_BTN = `${ic('check', 18)} Concluído`;
+const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : S.cur.type == 'excel' || S.cur.type == 'quiz' ? 'Ajuda' : S.cur.type == 'dax' ? 'Conferência' : S.cur.type == 'html' ? 'Sua página' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
 
 // as etapas da lição: 1 Como funciona · 2 Teoria · 3 Prática (projetos têm só Projeto · Prática). Tocar numa etapa vai até ela.
 const steps = (n, proj, two) => {
@@ -1321,12 +1322,13 @@ const exResult = l => {
 // ============================================================ EXEMPLO AO VIVO (teoria de SQL e Python)
 // O exemplo da lição é um editor de verdade: o aluno muda o código, toca em Rodar e vê o resultado na hora (SQL no navegador; Python no Pyodide). Nada aqui vale nota.
 // "Experimente" sugere uma mudança (content/tente-sql.js e tente-py.js): "Ver a mudança" aplica, roda e explica o que mudou.
-const labOn = l => !!l && !!l.example && (l.type == 'sql' || l.type == 'python' || l.type == 'js') && !isTest(l);
+const labOn = l => !!l && !!l.example && (l.type == 'sql' || l.type == 'python' || l.type == 'js' || l.type == 'html') && !isTest(l);
 const labOrig = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
 const labDf = l => l.type == 'python' && /\bdf\s*=/.test(l.prelude || '');
 const labTbl = (cols, vals, total) => { const rest = total - vals.length; return table({ columns: cols, values: vals }) + `<p class=exm>${rest > 0 ? `… e mais ${rest} ${rest == 1 ? 'linha' : 'linhas'} (${total} no total)` : `${total} ${total == 1 ? 'linha' : 'linhas'}`}</p>`; };
 const labFirst = l => {
   const o = l.exampleOut;
+  if (l.type == 'html') return { t: 'Como o exemplo fica', h: HC.frame(l.example, l, { example: true, sm: true, title: 'como a página fica' }) };
   if (l.type == 'sql') return o && o.cols && o.rows ? { t: o.label || 'Resultado do exemplo', h: labTbl(o.cols, o.rows, o.total) } : { t: 'Resultado', h: '<p class=labe>Toque em <b>Rodar</b> para ver o resultado.</p>' };
   return o && o.out != null ? { t: 'Saída do exemplo', h: `<pre class=inl>${esc(o.out) || '(sem saída)'}</pre>` } : { t: 'Saída', h: '<p class=labe>Toque em <b>Rodar</b> para ver a saída.</p>' };
 };
@@ -1383,8 +1385,9 @@ async function labRun() {
   try {
     if (!code.trim()) o.innerHTML = '<p class=labe>Escreva alguma coisa para rodar.</p>';
     else if (l.type == 'sql') o.innerHTML = await labSql(l, code);
+    else if (l.type == 'html') o.innerHTML = HC.frame(code, l, { example: true, sm: true, title: 'como a página fica' });
     else { o.textContent = 'Executando…'; o.innerHTML = (await (l.type == 'js' ? runJs(l, code) : runPy(l, code))).html; }
-    L.ran = code; const t = $('#labTit'); if (t) t.textContent = code === L.orig ? L.first.t : 'Resultado do seu código';
+    L.ran = code; const t = $('#labTit'); if (t) t.textContent = code === L.orig ? L.first.t : l.type == 'html' ? 'Como a sua mudança fica' : 'Resultado do seu código';
   } catch (e) { if ($('#out')) { showErr(e); L.ran = code; const t = $('#labTit'); if (t) t.textContent = 'Erro no seu código'; } }
   finally { L.busy = false; const b2 = $('#labRun'); if (b2) b2.disabled = false; labSync(); }
 }
@@ -1803,7 +1806,7 @@ const tutDue = l => !!l && !isTest(l) && l.n == 1 && !LS.get(tutKey(l)) && !(S.l
 const tutAuto = () => { const l = S.cur; if (tutDue(l)) setTimeout(() => { if (S.cur === l && !$('.tour')) tutorial(); }, 450); };
 function tutSteps(l) {
   const id = tutId(), T = l.type, py = T == 'python', sql = T == 'sql', ed = py || sql || T == 'dax', m = rowOf(l.id) || {}, N = actOrd(m).length, nms = actOrd(m).map(a => actNm(l, a).toLowerCase());
-  const what = py ? 'código em Python' : sql ? 'consulta em SQL' : T == 'dax' ? 'fórmula em DAX' : T == 'excel' ? 'planilha com fórmulas' : 'resposta';
+  const what = py ? 'código em Python' : sql ? 'consulta em SQL' : T == 'dax' ? 'fórmula em DAX' : T == 'excel' ? 'planilha com fórmulas' : T == 'html' ? 'código em HTML e CSS' : 'resposta';
   const hi = { t: 'Oi! Eu sou ' + esc(gnm()), p: {
     t: 'Toda lição começa com uma <b>teoria rápida</b>. Em menos de 1 minuto eu mostro onde fica cada coisa. Se preferir, toque em <b>Pular</b>: dá para rever depois no botão <b>?</b> do topo.',
     x: `Esta é a <b>prática</b>: aqui você escreve ${/^[aeiou]/.test(what) ? 'uma' : 'um'} ${what} de verdade. Vou mostrar onde fica cada coisa e como funciona. Se preferir, toque em <b>Pular</b>: dá para rever depois no botão <b>?</b> do topo.`,
@@ -1820,14 +1823,14 @@ function tutSteps(l) {
     labOn(l) ? { sel: '.lab', t: 'O exemplo ao vivo', p: 'Este exemplo é de verdade: <b>mude o código</b> e toque em <b>Rodar</b> para ver o que acontece. Em <b>Experimente</b> eu sugiro uma mudança. Aqui nada vale nota: errar e testar é a melhor forma de aprender.' } : { sel: '.cb', t: 'O exemplo', p: 'Este é um exemplo pronto do que a lição ensina. Ele serve só para ler: na próxima etapa é você quem faz.' }, ...(sql ? [tbl] : []),
     { sel: '.c > .btn.pri.block', t: 'Entendeu? Siga em frente', p: 'Quando terminar de ler, toque em <b>Entendi, ir para a prática</b>. A prática vem com outro tutorial, bem rapidinho.' }];
   if (id == 'x') {
-    const AJ = { 'Dica': 'uma pista, sem entregar a resposta', 'Dados': py ? 'os dados da atividade, quando houver' : T == 'dax' ? 'o modelo de dados, com as tabelas' : 'as tabelas com todos os dados que você pode usar', 'Fórmulas': 'mostra as fórmulas das células', 'Solução': 'a resposta pronta (deixe por último!)', 'Teoria': 'volta à explicação da lição', 'Limpar': 'apaga o que você escreveu' };
+    const AJ = { 'Dica': 'uma pista, sem entregar a resposta', 'Página': 'mostra a sua página como o navegador a vê', 'Dados': py ? 'os dados da atividade, quando houver' : T == 'dax' ? 'o modelo de dados, com as tabelas' : 'as tabelas com todos os dados que você pode usar', 'Fórmulas': 'mostra as fórmulas das células', 'Solução': 'a resposta pronta (deixe por último!)', 'Teoria': 'volta à explicação da lição', 'Limpar': 'apaga o que você escreveu' };
     const labs = [...document.querySelectorAll('.acts .btn span')].map(s => s.textContent.trim()).filter(k => AJ[k]);
     const box = T == 'excel' ? { sel: '.xs', t: 'A planilha', p: 'As células <b>verdes</b> são as que você preenche. Toque numa célula, escreva a fórmula na barra (<b>fx</b>) e confirme com o ✓ ou com Enter. Depois de <b>=</b> ou <b>(</b>, dá para tocar em outras células para apontar para elas.' }
       : T == 'quiz' ? { sel: '#qzi0', t: 'As perguntas', p: 'Cada pergunta é um cartão numerado. Responda tocando na alternativa certa ou digitando a resposta, quando a pergunta pedir. Pode responder na ordem que quiser.' }
-      : { sel: '.ed', t: sql ? 'Onde você escreve a consulta' : py ? 'Onde você escreve o código' : 'Onde você escreve a fórmula', p: py ? 'Toque aqui e escreva o seu código Python. Os números mostram as linhas e as cores ajudam a ler. A tecla <b>Tab</b> faz o recuo.' : sql ? 'Toque aqui e escreva a sua consulta SQL. O que começa com <b>--</b> é só um comentário: o SQL ignora, pode apagar. A tecla <b>Tab</b> faz o recuo.' : 'Toque aqui e escreva a fórmula DAX da medida. Os números mostram as linhas e as cores ajudam a ler.' };
+      : { sel: '.ed', t: sql ? 'Onde você escreve a consulta' : py ? 'Onde você escreve o código' : T == 'html' ? 'Onde você escreve o código' : 'Onde você escreve a fórmula', p: T == 'html' ? 'Toque aqui e escreva o seu HTML (ou CSS, nas lições de estilo). Os números mostram as linhas e as cores ajudam a ler. A tecla <b>Tab</b> faz o recuo. O que começa com <b>&lt;!--</b> ou <b>/*</b> é só um comentário: o navegador ignora.' : py ? 'Toque aqui e escreva o seu código Python. Os números mostram as linhas e as cores ajudam a ler. A tecla <b>Tab</b> faz o recuo.' : sql ? 'Toque aqui e escreva a sua consulta SQL. O que começa com <b>--</b> é só um comentário: o SQL ignora, pode apagar. A tecla <b>Tab</b> faz o recuo.' : 'Toque aqui e escreva a fórmula DAX da medida. Os números mostram as linhas e as cores ajudam a ler.' };
     return [hi, top, stp, task, ...(sql ? [tbl] : []), box,
       { sel: '.acts', t: 'As ajudas', p: labs.map(k => `<b>${k}</b>: ${AJ[k]}`).join('<br>') },
-      { sel: '.ob', t: py ? 'A saída' : sql ? 'O resultado' : 'Resultado e ajuda', p: py ? 'Aqui aparece a <b>saída</b> do seu código, o que ele mostra na tela. Nada aparece enquanto você digita: só depois de tocar em <b>Concluído</b>.' : sql ? 'Aqui aparece o <b>resultado</b> da sua consulta, em forma de tabela. Nada aparece enquanto você digita: só depois de tocar em <b>Concluído</b>.' : 'Aqui aparecem o resultado e as explicações. Nada aparece enquanto você trabalha: só depois de tocar em <b>Concluído</b>.' },
+      { sel: '.ob', t: py ? 'A saída' : sql ? 'O resultado' : T == 'html' ? 'A sua página' : 'Resultado e ajuda', p: T == 'html' ? 'Aqui aparece a <b>sua página</b>, do jeito que o navegador a mostra. Toque em <b>Página</b> para espiar enquanto escreve. Ao tocar em <b>Concluído</b>, o corretor confere cada item da tarefa e mostra uma lista com o que está certo e o que falta.' : py ? 'Aqui aparece a <b>saída</b> do seu código, o que ele mostra na tela. Nada aparece enquanto você digita: só depois de tocar em <b>Concluído</b>.' : sql ? 'Aqui aparece o <b>resultado</b> da sua consulta, em forma de tabela. Nada aparece enquanto você digita: só depois de tocar em <b>Concluído</b>.' : 'Aqui aparecem o resultado e as explicações. Nada aparece enquanto você trabalha: só depois de tocar em <b>Concluído</b>.' },
       { sel: '#bdone', t: 'Concluído: é aqui que roda', p: `Quando terminar, toque em <b>Concluído</b>${ed ? ' (no computador: Ctrl+Enter)' : ''}. Só nesse momento o app ${py || sql ? 'roda o seu código e ' : ''}confere a resposta. <b>Acertou:</b> você ganha XP e segue em frente. <b>Errou:</b> eu mostro o que faltou e você tenta de novo, sem perder nada.` }, fin];
   }
   const code = { sel: '.cb, .xs', t: 'O código', p: 'Ele já está pronto: você não escreve nada aqui. Leia linha por linha e pense no que ele faz.' + (sql ? ' Os dados da tabela aparecem logo abaixo.' : '') };
@@ -1887,8 +1890,8 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   ${tblFor(l, '', 'Toque em <b>Dados</b> para ver as linhas de cada tabela.')}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${DX ? daxViewsNote(l) : ''}${X ? xlBox(l) : Q ? qzBox(l) : edBox(l, l.starter)}
-  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="Ver dados">${ic('eye', 20)}<span>Dados</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
-  ${outBox(X ? OUT0X : Q ? OUT0Q : DX ? OUT0D : OUT0)}
+  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="${l.type == 'html' ? 'Ver a página' : 'Ver dados'}">${ic('eye', 20)}<span>${l.type == 'html' ? 'Página' : 'Dados'}</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
+  ${outBox(X ? OUT0X : Q ? OUT0Q : DX ? OUT0D : l.type == 'html' ? OUT0H : OUT0)}
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
 
@@ -1896,7 +1899,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
     editor(l); const ed = $('#ed');
     ed.addEventListener('focus', () => {
       // o texto-guia ("-- escreva sua consulta aqui") some assim que o aluno toca para escrever; se o campo só tem comentários, esvazia
-      if (ed.value.split('\n').every(x => /^\s*((--|#|\/\/).*)?$/.test(x))) { ed.value = ''; ed.dispatchEvent(new Event('input')); }
+      if (ed.value.split('\n').every(x => /^\s*((--|#|\/\/).*|<!--.*-->|\/\*.*\*\/)?$/.test(x))) { ed.value = ''; ed.dispatchEvent(new Event('input')); }
       else if (ed.selectionStart == 0 && ed.selectionEnd == 0) ed.setSelectionRange(ed.value.length, ed.value.length);
     }, { once: true });
   }
@@ -1905,7 +1908,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
 // texto das chances restantes de uma prova
 const chanceMsg = (n, l) => n <= 1 ? `<b>Última chance.</b> Se não acertar, você volta ${l.back} lições para relembrar.` : `Você tem <b>${n} chances</b>. Cada resposta errada gasta uma; sem chances, você volta ${l.back} lições.`;
 function hint() { const l = S.cur, o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=hintb>${poseChip('ideia', 52)}${ic('bulb', 16)} <span></span></div>`; o.querySelector('span').textContent = l.hints[Math.min(S.h++, l.hints.length - 1)]; }
-function sol() { const o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=tn style="margin:0 0 6px">Solução</div><pre class=inl>${hl(niceSql(S.cur.solution, S.cur.type), S.cur.type)}</pre>`; }   // no Excel, a solução mostra as fórmulas das células
+function sol() { const o = $('#out'); o.className = 'out'; o.innerHTML = `<div class=tn style="margin:0 0 6px">Solução</div><pre class=inl>${hl(niceSql(S.cur.solution, S.cur.type), S.cur.type == 'html' ? lang(S.cur) : S.cur.type)}</pre>`; }   // no Excel, a solução mostra as fórmulas das células
 
 // ---------- correção: o código só é executado e conferido quando o aluno toca em "Concluído" ----------
 let LT;
@@ -1977,16 +1980,24 @@ function diagPy(l, out, expected, missing) {
   }
   return fixit(0, '', tips) + `<div class=exp><small>Saída esperada</small><pre class=inl>${esc(expected)}</pre></div>`;
 }
+// HTML e CSS: o servidor devolve um item por verificação ({ ok, d } e, nas lições, `why`); aqui vira a lista ✓/✗ e as dicas (chave fechando, tag sem fechar...)
+const HTML_NOTES = /<!--[\s\S]*?-->|\/\*[\s\S]*?\*\//g;   // comentários de HTML e de CSS: o código só com comentários é uma resposta vazia
+function diagHtml(l, s) {
+  const hc = s && s.hc; if (!hc || !hc.items || !hc.items.length) return fixit(0, '', ['Não consegui conferir a página agora. Toque em <b>Concluído</b> de novo.']);
+  const n = hc.items.length, no = hc.items.filter(i => !i.ok).length, tips = [n == 1 ? '<b>Falta o que a tarefa pede.</b> Veja abaixo:' : `<b>${no == 1 ? 'Falta 1 item' : 'Faltam ' + no + ' itens'}</b> de ${n} do que a tarefa pede. ${isTest(l) ? 'Confira a lista:' : 'Cada item mostra o que está faltando:'}`];
+  (hc.hints || []).forEach(h => tips.push(HC.inl(h)));
+  return fixit(0, '', tips) + HC.list(hc.items, { exam: isTest(l) });
+}
 // Botão "Concluído" (fixo no rodapé): só agora o código é executado e conferido. Certo → tela da lição concluída (e dali, próxima lição); errado → mostra o resultado e explica o que ajustar.
 async function concluir() {
   const l = S.cur, X = l.type == 'excel', Q = l.type == 'quiz', DX = l.type == 'dax', SRV = X || Q || DX, ed = X ? $('#xin') : Q ? $('#qzbox') : $('#ed'); if (!ed || S.step != 'pratica' || S.busy) return;
   if (X && !xlCommit()) return;                                   // o que está sendo digitado na barra de fórmulas entra na célula antes de conferir
   const code = X ? xlCode() : Q ? qzCode() : ed.value, id = ++S.lt, o = $('#out'), b = $('#bdone'), fb = $('#fb'); if (DX) S.daxCode = code;
-  if (X ? xlEmpty() : Q ? qzEmpty() : !code.replace(DX ? /(--|\/\/)[^\n]*/g : l.type == 'js' ? /\/\/[^\n]*/g : /(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', [X ? 'Preencha as células <b>verdes</b> com fórmulas e depois toque em <b>Concluído</b>.' : Q ? 'Responda pelo menos uma pergunta e depois toque em <b>Concluído</b>.' : 'Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
+  if (X ? xlEmpty() : Q ? qzEmpty() : !code.replace(DX ? /(--|\/\/)[^\n]*/g : l.type == 'js' ? /\/\/[^\n]*/g : l.type == 'html' ? HTML_NOTES : /(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', [X ? 'Preencha as células <b>verdes</b> com fórmulas e depois toque em <b>Concluído</b>.' : Q ? 'Responda pelo menos uma pergunta e depois toque em <b>Concluído</b>.' : 'Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
   S.busy = true; if (b) { b.disabled = true; b.innerHTML = '<span class=spin></span> Conferindo…'; } if (fb) fb.classList.add('stale');   // o botão só troca o texto: não muda de tamanho nem de lugar
   try {
     let r, err = null;
-    try { r = SRV ? { out: '', html: '' } : l.type == 'sql' ? await runSql(l, code) : l.type == 'js' ? await runJs(l, code) : await runPy(l, code, () => id != S.lt); }   // Excel, DAX e quiz: nada roda aqui, o servidor calcula e confere
+    try { r = SRV ? { out: '', html: '' } : l.type == 'html' ? { out: '', html: HC.frame(code, l) } : l.type == 'sql' ? await runSql(l, code) : l.type == 'js' ? await runJs(l, code) : await runPy(l, code, () => id != S.lt); }   // Excel, DAX e quiz: nada roda aqui, o servidor calcula e confere
     catch (e) {
       if (e.message == 'STALE') return setFb('idle');
       showErr(e);
@@ -2006,7 +2017,7 @@ async function concluir() {
         return testFail(s);
       }
       if (X) xlMark(s);
-      const tip = err ? diagErr(err, code, l) : X ? (xlDiag(l, s) || fixit(0, '', ['Não consegui ler a planilha. Toque em Concluído de novo.'])) : Q ? qzDiag(l, s) : DX ? daxDiag(l, s) : l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing, s.view) : diagPy(l, r.out, s.expected, s.missing), kind = (err || (DX && s.dx && s.dx.err)) ? 'err' : 'bad';
+      const tip = err ? diagErr(err, code, l) : X ? (xlDiag(l, s) || fixit(0, '', ['Não consegui ler a planilha. Toque em Concluído de novo.'])) : Q ? qzDiag(l, s) : DX ? daxDiag(l, s) : l.type == 'html' ? diagHtml(l, s) : l.type == 'sql' ? await diagSql(l, code, r.raw, s.missing, s.view) : diagPy(l, r.out, s.expected, s.missing), kind = (err || (DX && s.dx && s.dx.err)) ? 'err' : 'bad';
       if (!T || s.left === undefined || testDone(l)) return setFb(kind, tip);        // lição comum, ou prova já vencida (treino sem perder chance)
       l.left = s.left; const h = $('#chh'), n = $('#chn'); if (h) h.innerHTML = chHearts(s.left, l.chances, 20); if (n) n.innerHTML = chanceMsg(s.left, l);
       return setFb(kind, `<p class=tip>${chHearts(s.left, l.chances, 16)} <b>${s.left == 1 ? 'Resta 1 chance.' : `Restam ${s.left} chances.`}</b></p>` + tip);
@@ -2130,6 +2141,7 @@ function runPy(l, code, stale) {   // uma execução por vez no mesmo worker
 async function peek() {
   const l = S.cur, o = $('#out'); o.className = 'out'; if (l.type == 'excel') return xlToggleF();
   if (l.type == 'dax') { try { o.innerHTML = daxPeek(l); } catch (e) { o.textContent = 'Não consegui mostrar os dados agora.'; } return; }
+  if (l.type == 'html') { const ed = $('#ed'); o.innerHTML = ed && ed.value.replace(HTML_NOTES, '').trim() ? HC.frame(ed.value, l) : '<p class=labe>Escreva alguma coisa no editor e toque em <b>Página</b> para ver como ela fica.</p>'; return; }   // a prévia roda só no navegador, num quadro isolado (hcui.js); quem confere é o servidor
   try {
     if (l.type == 'sql') {
       await loadSql(); const db = new S.SQL.Database(); db.run(l.seed);
@@ -2201,7 +2213,7 @@ function readAct() {
   <div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('pensando', 40)}</span></div>
   <div class=task>${ic('eye', 20)}<div><small>${actTag(l, 'r')}</small>${esc(r.q)}</div></div>
   ${tblRd(r)}
-  ${X ? xlRead(r) : (r.code ? codeBox(r.code, r.lang || lang(l), 'Código') : '') + matHtml({ ...r, code: null })}${dataTables(r)}
+  ${X ? xlRead(r) : (r.code ? codeBox(r.code, r.lang || (l.type == 'html' ? 'html' : lang(l)), 'Código') : '') + matHtml({ ...r, code: null })}${dataTables(r)}
   ${body}
   <div id=fb class="fb idle" aria-live=polite></div><div id=rdwhy></div>${theoryBox(l)}</div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=rdCheck() disabled>${ic('check', 18)} Conferir</button></div>`;
@@ -2320,7 +2332,7 @@ function result() {
   if (S.cur.proj) return resultProj();
   if (S.cur.ec) return resultEc();
   const l = S.cur, i = S.ls.findIndex(x => x.id == l.id), nx = S.ls[i + 1] && S.ls[i + 1].track == l.track && S.ls[i + 1].lv == l.lv ? S.ls[i + 1] : null;
-  const last = !nx, fin = last ? finOf(l.track, l.lv) : null, needCp = nx && nx.lock == 'cp' ? cpBefore(nx) : null, what = l.type == 'sql' ? 'uma consulta' : l.type == 'excel' ? 'uma planilha' : l.type == 'dax' ? 'fórmulas DAX' : l.type == 'quiz' ? 'uma sequência de perguntas' : 'um programa';
+  const last = !nx, fin = last ? finOf(l.track, l.lv) : null, needCp = nx && nx.lock == 'cp' ? cpBefore(nx) : null, what = l.type == 'sql' ? 'uma consulta' : l.type == 'excel' ? 'uma planilha' : l.type == 'dax' ? 'fórmulas DAX' : l.type == 'quiz' ? 'uma sequência de perguntas' : l.type == 'html' ? 'uma página' : 'um programa';
   const btn = last ? (fin && !fin.lock ? `<button class="btn pri block" onclick="openTest('${fin.id}')">${ic('cap', 16)} Fazer a prova final</button>` : '')
     : needCp ? `<button class="btn pri block" onclick="openTest('${needCp.id}')">${ic('flag', 16)} Fazer o checkpoint</button>`
     : `<button class="btn pri block" onclick="openL('${nx.id}')">Próxima lição ${ic('arrow', 16)}</button>`;

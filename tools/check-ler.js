@@ -68,6 +68,21 @@ async function main() {
             if (norm(got) !== norm(want)) say(l, `o resultado real é ${JSON.stringify(got)} e a resposta certa diz ${JSON.stringify(want)}`);
           }
         } finally { db.close(); }
+      } else if (l.type === 'html') {                                    // HTML e CSS: lê o código com o htmlcheck.js (HTML + CSS calculado) e confere o que a pergunta quer saber
+        const hc = require('../htmlcheck'), pg = hc.makePage(r.code), ctx = { vw: 1024, vh: 768, st: null, key: '1024x768|' };
+        const [kind, ...rest] = String(r.v).split(':'), body = rest.join(':'), cut = i => [body.slice(0, i), body.slice(i + 1)], at = cut(body.lastIndexOf(':'));
+        const norm2 = x => String(x ?? '').replace(/\s+/g, ' ').trim();
+        let got;
+        if (kind === 'text') { const el = hc.query(pg, body)[0]; got = el ? hc.textOf(el, true) : '(nenhum elemento)'; }
+        else if (kind === 'count') got = String(hc.query(pg, body).length + (r.add || 0));
+        else if (kind === 'attr') { const el = hc.query(pg, at[0])[0]; got = el ? (el.a[at[1]] ?? '(sem o atributo)') : '(nenhum elemento)'; }
+        else if (kind === 'css' || kind === 'cssn') {                  // css: o estilo calculado do 1º elemento (hover: true = com o mouse em cima)  ·  cssn: quantos elementos têm esse estilo; pv é o valor calculado que corresponde à resposta
+          if (r.pv === undefined) { say(l, kind + ': falta o pv (o valor calculado que corresponde à resposta)'); continue; }
+          if (kind === 'css') { const v = hc.computed(pg, at[0], at[1], { hover: !!r.hover }); if (norm2(v) !== norm2(r.pv)) say(l, `${at[0]} tem ${at[1]}: ${JSON.stringify(v)} e o pv diz ${JSON.stringify(r.pv)}`); continue; }
+          got = String(hc.query(pg, at[0]).filter(el => norm2(hc.styleOf(pg, el, null, ctx)[at[1]]) === norm2(r.pv)).length);
+        }
+        else { say(l, `validador "${r.v}" não existe para HTML e CSS`); continue; }
+        if (norm(got) !== norm(want)) say(l, `o resultado real é ${JSON.stringify(got)} e a resposta certa diz ${JSON.stringify(want)}`);
       } else if (l.type === 'excel') {
         const raw = {}; (r.sheet.rows || []).forEach((row, i) => row.forEach((val, j) => { if (val !== null && val !== undefined && val !== '') raw[XL.addr(j + 1, i + 1)] = val; }));
         const sh = new XL.Sheet(raw), p = XL.parseAddr(r.ask), fm = (r.sheet.cfmt || {})[r.ask] || (r.sheet.fmt || {})[XL.colL(p.c)] || null, got = XL.show(sh.value(r.ask), fm);

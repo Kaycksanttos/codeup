@@ -8,6 +8,7 @@ const R = require('./public/rewards.js');   // títulos e molduras por XP (o mes
 const { checkpoints, finals, tests, projects, explains, EC_GEMS: R_EC_GEMS, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
 const TRACK_NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
 const xlcheck = require('./xlcheck');   // correção das atividades de Excel (compara os resultados das fórmulas)
+const htmlcheck = require('./htmlcheck');   // HTML e CSS: lê o HTML do aluno e calcula o CSS como o navegador, depois confere a lista de verificações da lição
 const daxcheck = require('./daxcheck'), quizcheck = require('./quizcheck');   // Power BI e DAX: medidas DAX (compara os resultados nos visuais) e quizzes (escolher, ordenar, ligar, número, montar visual, escrever)
 
 const PORT = process.env.PORT || 3000;
@@ -196,8 +197,8 @@ const PJ_AT = new Map(projects.map(p => [`${p.track}-${p.lv}-${p.after}`, p])); 
 const EC_AT = new Map(explains.map(e => [`${e.track}-${e.lv}-${e.after}`, e]));
 const ecDone = (u, track, lv, n) => { const e = EC_AT.get(`${track}-${lv}-${n}`); return !e || !!(u.ecdone || {})[e.id]; };
 const pjDone = (u, track, lv, n) => { const p = PJ_AT.get(`${track}-${lv}-${n}`); return !p || !!(u.cpdone || {})[p.id]; };   // o projeto feito fica guardado junto com os checkpoints (cpdone)
-const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, ...rest }) => rest;   // o gabarito nunca vai para o navegador
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, checks, ...rest }) => rest;   // o gabarito nunca vai para o navegador (em HTML e CSS a lista de verificações fica no servidor; o aluno recebe só `req`, as descrições)
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, checks, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
 const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.cf ??= {}; u.cpdone ??= {}; u.ecdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; if (!u.ecm) migrateEc(u); return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------
@@ -835,6 +836,7 @@ console.log(PY_SERVER ? 'Correção de Python no servidor: ATIVA (código do alu
 async function grade(l, code, out, authoritative) {
   if (l.type === 'dax') return daxcheck.grade(l, code);                   // DAX: calcula as medidas do aluno e as da resposta oficial em cada visual (e com outros números) e compara
   if (l.type === 'quiz') { let a; try { a = JSON.parse(code); } catch { a = []; } return quizcheck.grade(l, a, isTest(l)); }   // quiz: as respostas vão em JSON
+  if (l.type === 'html') { const r = htmlcheck.grade(l, code); return isTest(l) ? { ok: r.ok, hc: { items: r.hc.items.map(({ ok, d }) => ({ ok, d })), hints: [] } } : r; }   // HTML e CSS: confere cada item da lista; nas provas o aluno vê só quais itens faltam (sem a dica do que está errado)
   if (l.type === 'excel') return xlcheck.grade(l, code);                  // Excel: compara o resultado das fórmulas (com os números da planilha e com outros)
   const flat = code.toLowerCase().replace(/\s+/g, ' ');
   const missing = (l.need || []).find(t => !flat.includes(t));
@@ -865,7 +867,7 @@ function sqlRowsFallback(l, out) {
   const k = rows.map(r => JSON.stringify(r)), a = e.ordered ? k : [...k].sort(), b = e.ordered ? e.rows : [...e.rows].sort();
   return JSON.stringify(a) === JSON.stringify(b);
 }
-const cleanCode = (c, l) => String(c || '').slice(0, l && (l.type === 'excel' || l.type === 'quiz') ? 20000 : 5000);   // Excel: as fórmulas de várias células vão juntas, em JSON
+const cleanCode = (c, l) => String(c || '').slice(0, l && (l.type === 'excel' || l.type === 'quiz') ? 20000 : l && l.type === 'html' ? 8000 : 5000);   // Excel: as fórmulas de várias células vão juntas, em JSON
 const ENGINE_MSG = 'O corretor de SQL do servidor não está funcionando agora (no seu computador, rode "npm install" na pasta do projeto e reinicie com "npm start"). Sua resposta não foi marcada como errada.';
 
 // Conferência ao vivo enquanto o aluno digita: corrige igual ao /api/submit, mas NÃO grava nada (sem XP, sem tentativa).
@@ -875,9 +877,9 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
   const lock = lockOf(req.u, l);
   if (lock) return res.status(409).json({ error: lockMsg(lock, l), lock });
   if (isTest(l)) return res.status(403).json({ error: 'Nas provas a conferência só acontece quando você entrega a resposta.' });   // sem conferência livre: cada entrega gasta uma chance
-  const { ok, missing, engine, xl, dx, quiz } = await grade(l, cleanCode(req.body.code, l), req.body.out);
+  const { ok, missing, engine, xl, dx, quiz, hc } = await grade(l, cleanCode(req.body.code, l), req.body.out);
   if (engine) return res.status(503).json({ error: ENGINE_MSG, engine: true });
-  res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined });
+  res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, hc, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined });
 });
 
 app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
@@ -889,7 +891,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   if (before) return res.status(409).json({ error: ordMsg(before), lock: 'ord', need: before });
   const already = test && (l.fin ? !!u.passed[lk] : !!u.cpdone[k]);                    // prova já vencida: pode refazer só para treinar, sem perder chance nem voltar lições
   u.attempts[k] = (u.attempts[k] || 0) + 1;
-  const code = cleanCode(req.body.code, l), { ok, missing, busy, engine, xl, dx, quiz } = await grade(l, code, req.body.out, true);
+  const code = cleanCode(req.body.code, l), { ok, missing, busy, engine, xl, dx, quiz, hc } = await grade(l, code, req.body.out, true);
   if (engine) { u.attempts[k]--; return res.status(503).json({ error: ENGINE_MSG, engine: true }); }
   if (busy) { u.attempts[k]--; return res.status(503).json({ error: 'O servidor está ocupado corrigindo outros alunos. Tente de novo em instantes.' }); }
 
@@ -924,7 +926,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   save();
   const lvDone = ok && !test && !!u.done[k] && levelDone(u, l.track, l.lv);
   res.json({
-    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined,
+    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, hc, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined,
     view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
     levelComplete: lvDone || undefined, next: ok && two ? nextAct(u, l) || undefined : undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
     trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(k => !own0.has(k)), ...pub(u)
