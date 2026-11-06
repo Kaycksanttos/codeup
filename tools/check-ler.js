@@ -13,6 +13,8 @@ const bad = [], norm = s => String(s ?? '').replace(/\r/g, '').split('\n').map(x
 const say = (l, m) => bad.push(`${l.id}: ${m}`);
 const show = v => v === null || v === undefined ? 'NULL' : String(v);
 
+const jsrunner = require('../jsrunner');
+function jsRun(code) { const r = jsrunner.runSync('', code); return { out: (r.out || '').trim(), err: r.err || '', status: r.ok ? 0 : 1 }; }
 function pyRun(code) { const r = spawnSync('python3', ['-I', '-c', code], { encoding: 'utf8', timeout: 8000 }); return { out: (r.stdout || '').trim(), err: r.stderr || '', status: r.status }; }
 
 async function main() {
@@ -43,10 +45,10 @@ async function main() {
     if (!r.v) { stat.concept++; continue; }
     stat.proved++;
     try {
-      if (l.type === 'python') {
-        const x = pyRun(r.code);
+      if (l.type === 'python' || l.type === 'js') {
+        const x = l.type === 'js' ? jsRun(r.code) : pyRun(r.code);
         if (r.v === 'out') { if (x.status !== 0) say(l, 'o código deu erro: ' + x.err.trim().split('\n').pop()); else if (norm(x.out) !== norm(want)) say(l, `a saída real é ${JSON.stringify(x.out)} e a resposta certa diz ${JSON.stringify(want)}`); }
-        else if (r.v.startsWith('err:')) { const n = r.v.slice(4); if (x.status === 0) say(l, `o código deveria dar ${n}, mas rodou sem erro`); else if (!new RegExp('^' + n + ':?', 'm').test(x.err)) say(l, `o erro real é outro: ${x.err.trim().split('\n').pop()}`); }
+        else if (r.v.startsWith('err:')) { const n = r.v.slice(4); if (x.status === 0) say(l, `o código deveria dar ${n}, mas rodou sem erro`); else if (!new RegExp(l.type === 'js' ? '^' + n + ':' : '^' + n + ':?', 'm').test(x.err)) say(l, `o erro real é outro: ${x.err.trim().split('\n').pop()}`); }
         else say(l, `validador "${r.v}" não existe para Python`);
       } else if (l.type === 'sql') {
         const seed = r.seed || l.seed, db = new SQL.Database();

@@ -1,7 +1,7 @@
 # CodeUp — aprenda SQL, Python e Análise de Dados na prática
 
 App web instalável no celular (PWA). Escreve código de verdade no navegador, corrige no servidor,
-tem contas, 5 cursos (Python e SQL com 3 níveis de 30 lições cada; Excel, Power BI e DAX e Análise de Dados e Storytelling com o nível Básico de 30 lições e 3 provas cada), 2 checkpoints e uma prova final por nível, XP/vidas/sequência. **Cada lição tem duas atividades (executar e ler o código), com a ordem sorteada por aluno e lição. No Intermediário e no Avançado de Python e SQL, a cada 6 ou 7 lições (depois da 6, 13, 19 e 26) há também um círculo especial de "Explicar o código", de uma lição só, em que o aluno escreve com as próprias palavras o que um código faz.** O dono escolhe pelo painel quais cursos ficam ativos no aplicativo. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
+tem contas, 6 cursos (Python e SQL com 3 níveis de 30 lições cada; JavaScript, Excel, Power BI e DAX e Análise de Dados e Storytelling com o nível Básico de 30 lições e 3 provas cada; o JavaScript roda de verdade, no navegador e no servidor, em uma caixa isolada), 2 checkpoints e uma prova final por nível, XP/vidas/sequência. **Cada lição tem duas atividades (executar e ler o código), com a ordem sorteada por aluno e lição. No Intermediário e no Avançado de Python e SQL, a cada 6 ou 7 lições (depois da 6, 13, 19 e 26) há também um círculo especial de "Explicar o código", de uma lição só, em que o aluno escreve com as próprias palavras o que um código faz.** O dono escolhe pelo painel quais cursos ficam ativos no aplicativo. **Gratuito para o aluno, mantido por anúncios (Google AdSense).**
 
 ## Testar tudo do começo (modo teste)
 
@@ -12,6 +12,7 @@ tem contas, 5 cursos (Python e SQL com 3 níveis de 30 lições cada; Excel, Pow
 codeup/
 ├─ server.js          backend (contas, correção, anúncios, e-mail, LGPD)
 ├─ sqlcheck.js        correção de SQL isolada (tempo e memória limitados)
+├─ jsrunner.js       roda o JavaScript do aluno no servidor, em um processo filho isolado (tools/jsrun.js: contexto vm sem require/process, sem eval de texto, tempo, memória e saída limitados, fila)
 ├─ xlcheck.js         correção das planilhas do Excel (compara o resultado de cada célula com o gabarito e confere se a fórmula não é número digitado à mão)
 ├─ daxcheck.js        correção das lições de DAX (o aluno escreve medidas, colunas calculadas ou tabelas; compara os RESULTADOS em cada visual da lição, com os dados normais e com dados alternativos, e confere `need`/`forbid`)
 ├─ quizcheck.js       correção e montagem dos quizzes (escolher, marcar, ordenar, ligar, número, montar um visual, escrever); as perguntas vão ao navegador sem gabarito, embaralhadas por aluno
@@ -23,6 +24,7 @@ codeup/
 ├─ legal/             Termos de Uso e Política de Privacidade (modelos)
 ├─ public/            o app: index.html, app.js, style.css, ícones, manifest, sw.js
 │                     admin.html, admin.js, admin.css: a tela do painel do dono (abre em /admin)
+│                     jsrun.js: o "console" e o relógio virtual do curso de JavaScript (formata a saída como o Node, setTimeout/await sem esperar de verdade); o mesmo arquivo roda no Web Worker do navegador e no servidor
 │                     xl.js: motor de fórmulas do Excel em português (SOMA, SE, PROCV…; separador `;`, vírgula decimal), roda no navegador e no servidor, sem eval
 │                     xlui.js: tela de prática do Excel (planilha, barra de fórmulas, botão Preencher, toque para inserir referência)
 │                     dax.js, daxlib.js, daxdata.js: motor de DAX próprio (medidas, colunas calculadas, CALCULATE, filtros, relacionamentos, datas) e os modelos de dados do curso (`loja`, `rh`); roda no navegador e no servidor, sem eval
@@ -45,6 +47,13 @@ codeup/
 - **Correção** (`xlcheck.js`): compara o resultado de cada célula pedida com o gabarito e confere se a fórmula foi usada (não vale digitar o número pronto: o servidor troca os números da planilha e confere se o resultado acompanha). Quando erra, a tela mostra célula a célula o que faltou (vazia, erro de sintaxe, valor diferente, número fixo).
 - **Limites honestos:** em casos raros o motor pode diferir do Excel de verdade (arredondamentos, formatos de data); PROCX só existe no Excel 365/2021; o Excel Intermediário/Avançado ainda não existe.
 - Conferir o conteúdo: `npm run check:excel` (valida as 33 atividades com as respostas oficiais).
+
+## Curso de JavaScript (novo)
+- **JavaScript — Básico:** 30 lições + 6 projetos + 2 checkpoints + prova final (`content/js1.js`, `info-js1.js`, `rd-js1.js`, `pj-js.js`, `cp-js.js`). Cada lição tem as mesmas partes dos outros cursos de código (como funciona, executar o código e ler o código).
+- **Roda de verdade:** no navegador, num Web Worker novo a cada execução (`public/jsrun.js`); no servidor, `jsrunner.js` roda o código do aluno num processo filho isolado e compara a saída do `console.log` com a esperada. O navegador nunca decide se o aluno acertou.
+- **Segurança:** o código do aluno roda num contexto `vm` sem `require`, `process` nem `eval` de texto, com limite de tempo por passo, memória e saída, fila de execuções e (quando o Node permite) as flags de permissão que bloqueiam disco e rede.
+- **Gabarito:** `content/expected.json` guarda a saída esperada de cada lição e prova; é gerado por `npm run build:content` rodando a solução oficial. `npm run check:ler` prova também as atividades de ler o código do JavaScript.
+- Os níveis Intermediário e Avançado e o curso de HTML e CSS entram nas próximas etapas (hoje o HTML e CSS aparece como "Em breve").
 
 ## Curso de Power BI e DAX (novo)
 - **Power BI e DAX — Básico:** 30 lições + checkpoints (depois da 10 e da 20) + prova final. **1–10** (quiz): o que é o Power BI, do dado ao relatório, tabelas e tipos, relacionamentos, fato e dimensão, montar visuais (colunas, cartão, tabela, segmentação), medida × coluna. **11–20** (DAX): SUM, COUNTROWS, AVERAGE/MAX/MIN, DISTINCTCOUNT, contas dentro da medida, medidas que usam medidas, DIVIDE, CALCULATE com um e com mais filtros. **21–30**: colunas calculadas (IF, SWITCH, RELATED, texto, datas) e quizzes sobre contexto de filtro, total × soma das linhas, tabela Calendário e revisão.

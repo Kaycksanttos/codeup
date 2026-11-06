@@ -6,7 +6,7 @@ const lessons = require('./lessons');
 const EXPLAIN = require('./explain');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
 const { checkpoints, finals, tests, projects, explains, EC_GEMS: R_EC_GEMS, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
-const TRACK_NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
+const TRACK_NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
 const xlcheck = require('./xlcheck');   // correção das atividades de Excel (compara os resultados das fórmulas)
 const daxcheck = require('./daxcheck'), quizcheck = require('./quizcheck');   // Power BI e DAX: medidas DAX (compara os resultados nos visuais) e quizzes (escolher, ordenar, ligar, número, montar visual, escrever)
 
@@ -827,6 +827,8 @@ async function sqlView(l) {
 const BAD_SQL = /\b(recursive|randomblob|zeroblob|attach|pragma|load_extension)\b/i;
 
 // confere uma resposta (lição ou questão de prova): { ok, missing }
+const jsrunner = require('./jsrunner'), JS_SERVER = jsrunner.available();
+console.log(JS_SERVER ? 'Correção de JavaScript no servidor: ATIVA (código do aluno roda em processo restrito)' : '⚠ Correção de JavaScript no servidor: DESATIVADA. O resultado do JavaScript virá do navegador do aluno e pode ser forjado.');
 const pysandbox = require('./pysandbox'), PY_SERVER = pysandbox.available();
 console.log(PY_SERVER ? 'Correção de Python no servidor: ATIVA (código do aluno roda em ambiente restrito)' : '⚠ Correção de Python no servidor: DESATIVADA (sem python3). O resultado do Python virá do navegador do aluno e pode ser forjado.');
 // authoritative = true (envio final e provas): no Python, o servidor roda o código; o "out" enviado pelo navegador é ignorado
@@ -837,6 +839,10 @@ async function grade(l, code, out, authoritative) {
   const flat = code.toLowerCase().replace(/\s+/g, ' ');
   const missing = (l.need || []).find(t => !flat.includes(t));
   if (missing) return { ok: false, missing };
+  if (l.type === 'js') {                                                   // JavaScript: igual ao Python (o servidor roda o código do aluno num processo restrito e compara a saída do console)
+    if (authoritative && JS_SERVER) { const r = await jsrunner.run(l.prelude || '', code); if (r.err === 'BUSY') return { ok: false, busy: true }; return { ok: r.ok && r.out.trim() === l.expectedOut }; }
+    return { ok: String(out || '').trim() === l.expectedOut };
+  }
   if (l.type === 'python') {
     if (authoritative && PY_SERVER) { const r = await pysandbox.run(l.prelude || '', code); if (r.err === 'BUSY') return { ok: false, busy: true }; return { ok: r.ok && r.out.trim() === l.expectedOut }; }
     return { ok: String(out || '').trim() === l.expectedOut };
@@ -871,7 +877,7 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
   if (isTest(l)) return res.status(403).json({ error: 'Nas provas a conferência só acontece quando você entrega a resposta.' });   // sem conferência livre: cada entrega gasta uma chance
   const { ok, missing, engine, xl, dx, quiz } = await grade(l, cleanCode(req.body.code, l), req.body.out);
   if (engine) return res.status(503).json({ error: ENGINE_MSG, engine: true });
-  res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && l.type === 'python' ? l.expectedOut : undefined });
+  res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined });
 });
 
 app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
@@ -918,7 +924,7 @@ app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
   save();
   const lvDone = ok && !test && !!u.done[k] && levelDone(u, l.track, l.lv);
   res.json({
-    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && l.type === 'python' ? l.expectedOut : undefined,
+    ok, gained, tries: u.attempts[k], streakUp: streakUp || undefined, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined,
     view: !ok && test && l.type === 'sql' && !rewind ? await sqlView(l) || undefined : undefined,
     levelComplete: lvDone || undefined, next: ok && two ? nextAct(u, l) || undefined : undefined, test: test ? (l.fin ? 'fin' : 'cp') : undefined, left: test ? chancesLeft(u, l) : undefined, chances: test ? l.chances : undefined, rewind: rewind || undefined,
     trackComplete: ok && l.fin && trackDone(u, l.track) || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(k => !own0.has(k)), ...pub(u)

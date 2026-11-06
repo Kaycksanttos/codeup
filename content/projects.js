@@ -2,4 +2,4 @@
 // O aluno monta um mini-projeto com o que aprendeu nas 5 últimas lições. Não é prova: não gasta chance e não faz voltar lição, e tem dica e solução.
 // Mas é obrigatório: a lição seguinte (e o checkpoint/prova final que vem depois do projeto das lições 10, 20 e 30) só libera com o projeto feito.
 // Um arquivo por curso: pj-py.js, pj-sql.js, pj-xl.js, pj-pbi.js, pj-da.js (os ajudantes ficam em pj.js). Para editar: mude lá, rode `npm run build:content` e `npm test`.
-module.exports = [...require('./pj-py'), ...require('./pj-sql'), ...require('./pj-xl'), ...require('./pj-pbi'), ...require('./pj-da')];
+module.exports = [...require('./pj-py'), ...require('./pj-sql'), ...require('./pj-js'), ...require('./pj-xl'), ...require('./pj-pbi'), ...require('./pj-da')];

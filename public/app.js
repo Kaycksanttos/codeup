@@ -132,7 +132,7 @@ const winStage = (h, text, base = 'win', big = false) => {
   if (/epic/.test(base)) return stage(h, text, 'good epic', '#fbbf24', 'big');
   return stage(h, text, 'good', '', base == 'cp' ? 'cp' : 'win');
 };
-const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${['python', 'excel', 'powerbi', 'dados'].includes(t) ? t : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo do curso (Python, SQL, Excel, Power BI ou Análise de Dados)
+const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${['python', 'js', 'html', 'excel', 'powerbi', 'dados'].includes(t) ? t : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo do curso (Python, SQL, Excel, Power BI ou Análise de Dados)
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
 // destaque de sintaxe simples (só para exemplos e soluções exibidos)
@@ -149,7 +149,61 @@ function hlXl(code) {   // fórmulas do Excel: funções, células/intervalos, t
   }
   return out + esc(code.slice(last));
 }
+// JavaScript, HTML e CSS (cursos novos)
+const JS_KW = new Set('const let var function return if else for while do switch case break continue default new class extends super this typeof instanceof in of try catch finally throw async await yield import export from static get set delete void null undefined true false NaN Infinity'.split(' '));
+const JS_FN = new Set('console Math Number String Boolean Array Object JSON Promise Map Set Date Symbol Error TypeError RangeError RegExp parseInt parseFloat isNaN setTimeout setInterval clearTimeout clearInterval structuredClone Intl WeakMap WeakSet'.split(' '));
+function hlJs(code) {
+  const re = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(`(?:[^`\\]|\\.)*`)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)(\s*\()?/g;
+  let out = '', last = 0, m; code = String(code ?? '');
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index)); last = re.lastIndex;
+    if (m[1]) out += `<span class=cm>${esc(m[1])}</span>`;
+    else if (m[2]) out += '<span class=s>' + esc(m[2]).split(/(\$\{[^}]*\})/).map(p => p.startsWith('${') ? '</span>' + hlJs(p.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')) + '<span class=s>' : p).join('') + '</span>';
+    else if (m[3]) out += `<span class=s>${esc(m[3])}</span>`;
+    else if (m[4]) out += `<span class=n>${m[4]}</span>`;
+    else if (JS_KW.has(m[5])) out += `<span class=k>${esc(m[5])}</span>${esc(m[6] || '')}`;
+    else if (m[6] || JS_FN.has(m[5])) out += `<span class=f>${esc(m[5])}</span>${esc(m[6] || '')}`;
+    else out += esc(m[5]) + esc(m[6] || '');
+  }
+  return out + esc(code.slice(last));
+}
+function hlCss(code) {
+  const re = /(\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(\{)|(\})|(@[\w-]+)|(#[0-9a-fA-F]{3,8}\b)|(-?(?:\d+\.?\d*|\.\d+)(?:%|[a-zA-Z]{1,4})?)|([A-Za-z_-][\w-]*)(\s*[:(])?|([\s\S])/g;
+  let out = '', depth = 0, m; code = String(code ?? '');
+  while ((m = re.exec(code))) {
+    if (m[1]) out += `<span class=cm>${esc(m[1])}</span>`;
+    else if (m[2]) out += `<span class=s>${esc(m[2])}</span>`;
+    else if (m[3]) { depth++; out += '{'; } else if (m[4]) { depth = Math.max(0, depth - 1); out += '}'; }
+    else if (m[5]) out += `<span class=k>${esc(m[5])}</span>`;
+    else if (m[6]) out += depth ? `<span class=n>${m[6]}</span>` : esc(m[6]);
+    else if (m[7]) out += depth ? `<span class=n>${esc(m[7])}</span>` : esc(m[7]);
+    else if (m[8]) out += depth ? (m[9] ? `<span class=f>${esc(m[8])}</span>${esc(m[9])}` : esc(m[8])) : `<span class=k>${esc(m[8])}</span>${esc(m[9] || '')}`;
+    else out += esc(m[10]);
+  }
+  return out;
+}
+function hlTag(code) {
+  const re = /<!--[\s\S]*?-->|<!doctype[^>]*>|<(\/?)([a-zA-Z][\w-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>|&[#\w]+;/gi;
+  let out = '', last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index)); last = re.lastIndex; const t = m[0];
+    if (t.startsWith('<!')) out += `<span class=cm>${esc(t)}</span>`;
+    else if (t[0] == '&') out += `<span class=n>${esc(t)}</span>`;
+    else {
+      let at = '', l2 = 0, a; const ar = /([^\s=\/]+)(\s*=\s*)?("[^"]*"|'[^']*'|[^\s"'>]+)?/g, src = m[3];
+      while ((a = ar.exec(src))) { at += esc(src.slice(l2, a.index)) + `<span class=f>${esc(a[1])}</span>` + esc(a[2] || '') + (a[3] ? `<span class=s>${esc(a[3])}</span>` : ''); l2 = ar.lastIndex; if (!a[0]) ar.lastIndex++; }
+      out += `<span class=k>&lt;${m[1]}${esc(m[2])}</span>${at}${esc(src.slice(l2))}<span class=k>&gt;</span>`;
+    }
+  }
+  return out + esc(code.slice(last));
+}
+function hlHtml(code) {   // HTML; o que está dentro de <style> é CSS
+  return String(code ?? '').split(/(<style[^>]*>[\s\S]*?<\/style>)/i).map(p => /^<style/i.test(p) ? p.replace(/^(<style[^>]*>)([\s\S]*?)(<\/style>)$/i, (a, o, c, e) => hlTag(o) + hlCss(c) + hlTag(e)) : hlTag(p)).join('');
+}
 function hl(code, type) {
+  if (type == 'js') return hlJs(code);
+  if (type == 'html') return hlHtml(code);
+  if (type == 'css') return hlCss(code);
   if (type == 'excel') return hlXl(code);
   if (type == 'dax') return hlDax(code);
   if (type == 'm') return hlM(code);
@@ -250,7 +304,7 @@ function setSfx(v) { const on = window.CodeUpSfx ? CodeUpSfx.set(v) : false; if 
 
 function toast(m, err) { document.querySelectorAll('.toast').forEach(x => x.remove()); const d = document.createElement('div'); d.className = 'toast' + (err ? ' err' : ''); d.innerHTML = ic(err ? 'info' : 'check', 18) + '<span></span>'; d.lastChild.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 4500); }
 const fail = e => { if (!e.silent) toast(e.error || e.message || 'Algo deu errado.', true); };
-const theme = t => { document.body.classList.remove('t-python', 't-sql', 't-excel', 't-powerbi', 't-dados'); if (t) document.body.classList.add('t-' + t); };
+const theme = t => { document.body.classList.remove('t-python', 't-sql', 't-js', 't-html', 't-excel', 't-powerbi', 't-dados'); if (t) document.body.classList.add('t-' + t); };
 
 async function api(p, o = {}) {
   let r;
@@ -280,8 +334,8 @@ function showAuth() {
     reset: { t: 'Nova senha', s: 'Crie sua nova senha.', btn: 'Salvar nova senha', body: `<input class=in type=password id=pw placeholder="Nova senha (mín. 8 caracteres)" autocomplete=new-password>`, links: '' }
   }[m];
   const g = S.cfg.googleClientId && (m === 'login' || m === 'register') ? `<div class=gwrap><div id=gbtn></div></div><div class=or><span>ou</span></div>` : '';
-  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python, SQL, Excel, Power BI e Análise de Dados, com provas.</p></div></div>
-    <div class=feat><span>${ic('code', 16)} 270 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
+  const hero = m === 'login' || m === 'register' ? `<div class=hero><div class=glow></div><div class=hbrand><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><p>Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados, com provas.</p></div></div>
+    <div class=feat><span>${ic('code', 16)} 300 lições práticas</span><span>${ic('cap', 16)} Níveis com provas</span><span>${ic('gem', 16)} Diamantes e fantasias</span></div>` : `<div class=hero-sm>${mascot(84, 'ring')}<h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1></div>`;
   A.innerHTML = `<div class="c auth">${hero}<div class=panel><h2>${F.t}</h2><p class=sub>${F.s}</p>${m === 'register' && S.reg ? `<div class=chosen>${esc(S.reg.sex == 'f' ? 'Feminino' : 'Masculino')} · guia: <b>${esc(S.reg.gname || GUIDES[S.reg.guide].name)}</b> <a onclick="S.reg=null;goRegister()">alterar</a></div>` : ''}${g}<form id=af>${F.body}<button class="btn pri block" id=ab style="margin-top:14px">${F.btn}</button></form>${F.links}</div>${legal}</div>`;
   $('#af').onsubmit = e => { e.preventDefault(); doAuth(); };
   if (g) googleBtn();
@@ -497,8 +551,8 @@ const ACT_BY = { dax: { x: ['Escrever a fórmula', 'escrever a fórmula', 'Hora 
 const actNm = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[0] || ACT_NM[a], actSh = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[1] || ACT_SH[a];
 const actTag = (l, a) => { const m = rowOf(l.id); return m && (m.rd || m.cf) ? `Atividade ${actPos(m, a)} de ${actOrd(m).length} · ${actNm(l, a)}` : actNm(l, a); };
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
-const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
-const COURSES = ['python', 'sql', 'excel', 'powerbi', 'dados'];                                   // ordem dos cursos na tela Cursos
+const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
+const COURSES = ['python', 'sql', 'js', 'excel', 'powerbi', 'dados'];                                   // ordem dos cursos na tela Cursos
 const courseOn = t => !S.cfg || !S.cfg.courses || S.cfg.courses[t] !== false;   // o dono pode desativar cursos no painel (Ajustes → Cursos)
 const ACTIVE = () => COURSES.filter(courseOn);
 const lvs = t => { const n = Math.max(1, ...(S.ls || []).filter(l => l.track == t).map(l => l.lv)); return Array.from({ length: n }, (_, i) => i + 1); };   // níveis que o curso tem hoje (o Excel começa só com o Básico)
@@ -550,11 +604,13 @@ const pickTrack = studyTrack;
 const CRS = {
   python: { d: 'Da lógica de programação à análise de dados com Pandas.', c: 'Programação' },
   sql: { d: 'Do primeiro SELECT às funções de janela e CTEs.', c: 'Dados' },
+  js: { d: 'Variáveis, decisões, laços, funções, arrays e objetos: a linguagem que dá vida aos sites.', c: 'Programação' },
+  html: { d: 'Monte páginas com HTML e dê estilo com CSS: textos, imagens, cores, caixas e layouts.', c: 'Programação' },
   excel: { d: 'Fórmulas, SOMA, SE e PROCV na prática, com uma planilha de verdade.', c: 'Produtividade' },
   powerbi: { d: 'Modelo de dados, visuais e fórmulas DAX: medidas, CALCULATE e relatórios que contam histórias.', c: 'Dados' },
   dados: { d: 'Do olhar para os números a contar a história com eles: gráficos, insights e apresentação.', c: 'Dados' }
 };
-const SOON = [];                                                                     // cursos "em breve" (hoje não há nenhum): { n, d, c, i }
+const SOON = [{ n: 'HTML e CSS', d: CRS.html.d, c: CRS.html.c, i: 'code' }];                 // cursos "em breve": { n, d, c, i }. O HTML e CSS entra em COURSES quando as lições chegarem
 const CATI = { Todos: 'grid', Programação: 'code', Dados: 'db', Produtividade: 'chart', Outros: 'smile' };
 const CATS = () => ['Todos', ...['Programação', 'Dados', 'Produtividade', 'Outros'].filter(c => [...ACTIVE().map(t => CRS[t].c), ...SOON.map(x => x.c)].includes(c))];   // só aparecem categorias que têm curso
 const cnorm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -688,7 +744,7 @@ const TOUR = [
   { t: 'Oi! Eu sou o guia do CodeUp', p: 'Aqui você aprende Python e SQL escrevendo código de verdade, um passo de cada vez. Quer um tour de 20 segundos?', sel: null },
   { t: 'Este é o seu próximo passo', p: 'Toque na lição que brilha no mapa. Primeiro você lê a teoria, depois pratica, e quando terminar, você toca em Concluído para conferir.', sel: '.ti.cur' },
   { t: 'Estude todo dia', p: 'Cada dia seguido aumenta sua sequência, e cada lição dá XP. Pequenos treinos diários vencem maratonas.', sel: '.hd .chips-r' },
-  { t: 'Seu menu', p: 'Em Cursos você escolhe entre Python, SQL, Excel, Power BI e Análise de Dados. No Ranking você vê sua posição e no Mural a turma mostra projetos e conquistas. Em Desafios ficam as provas. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
+  { t: 'Seu menu', p: 'Em Cursos você escolhe entre Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados. No Ranking você vê sua posição e no Mural a turma mostra projetos e conquistas. Em Desafios ficam as provas. No Perfil estão suas conquistas e molduras.', sel: '.nav' }
 ];
 function startTour(force) {
   if ($('.tour') || S.tab != 'home' || !S.me) return;
@@ -925,7 +981,7 @@ function pfSet(T) {
     </div>
     <div class=sec>Minha conta</div>
     <div class="panel lst">
-      ${row('swap', 'Trocar de curso', "go('tr')", 'Python, SQL, Excel, Power BI…')}
+      ${row('swap', 'Trocar de curso', "go('tr')", 'Python, SQL, JavaScript, HTML…')}
       ${row('key', m.hasPassword ? 'Alterar senha' : 'Criar senha', 'changePw()')}
       ${row('bulb', 'Rever o tour', "go('home').then(() => startTour(true))")}
       ${row('down', 'Baixar meus dados', 'exportData()')}
@@ -1203,19 +1259,20 @@ function testIntro() {
   <button class="btn pri block" onclick=practice()>${ok ? 'Treinar' : 'Começar'}</button><button class="btn ghost block" onclick="go('home')">Agora não</button></div>`;
   window.scrollTo(0, 0);
 }
+const TAB2 = ['sql', 'js', 'html'];   // nestas linguagens a tecla Tab recua 2 espaços (no Python, 4)
 function editor(l) {
   const ed = $('#ed'), gut = $('#gut'), hp = $('#hlp'); let lastV = null;
   const sync = () => {                                   // números de linha + "Ln, Col" na barra de status
-    if (hp) { if (lastV !== ed.value) { lastV = ed.value; hp.innerHTML = hl(ed.value, l.type) + '\n'; } hp.scrollTop = ed.scrollTop; hp.scrollLeft = ed.scrollLeft; }   // texto colorido (a caixa de texto fica transparente por cima)
+    if (hp) { if (lastV !== ed.value) { lastV = ed.value; hp.innerHTML = hl(ed.value, lang(l)) + '\n'; } hp.scrollTop = ed.scrollTop; hp.scrollLeft = ed.scrollLeft; }   // texto colorido (a caixa de texto fica transparente por cima)
     if (gut) { const n = ed.value.split('\n').length; if (gut.dataset.n != n) { gut.dataset.n = n; gut.textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n'); } gut.scrollTop = ed.scrollTop; }
   };
   ['input', 'scroll', 'keyup', 'click', 'focus'].forEach(ev => ed.addEventListener(ev, sync)); setTimeout(sync, 0); S.sync = sync;
   ed.onkeydown = e => {
-    if (e.key == 'Tab') { e.preventDefault(); ed.setRangeText(l.type == 'sql' ? '  ' : '    ', ed.selectionStart, ed.selectionEnd, 'end'); }
+    if (e.key == 'Tab') { e.preventDefault(); ed.setRangeText(TAB2.includes(l.type) ? '  ' : '    ', ed.selectionStart, ed.selectionEnd, 'end'); }
     if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); concluir(); }
   };
 }
-const edBox = (q, value) => `<div class=ed><div class=edh><i></i><i></i><i></i><span>${q.type == 'sql' ? 'consulta.sql' : q.type == 'dax' ? 'medida.dax' : 'main.py'}</span></div>
+const edBox = (q, value) => `<div class=ed><div class=edh><i></i><i></i><i></i><span>${q.type == 'sql' ? 'consulta.sql' : q.type == 'dax' ? 'medida.dax' : q.type == 'js' ? 'main.js' : q.type == 'html' ? (q.edit == 'css' ? 'estilo.css' : 'index.html') : 'main.py'}</span></div>
   <div class=edb><div class=gut id=gut>1</div><pre class=hlp id=hlp aria-hidden=true></pre><textarea id=ed wrap=off spellcheck=false autocapitalize=off autocomplete=off autocorrect=off>${esc(value)}</textarea></div></div>`;
 const OUT0 = 'O resultado do seu código aparece aqui depois que você tocar em <b>Concluído</b>.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta</div>', OUT0D = 'Escreva a fórmula e toque em <b>Concluído</b>: o corretor calcula a sua medida e compara com o resultado esperado.<div class=tn>Atalhos: Ctrl+Enter conclui · Tab indenta · "Dados" mostra as tabelas</div>', OUT0Q = 'Responda as perguntas e toque em <b>Concluído</b> para conferir. Errou? A explicação aparece e você pode tentar de novo.', OUT0X = 'Escreva as fórmulas nas células <b>verdes</b> e toque em <b>Concluído</b> para conferir.<div class=tn>Toque numa célula para escolher · Enter confirma · depois de = ou ( toque nas células para apontar</div>', DONE_BTN = `${ic('check', 18)} Concluído`;
 const outBox = (inner) => `<div class=ob><div class=obh><span>${S.cur.type == 'sql' ? 'Resultado' : S.cur.type == 'excel' || S.cur.type == 'quiz' ? 'Ajuda' : S.cur.type == 'dax' ? 'Conferência' : 'Saída'}</span></div><div id=out class=out>${inner}</div></div>`;
@@ -1264,7 +1321,7 @@ const exResult = l => {
 // ============================================================ EXEMPLO AO VIVO (teoria de SQL e Python)
 // O exemplo da lição é um editor de verdade: o aluno muda o código, toca em Rodar e vê o resultado na hora (SQL no navegador; Python no Pyodide). Nada aqui vale nota.
 // "Experimente" sugere uma mudança (content/tente-sql.js e tente-py.js): "Ver a mudança" aplica, roda e explica o que mudou.
-const labOn = l => !!l && !!l.example && (l.type == 'sql' || l.type == 'python') && !isTest(l);
+const labOn = l => !!l && !!l.example && (l.type == 'sql' || l.type == 'python' || l.type == 'js') && !isTest(l);
 const labOrig = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
 const labDf = l => l.type == 'python' && /\bdf\s*=/.test(l.prelude || '');
 const labTbl = (cols, vals, total) => { const rest = total - vals.length; return table({ columns: cols, values: vals }) + `<p class=exm>${rest > 0 ? `… e mais ${rest} ${rest == 1 ? 'linha' : 'linhas'} (${total} no total)` : `${total} ${total == 1 ? 'linha' : 'linhas'}`}</p>`; };
@@ -1279,7 +1336,7 @@ function labHtml(l) {
   return `<div class=lab id=lab><div class=labh><span>${ic('play', 15)}Exemplo ao vivo</span><small>Mude o código e rode</small></div>
   ${names ? `<p class=labn>${ic('db', 15)}<span>${names.includes(' e ') ? 'As tabelas' : 'A tabela'} ${names} já ${names.includes(' e ') ? 'estão carregadas' : 'está carregada'}. Toque em <b>Ver os dados</b> para olhar.</span></p>` : ''}
   ${edBox(l, txt)}
-  <div class=labb><button class="btn pri" id=labRun onclick=labRun()>${ic('play', 16)}Rodar</button><button class="btn ghost" id=labReset onclick=labReset() disabled>${ic('back', 16)}Original</button>${sql || labDf(l) ? `<button class="btn ghost" onclick=labPeek()>${ic('eye', 16)}Ver os dados</button>` : ''}</div>
+  <div class=labb><button class="btn pri" id=labRun onclick=labRun()>${ic('play', 16)}Rodar</button><button class="btn ghost" id=labReset onclick=labReset() disabled>${ic('back', 16)}Original</button>${sql || labDf(l) || (l.type == 'js' && l.peek) ? `<button class="btn ghost" onclick=labPeek()>${ic('eye', 16)}Ver os dados</button>` : ''}</div>
   ${t ? `<div class=labt><b>${ic('bulb', 16)}Experimente</b><p>${inlTxt(t.q)}</p><button class="btn ghost" id=labTry onclick=labTry()>Ver a mudança</button></div>` : ''}
   <div class=exr><div class=exh>${ic('out', 16)}<small id=labTit>${esc(f.t)}</small></div><p class=labhint id=labHint hidden>Você mudou o código. Toque em <b>Rodar</b> para atualizar o resultado.</p><div id=out class=out>${f.h}</div></div>
   <div class=labw id=labWhy hidden></div>
@@ -1288,7 +1345,7 @@ function labHtml(l) {
 function labInit(l) {
   editor(l); const ed = $('#ed'); if (!ed) return;
   ed.onkeydown = e => {
-    if (e.key == 'Tab') { e.preventDefault(); ed.setRangeText(l.type == 'sql' ? '  ' : '    ', ed.selectionStart, ed.selectionEnd, 'end'); labSync(); }
+    if (e.key == 'Tab') { e.preventDefault(); ed.setRangeText(TAB2.includes(l.type) ? '  ' : '    ', ed.selectionStart, ed.selectionEnd, 'end'); labSync(); }
     if ((e.ctrlKey || e.metaKey) && e.key == 'Enter') { e.preventDefault(); labRun(); }
   };
   ed.addEventListener('input', labSync);
@@ -1326,7 +1383,7 @@ async function labRun() {
   try {
     if (!code.trim()) o.innerHTML = '<p class=labe>Escreva alguma coisa para rodar.</p>';
     else if (l.type == 'sql') o.innerHTML = await labSql(l, code);
-    else { o.textContent = 'Executando…'; o.innerHTML = (await runPy(l, code)).html; }
+    else { o.textContent = 'Executando…'; o.innerHTML = (await (l.type == 'js' ? runJs(l, code) : runPy(l, code))).html; }
     L.ran = code; const t = $('#labTit'); if (t) t.textContent = code === L.orig ? L.first.t : 'Resultado do seu código';
   } catch (e) { if ($('#out')) { showErr(e); L.ran = code; const t = $('#labTit'); if (t) t.textContent = 'Erro no seu código'; } }
   finally { L.busy = false; const b2 = $('#labRun'); if (b2) b2.disabled = false; labSync(); }
@@ -1348,7 +1405,7 @@ async function labPeek() {
     if (l.type == 'sql') {
       await loadSql(); const db = new S.SQL.Database();
       try { db.run(l.seed); o.innerHTML = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(n => `<div class=tname>${ic('db', 14)} ${esc(n)}</div>` + table(db.exec(`SELECT * FROM ${n}`)[0])).join(''); } finally { db.close(); }
-    } else if (l.peek) { o.textContent = 'Executando…'; o.innerHTML = (await runPy(l, l.peek)).html; }
+    } else if (l.peek) { o.textContent = 'Executando…'; o.innerHTML = (await (l.type == 'js' ? runJs(l, l.peek) : runPy(l, l.peek))).html; }
     else return;
     if (t) t.textContent = 'Os dados desta lição';
   } catch (e) { showErr(e); }
@@ -1356,8 +1413,8 @@ async function labPeek() {
 // ============================================================ PARTE 1 DA LIÇÃO: COMO FUNCIONA
 // Antes da teoria: "Para que serve" (cartão) e "Como funciona" (animado, em 3 passos): 1) o exemplo é escrito na tela; 2) cada pedaço dele acende, um por vez, com uma explicação curta;
 // 3) aparece o que ele devolve. As explicações vêm de content/como-*.js (l.como já traz o trecho [a, b) de cada pedaço no código). Tocar num passo ou num pedaço para o autoplay.
-const HW_LB = { sql: ['Você pede', 'O banco procura', 'A tabela aparece'], python: ['Você escreve', 'O Python lê', 'A saída aparece'], excel: ['Você escreve', 'O Excel calcula', 'O resultado aparece'], dax: ['Você escreve', 'O Power BI calcula', 'O valor aparece'], quiz: ['Você olha', 'Você pensa', 'Você vê o porquê'] };
-const HW_FN = { sql: 'consulta.sql', python: 'main.py', excel: 'formula', dax: 'medida.dax', quiz: 'exemplo' };
+const HW_LB = { sql: ['Você pede', 'O banco procura', 'A tabela aparece'], python: ['Você escreve', 'O Python lê', 'A saída aparece'], js: ['Você escreve', 'O JavaScript lê', 'A saída aparece'], html: ['Você escreve', 'O navegador lê', 'A página aparece'], excel: ['Você escreve', 'O Excel calcula', 'O resultado aparece'], dax: ['Você escreve', 'O Power BI calcula', 'O valor aparece'], quiz: ['Você olha', 'Você pensa', 'Você vê o porquê'] };
+const HW_FN = { sql: 'consulta.sql', python: 'main.py', js: 'main.js', html: 'index.html', excel: 'formula', dax: 'medida.dax', quiz: 'exemplo' };
 const hwCode = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
 const hwReduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const hwAlive = () => S.step == 'intro' && !!S.hw && !!S.cur && S.hw.id == S.cur.id && !!$('#hwPre');
@@ -1371,7 +1428,7 @@ const hwMarks = (code, tp, como, on) => {   // o código com os pedaços marcado
 const hwRet = l => {
   const o = l.exampleOut, t = l.type;
   if (t == 'sql' && o && o.rows) { const n = o.total != null ? o.total : o.rows.length, c = (o.cols || []).length; return `Voltaram ${n} ${n == 1 ? 'linha' : 'linhas'} e ${c} ${c == 1 ? 'coluna' : 'colunas'}: é só o que você pediu, nada a mais.`; }
-  if (t == 'python' && o && o.out != null) return 'Isto é o que o programa escreveu na tela. Cada print faz uma linha aparecer.';
+  if ((t == 'python' || t == 'js') && o && o.out != null) return t == 'js' ? 'Isto é o que o programa escreveu na tela. Cada console.log faz uma linha aparecer.' : 'Isto é o que o programa escreveu na tela. Cada print faz uma linha aparecer.';
   if (t == 'excel') return 'A célula mostra só o resultado da conta, não a fórmula. Se um número de que ela depende mudar, o resultado muda sozinho.';
   if (t == 'dax') return 'A medida vira um número no relatório e se recalcula sozinha conforme os filtros da página.';
   return 'Na prática você escolhe a resposta. Se errar, o app explica o porquê e você tenta de novo.';
@@ -1379,7 +1436,7 @@ const hwRet = l => {
 const hwResHtml = l => {
   const o = l.exampleOut;
   if (l.type == 'sql' && o && o.cols && o.rows) return `<div class=exr><div class=exh>${ic('out', 16)}<small>${esc(o.label || 'O que aparece')}</small></div>${labTbl(o.cols, o.rows, o.total)}</div>`;
-  if (l.type == 'python' && o && o.out != null) return `<div class=exr><div class=exh>${ic('out', 16)}<small>O que aparece na tela</small></div><pre class=inl>${esc(o.out) || '(sem saída)'}</pre></div>`;
+  if ((l.type == 'python' || l.type == 'js') && o && o.out != null) return `<div class=exr><div class=exh>${ic('out', 16)}<small>O que aparece na tela</small></div><pre class=inl>${esc(o.out) || '(sem saída)'}</pre></div>`;
   return '';
 };
 // ---- "Como funciona" visual: o mecanismo animado em tabelas e setas (JOIN, WHERE, ORDER BY, GROUP BY, if, for, PROCV). Cada animação tem 4 passos; o texto de cada passo vem em `cap`.
@@ -1691,7 +1748,7 @@ function intro() {   // parte 1: para que serve e como funciona
     <div class=hwn id=hwNote aria-live=polite></div><div class=hwres id=hwRes></div></div>
   ${usarHtml(l)}
   <button class="btn pri block" onclick=introGo()>Entendi, ir para ${nx == 'x' ? 'a teoria' : esc(nm)} ${ic('arrow', 16)}</button>
-  <p class=tn style="text-align:center">${nx == 'x' ? `Na próxima etapa você lê a teoria${l.type == 'sql' || l.type == 'python' ? ' e pode mexer neste exemplo' : ''}; depois vai para a prática.` : `Depois vem a atividade ${actPos(m, nx)}: ${esc(nm)}.`}</p></div>`;
+  <p class=tn style="text-align:center">${nx == 'x' ? `Na próxima etapa você lê a teoria${labOn(l) ? ' e pode mexer neste exemplo' : ''}; depois vai para a prática.` : `Depois vem a atividade ${actPos(m, nx)}: ${esc(nm)}.`}</p></div>`;
   window.scrollTo(0, 0);
   setTimeout(() => { if (!hwAlive()) return; if (kind) { vzGo(1, !hwReduce()); if (hwReduce() && S.hw.gen == 0) hwGo(0, false); } else if (S.hw.gen == 0) hwGo(0, !hwReduce()); }, hwReduce() ? 0 : 450);
 }
@@ -1718,7 +1775,7 @@ function hwGo(k, auto) {
     else { pre.innerHTML = hl(code, tp); note.innerHTML = `<div class=hws><small>${esc((HW_LB[l.type] || HW_LB.quiz)[1])}</small><p>${l.type == 'quiz' ? 'Leia o exemplo e pense em como as partes se ligam. Não precisa decorar: na prática você escolhe a resposta.' : esc(l.explain || '')}</p></div>`; nxt(() => hwGo(2, true), 3200); }
   } else {
     pre.innerHTML = hl(code, tp); const r = hwResHtml(l);
-    note.innerHTML = `<div class=hws><small>${esc((HW_LB[l.type] || HW_LB.quiz)[2])}</small><p>${esc(hwRet(l))}</p>${l.type == 'sql' || l.type == 'python' ? '<p class=hwtip>Na teoria você pode mudar este código e rodar de verdade.</p>' : ''}</div>`;
+    note.innerHTML = `<div class=hws><small>${esc((HW_LB[l.type] || HW_LB.quiz)[2])}</small><p>${esc(hwRet(l))}</p>${labOn(l) ? '<p class=hwtip>Na teoria você pode mudar este código e rodar de verdade.</p>' : ''}</div>`;
     res.innerHTML = r; requestAnimationFrame(() => res.classList.add('on')); h.auto = false;
   }
 }
@@ -1866,7 +1923,13 @@ function setFb(st, html, extra) {
 const fixit = (line, code, tips) => `${line ? `<div class=where><small>Onde corrigir · linha ${line}</small><code>${esc(code)}</code></div>` : ''}${tips.map(t => `<p class=tip>${t}</p>`).join('')}`;
 function diagErr(e, code, l) {
   const m = String(e.message || e), lines = code.split('\n'); let line = 0, tips = [];
-  if (l.type == 'python') {
+  if (l.type == 'js') {
+    const nm = m.match(/^ReferenceError: (\S+) is not defined/);
+    if (nm) { const ids = [...new Set([...code.matchAll(/[A-Za-z_$][\w$]*/g)].map(x => x[0]))].filter(x => x != nm[1]); const sg = similar(nm[1], [...ids, ...JS_FN, ...JS_KW]); line = lines.findIndex(x => x.includes(nm[1])) + 1;
+      tips.push(`O nome <b>${esc(nm[1])}</b> não existe.${sg ? ` Você quis dizer <b>${esc(sg)}</b>?` : ' Confira se digitou igual ao que você criou antes (maiúsculas e minúsculas fazem diferença).'}`); }
+    else tips.push(esc(friendly(m).split('\n\n')[0]));
+    if (/SyntaxError/.test(m)) tips.push('Revise chaves { }, parênteses ( ), aspas e vírgulas: todo abre precisa de um fecha.');
+  } else if (l.type == 'python') {
     const ln = [...m.matchAll(/line (\d+)/g)].pop(); if (ln) line = +ln[1];
     const nm = m.match(/name '([^']+)' is not defined/);
     if (nm) { const ids = [...new Set([...code.matchAll(/[A-Za-z_]\w*/g)].map(x => x[0]))].filter(x => x != nm[1]); const sg = similar(nm[1], [...ids, ...PY_FN]); line = line || lines.findIndex(x => x.includes(nm[1])) + 1;
@@ -1905,11 +1968,11 @@ async function diagSql(l, code, raw, missing, view) {   // view: resultado esper
 function diagPy(l, out, expected, missing) {
   const tips = [], g = String(out || '').trim().split('\n'), e = String(expected || '').split('\n'); let html = '';
   if (missing) tips.push(`Falta usar <b>${esc(missing)}</b> no seu código.`);
-  if (!String(out || '').trim()) tips.push('Seu código ainda não <b>imprimiu nada</b>. Use <b>print(...)</b> para mostrar o resultado.');
+  if (!String(out || '').trim()) tips.push(`Seu código ainda não <b>imprimiu nada</b>. Use <b>${l.type == 'js' ? 'console.log(...)' : 'print(...)'}</b> para mostrar o resultado.`);
   else {
     const n = Math.max(g.length, e.length); let k = -1; for (let i = 0; i < n; i++) if ((g[i] ?? '') != (e[i] ?? '')) { k = i; break; }
     if (k >= 0) tips.push(`<b>Saída diferente na linha ${k + 1}:</b> você imprimiu <code>${esc(g[k] ?? '(nada)')}</code> e o esperado é <code>${esc(e[k] ?? '(nada)')}</code>.`);
-    if (g.length != e.length) tips.push(`Você imprimiu ${g.length} linha(s); o esperado são ${e.length}. ${g.length > e.length ? 'Tem <b>print</b> sobrando.' : 'Falta algum <b>print</b>.'}`);
+    if (g.length != e.length) tips.push(`Você imprimiu ${g.length} linha(s); o esperado são ${e.length}. ${g.length > e.length ? `Tem <b>${l.type == 'js' ? 'console.log' : 'print'}</b> sobrando.` : `Falta algum <b>${l.type == 'js' ? 'console.log' : 'print'}</b>.`}`);
     else tips.push('Confira o cálculo, o texto (maiúsculas, espaços e pontuação) e a ordem em que você imprime.');
   }
   return fixit(0, '', tips) + `<div class=exp><small>Saída esperada</small><pre class=inl>${esc(expected)}</pre></div>`;
@@ -1919,11 +1982,11 @@ async function concluir() {
   const l = S.cur, X = l.type == 'excel', Q = l.type == 'quiz', DX = l.type == 'dax', SRV = X || Q || DX, ed = X ? $('#xin') : Q ? $('#qzbox') : $('#ed'); if (!ed || S.step != 'pratica' || S.busy) return;
   if (X && !xlCommit()) return;                                   // o que está sendo digitado na barra de fórmulas entra na célula antes de conferir
   const code = X ? xlCode() : Q ? qzCode() : ed.value, id = ++S.lt, o = $('#out'), b = $('#bdone'), fb = $('#fb'); if (DX) S.daxCode = code;
-  if (X ? xlEmpty() : Q ? qzEmpty() : !code.replace(DX ? /(--|\/\/)[^\n]*/g : /(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', [X ? 'Preencha as células <b>verdes</b> com fórmulas e depois toque em <b>Concluído</b>.' : Q ? 'Responda pelo menos uma pergunta e depois toque em <b>Concluído</b>.' : 'Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
+  if (X ? xlEmpty() : Q ? qzEmpty() : !code.replace(DX ? /(--|\/\/)[^\n]*/g : l.type == 'js' ? /\/\/[^\n]*/g : /(--|#)[^\n]*/g, '').trim()) return setFb('bad', fixit(0, '', [X ? 'Preencha as células <b>verdes</b> com fórmulas e depois toque em <b>Concluído</b>.' : Q ? 'Responda pelo menos uma pergunta e depois toque em <b>Concluído</b>.' : 'Escreva sua resposta no editor e depois toque em <b>Concluído</b>.']));
   S.busy = true; if (b) { b.disabled = true; b.innerHTML = '<span class=spin></span> Conferindo…'; } if (fb) fb.classList.add('stale');   // o botão só troca o texto: não muda de tamanho nem de lugar
   try {
     let r, err = null;
-    try { r = SRV ? { out: '', html: '' } : l.type == 'sql' ? await runSql(l, code) : await runPy(l, code, () => id != S.lt); }   // Excel, DAX e quiz: nada roda aqui, o servidor calcula e confere
+    try { r = SRV ? { out: '', html: '' } : l.type == 'sql' ? await runSql(l, code) : l.type == 'js' ? await runJs(l, code) : await runPy(l, code, () => id != S.lt); }   // Excel, DAX e quiz: nada roda aqui, o servidor calcula e confere
     catch (e) {
       if (e.message == 'STALE') return setFb('idle');
       showErr(e);
@@ -2020,6 +2083,35 @@ function pyCall(msg, ms) {
     w.postMessage(msg);
   });
 }
+// JavaScript roda num Web Worker NOVO a cada execução (o código do aluno fica isolado da página) e com relógio virtual (setTimeout "passa" na hora): veja public/jsrun.js.
+// O servidor refaz a execução no envio final; aqui é só para o aluno ver a saída.
+const JSW = () => `const BOOT = ${JSRUN.src};
+const rst = self.setTimeout.bind(self), post = self.postMessage.bind(self), ev = self.eval;
+onmessage = async e => {
+  const { pre, code } = e.data; let out = '', err = '';
+  const api = BOOT(s => { if (out.length < 65536) out += s; });
+  for (const k of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'importScripts', 'indexedDB', 'caches', 'BroadcastChannel', 'Worker', 'SharedWorker']) { try { delete self[k]; } catch { } }
+  self.addEventListener('unhandledrejection', x => { if (!err) err = api.errText(x.reason); x.preventDefault(); });
+  const run = src => (0, ev)(src);
+  try {
+    if (pre) run(pre);
+    try { run(code); } catch (x) { if (x && x.name == 'SyntaxError' && /await|async/i.test(String(x.message))) run('(async () => {\\n' + code + '\\n})()'); else throw x; }
+  } catch (x) { err = api.errText(x); }
+  for (let i = 0; i < 6000 && !err; i++) { await new Promise(r => rst(r, 0)); try { if (!api.step()) break; } catch (x) { err = api.errText(x); } }
+  await new Promise(r => rst(r, 0));
+  post({ out, err });
+};`;
+function runJs(l, code) {
+  return new Promise((ok, no) => {
+    let w, url, done = false, tm;
+    const fin = f => { if (done) return; done = true; clearTimeout(tm); try { w && w.terminate(); } catch { } try { url && URL.revokeObjectURL(url); } catch { } f(); };
+    try { url = URL.createObjectURL(new Blob([JSW()], { type: 'text/javascript' })); w = new Worker(url); } catch { return no(new Error('OFFLINE')); }
+    tm = setTimeout(() => fin(() => no(new Error('TIMEOUT'))), 8000);
+    w.onmessage = x => fin(() => { const r = x.data || {}; if (r.err) { const e = new Error(r.err); e.out = r.out; no(e); } else ok({ out: r.out, html: `<pre class=inl>${esc(r.out) || '(sem saída)'}</pre>` }); });
+    w.onerror = () => fin(() => no(new Error('OFFLINE')));
+    w.postMessage({ pre: l.prelude || '', code });
+  });
+}
 let pq = Promise.resolve();
 function runPy(l, code, stale) {   // uma execução por vez no mesmo worker
   const job = pq.catch(() => { }).then(async () => {
@@ -2042,7 +2134,7 @@ async function peek() {
     if (l.type == 'sql') {
       await loadSql(); const db = new S.SQL.Database(); db.run(l.seed);
       o.innerHTML = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(t => `<div class=tname>${ic('db', 14)} ${esc(t)}</div>` + table(db.exec(`SELECT * FROM ${t}`)[0])).join('');
-    } else if (l.peek) { o.innerHTML = (await runPy(l, l.peek)).html; }
+    } else if (l.peek) { o.innerHTML = (await (l.type == 'js' ? runJs(l, l.peek) : runPy(l, l.peek))).html; }
     else o.textContent = 'Esta atividade não tem dados para mostrar.';
   } catch (e) { showErr(e); }
 }
@@ -2050,8 +2142,11 @@ async function peek() {
 function friendly(m) {
   const x = [[/no such table/, 'Tabela não encontrada. Confira o nome da tabela.'], [/no such column/, 'Coluna não encontrada. Confira os nomes das colunas.'],
     [/syntax error|incomplete input/i, 'Erro de sintaxe: revise vírgulas, aspas, parênteses e a ordem das palavras.'], [/NameError/, 'Nome não definido: você usou algo que ainda não criou ou digitou errado.'],
-    [/IndentationError/, 'Erro de indentação: alinhe o código com espaços.'], [/SyntaxError/, 'Erro de sintaxe: revise parênteses, aspas e dois-pontos.'],
-    [/KeyError/, 'Chave não encontrada: confira o nome da coluna ou da chave.'], [/TypeError/, 'Tipos incompatíveis: confira o que você está somando, comparando ou chamando.'],
+    [/IndentationError/, 'Erro de indentação: alinhe o código com espaços.'], [/SyntaxError: (Unexpected|Invalid|Missing)/, 'Erro de sintaxe: revise chaves, parênteses, aspas e vírgulas.'], [/SyntaxError/, 'Erro de sintaxe: revise parênteses, aspas e dois-pontos.'],
+    [/KeyError/, 'Chave não encontrada: confira o nome da coluna ou da chave.'],
+    [/ReferenceError/, 'Nome não definido: você usou algo que ainda não criou ou digitou errado.'], [/Assignment to constant variable/, 'Uma const não pode receber outro valor. Use let se o valor precisar mudar.'],
+    [/is not a function/, 'Isso não é uma função: confira o nome e os parênteses.'], [/Cannot read properties of (undefined|null)/, 'Você tentou usar uma propriedade de algo que está undefined ou null.'], [/before initialization/, 'Você usou a variável antes de criá-la.'], [/Tempo esgotado/, 'O código demorou demais: confira se há um laço sem fim.'],
+    [/TypeError/, 'Tipos incompatíveis: confira o que você está somando, comparando ou chamando.'],
     [/ZeroDivisionError/, 'Divisão por zero.'], [/AttributeError/, 'Esse objeto não tem esse recurso. Confira o nome do método.'], [/ModuleNotFoundError/, 'Biblioteca não encontrada.'], [/EOFError/, 'O comando input() não funciona aqui.']];
   const f = x.find(r => r[0].test(m));
   return (f ? f[1] + '\n\n' : '') + 'Detalhe técnico: ' + m.trim().split('\n').slice(-1)[0];

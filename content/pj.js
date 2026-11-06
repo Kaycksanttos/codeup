@@ -4,8 +4,8 @@
 // código (Python e SQL):  code(track, lv, seedPadrão)  ->  pj(título, tarefa, solução, [palavras obrigatórias], [o que é, para que serve, como se faz, retorno esperado], [3 dicas], {seed|prelude|peek})
 // Excel, Power BI e Dados usam os próprios ajudantes (pj-xl.js, pj-pbi.js, pj-da.js) mas devolvem o mesmo formato (veja `base`).
 const LEVELS = ['Básico', 'Intermediário', 'Avançado'];
-const XP = { python: [40, 55, 70], sql: [45, 60, 75], excel: [40, 55, 70], powerbi: [40, 55, 70], dados: [40, 55, 70] };   // XP de cada projeto, por nível
-const PRE = { python: 'py', sql: 'sql', excel: 'xl', powerbi: 'pbi', dados: 'da' };
+const XP = { python: [40, 55, 70], sql: [45, 60, 75], js: [40, 55, 70], html: [40, 55, 70], excel: [40, 55, 70], powerbi: [40, 55, 70], dados: [40, 55, 70] };   // XP de cada projeto, por nível
+const PRE = { python: 'py', sql: 'sql', js: 'js', html: 'html', excel: 'xl', powerbi: 'pbi', dados: 'da' };
 const KEYS = ['oque', 'serve', 'como', 'retorno'];
 
 // campos que todo projeto tem; o contador k (1 a 6) define depois de qual lição ele vem (5 x k)
@@ -22,7 +22,7 @@ const code = (track, lv, defSeed) => {
     const r = base(track, lv, k, title, task, info, hints);
     if (track === 'sql') { r.seed = o.seed || defSeed; r.expectedSql = solution; }
     else { if (o.prelude) r.prelude = o.prelude; if (o.peek) r.peek = o.peek; }
-    r.starter = track === 'sql' ? '-- escreva sua consulta aqui\n' : '# escreva seu código aqui\n';
+    r.starter = track === 'sql' ? '-- escreva sua consulta aqui\n' : track === 'js' ? '// escreva seu código aqui\n' : '# escreva seu código aqui\n';
     r.need = need; r.solution = solution;
     return r;
   };

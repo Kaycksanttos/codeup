@@ -3,12 +3,14 @@
 // conteúdo de verdade para ler — o AdSense só aceita anúncios em páginas com conteúdo do dono do site, NUNCA em telas de navegação do app.
 // Tudo vem das próprias lições (explicação, exemplo e as 4 partes "o que é / para que serve / como usar / o que aparece").
 // Gabaritos, soluções, dicas e perguntas de leitura NÃO entram aqui: continuam só dentro do app.
-const NAMES = { python: 'Python', sql: 'SQL', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
-const TRACK_SLUG = { python: 'python', sql: 'sql', excel: 'excel', powerbi: 'power-bi-e-dax', dados: 'analise-de-dados-e-storytelling' };
+const NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
+const TRACK_SLUG = { python: 'python', sql: 'sql', js: 'javascript', html: 'html-e-css', excel: 'excel', powerbi: 'power-bi-e-dax', dados: 'analise-de-dados-e-storytelling' };
 const LEVEL_SLUG = ['basico', 'intermediario', 'avancado'];
 const INTRO = {
   python: 'Python é uma das linguagens de programação mais usadas para automatizar tarefas, analisar dados e criar sistemas. Aqui você aprende do zero, com frases simples e exemplos curtos.',
   sql: 'SQL é a linguagem que conversa com bancos de dados: com poucas palavras você pergunta ao banco o que quer saber e ele responde com uma tabela. É a base do trabalho de quem analisa dados.',
+  js: 'JavaScript é a linguagem que faz os sites ganharem vida e também roda em servidores e aplicativos. Aqui você aprende do zero: variáveis, decisões, repetições, funções, arrays e objetos, com exemplos curtos que você roda na hora.',
+  html: 'HTML monta a estrutura de uma página (títulos, textos, imagens, links) e CSS cuida da aparência (cores, tamanhos, espaços, posição). Juntos, são a base de todo site.',
   excel: 'O Excel é a ferramenta de planilhas mais usada nas empresas. Dominar fórmulas e funções poupa horas de trabalho manual e evita erros nas contas.',
   powerbi: 'O Power BI transforma tabelas cheias de números em painéis visuais, e o DAX é a linguagem das fórmulas que calculam os indicadores desses painéis.',
   dados: 'Analisar dados é fazer boas perguntas, olhar os números com cuidado e contar a história que eles mostram, de um jeito que qualquer pessoa entenda e use para decidir.'
@@ -82,7 +84,7 @@ function page({ title, desc, path, body, ads, ctx, jsonld }) {
 ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld).replace(/</g, '\\u003c')}</script>` : ''}<style>${CSS}</style></head>
 <body><header class="top"><div><a class="logo" href="/guias"><b>Code</b><span>Up</span> <small style="font-size:13px;font-weight:600;opacity:.8">Guias</small></a><a class="cta" href="/">Abrir o app</a></div></header>
 <main>${body}</main>
-<footer><p>${esc(ctx.company)} é um app gratuito para aprender Python, SQL, Excel, Power BI e Análise de Dados na prática. ${a ? 'O site é mantido com anúncios do Google, sempre não personalizados. ' : ''}<a href="/guias">Todos os guias</a> · <a href="/termos">Termos de Uso</a> · <a href="/privacidade">Política de Privacidade</a>${ctx.contact ? ` · <a href="mailto:${esc(ctx.contact)}">${esc(ctx.contact)}</a>` : ''}</p></footer>
+<footer><p>${esc(ctx.company)} é um app gratuito para aprender Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados na prática. ${a ? 'O site é mantido com anúncios do Google, sempre não personalizados. ' : ''}<a href="/guias">Todos os guias</a> · <a href="/termos">Termos de Uso</a> · <a href="/privacidade">Política de Privacidade</a>${ctx.contact ? ` · <a href="mailto:${esc(ctx.contact)}">${esc(ctx.contact)}</a>` : ''}</p></footer>
 </body></html>`;
 }
 
@@ -116,12 +118,12 @@ ${adUnit(ads)}
 function renderHub(guides, ctx, ads) {
   const byTrack = {};
   guides.forEach(g => (byTrack[g.track] ||= []).push(g));
-  const body = `<h1>Guias gratuitos de Python, SQL, Excel, Power BI e Análise de Dados</h1>
+  const body = `<h1>Guias gratuitos de Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados</h1>
 <p>Aqui estão as explicações das lições do ${esc(ctx.company)} em formato de leitura. Cada guia reúne 5 lições, com exemplos e um projeto para praticar. Escolha um curso, comece pelo nível Básico e avance no seu ritmo.</p>
 <p>Para escrever o código, receber correção automática, ganhar pontos e fazer as provas, abra o app: ele é gratuito.</p>
 ${Object.keys(byTrack).map(t => `<h2>${esc(NAMES[t])}</h2><p>${esc(INTRO[t])}</p><ul class="gl">${byTrack[t].map(g => `<li><a href="/guias/${g.slug}">${esc(g.level)} · lições ${g.from} a ${g.to}</a><small>${esc(g.lessons.map(l => l.title).join(' · '))}</small></li>`).join('')}</ul>`).join('\n')}`;
   return page({
-    title: 'Guias gratuitos de Python, SQL, Excel, Power BI e Análise de Dados', desc: 'Aprenda Python, SQL, Excel, Power BI e Análise de Dados do zero, com explicações simples, exemplos e projetos. Guias gratuitos em português.',
+    title: 'Guias gratuitos de Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados', desc: 'Aprenda Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados do zero, com explicações simples, exemplos e projetos. Guias gratuitos em português.',
     path: '/guias', body, ads: null, ctx   // a lista é só navegação: sem anúncios (o AdSense não aceita anúncio em página de navegação)
   });
 }

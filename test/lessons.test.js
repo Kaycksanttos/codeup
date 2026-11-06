@@ -6,16 +6,16 @@ const initSqlJs = require('sql.js');
 const lessons = require('../lessons'), { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
 const xlcheck = require('../xlcheck'), checkExcel = require('../tools/check-xl'), checkPbi = require('../tools/check-pbi');
 const daxcheck = require('../daxcheck'), quizcheck = require('../quizcheck');
-const PFX = { python: 'py', sql: 'sql', excel: 'xl', powerbi: 'pbi', dados: 'da' };
+const PFX = { python: 'py', sql: 'sql', js: 'js', excel: 'xl', powerbi: 'pbi', dados: 'da' };
 // campos obrigatórios de cada tipo de atividade (provas e lições)
 const REQ = { excel: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'sheet', 'answer', 'targets'], dax: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter', 'model', 'answer'], quiz: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'quiz'], other: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter'] };
 const reqOf = l => REQ[l.type] || REQ.other;
 
 const norm = (r, ordered) => { const v = (r ? r.values : []).map(x => JSON.stringify(x)); return ordered ? v : v.sort(); };
 
-test('estrutura dos cursos: Python e SQL (3 níveis), Excel, Power BI e DAX e Análise de Dados e Storytelling (nível Básico), 30 lições por nível', () => {
-  assert.deepEqual(TRACKS, ['python', 'sql', 'excel', 'powerbi', 'dados']);
-  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, excel: 1, powerbi: 1, dados: 1 });
+test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, Excel, Power BI e DAX e Análise de Dados e Storytelling (nível Básico), 30 lições por nível', () => {
+  assert.deepEqual(TRACKS, ['python', 'sql', 'js', 'excel', 'powerbi', 'dados']);
+  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, js: 1, excel: 1, powerbi: 1, dados: 1 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ls = lessons.filter(l => l.track === t && l.lv === lv);
     assert.equal(ls.length, 30, `${t} nível ${lv} deveria ter 30 lições`);
@@ -25,15 +25,16 @@ test('estrutura dos cursos: Python e SQL (3 níveis), Excel, Power BI e DAX e An
   lessons.forEach((l, i) => { if (l.n > 1) assert.equal(lessons[i - 1].id.slice(0, -2), l.id.slice(0, -2), 'lições de um nível devem ser contíguas'); });
   assert.equal(lessons.exams, undefined, 'a antiga prova de 10 questões não existe mais');
   for (const t of TRACKS) assert.equal(lessons.filter(l => l.track === t).length, 30 * LEVELS_OF[t], t);
+  assert.ok(lessons.filter(l => l.track === 'js').every(l => l.type === 'js' && l.expectedOut !== undefined), 'o curso de JavaScript é todo de código com saída esperada');
   assert.ok(lessons.filter(l => l.track === 'excel').every(l => l.type === 'excel' && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'powerbi').every(l => (l.type === 'dax' || l.type === 'quiz') && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'dados').every(l => l.type === 'quiz' && l.lv === 1 && l.level === 'Básico'), 'o curso de Análise de Dados é todo de quizzes');
 });
 
-test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, Excel, Power BI e Análise de Dados', () => {
-  assert.equal(checkpoints.length, 18);
-  assert.equal(finals.length, 9);
-  assert.equal(tests.length, 27);
+test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, JavaScript, Excel, Power BI e Análise de Dados', () => {
+  assert.equal(checkpoints.length, 20);
+  assert.equal(finals.length, 10);
+  assert.equal(tests.length, 30);
   assert.deepEqual(CHANCES, { cp: 2, fin: 3 });
   assert.deepEqual(BACK, { cp: 5, fin: 10 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
@@ -56,7 +57,7 @@ test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova f
 });
 
 test('projetos: 6 por nível (depois das lições 5, 10, 15, 20, 25 e 30), em todos os cursos, com 5 temas cada e sem prova nem chance', () => {
-  assert.equal(projects.length, 54, '18 de Python, 18 de SQL e 6 de Excel, de Power BI e de Análise de Dados');
+  assert.equal(projects.length, 60, '18 de Python, 18 de SQL e 6 de JavaScript, de Excel, de Power BI e de Análise de Dados');
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ps = projects.filter(p => p.track === t && p.lv === lv);
     assert.deepEqual(ps.map(p => p.after), [5, 10, 15, 20, 25, 30], `${t} nível ${lv}`);
@@ -71,8 +72,8 @@ test('projetos: 6 por nível (depois das lições 5, 10, 15, 20, 25 e 30), em to
       assert.ok(String(p.task).length >= 120, `${p.id}: a tarefa precisa contar a história e listar o que fazer`);
       assert.ok(Array.isArray(p.hints) && p.hints.length === 3, `${p.id}: 3 dicas`);
       assert.ok(new Set(p.hints).size === 3);
-      if (p.type === 'python' || p.type === 'sql') assert.ok(p.starter && p.need.length >= 2, `${p.id}: starter e palavras obrigatórias`);
-      if (p.type === 'python') assert.ok(String(p.expectedOut).trim().length > 0, `${p.id}: rode "npm run build:content"`);
+      if (p.type === 'python' || p.type === 'sql' || p.type === 'js') assert.ok(p.starter && p.need.length >= 2, `${p.id}: starter e palavras obrigatórias`);
+      if (p.type === 'python' || p.type === 'js') assert.ok(String(p.expectedOut).trim().length > 0, `${p.id}: rode "npm run build:content"`);
     }
     assert.equal(new Set(ps.map(p => p.title)).size, 6, 'títulos diferentes');
   }
@@ -90,7 +91,7 @@ test('explicações: toda lição, toda prova e todo projeto tem "o que é", "pa
     for (const k of KEYS) {
       assert.equal(typeof l.info[k], 'string', `${l.id}: faltou "${k}"`);
       assert.ok(l.info[k].trim().length >= 25, `${l.id}: "${k}" muito curto`);
-      assert.ok(!/TODO|XXX|\$\{/.test(l.info[k]), `${l.id}: "${k}" com texto pendente`);
+      assert.ok(!(l.track === 'js' ? /TODO|XXX|undefined/ : /TODO|XXX|\$\{/).test(l.info[k]), `${l.id}: "${k}" com texto pendente`);   // em JavaScript, ${ } é assunto das lições (template literal)
     }
   }
   const o = lessons.map(l => l.info.oque); assert.equal(new Set(o).size, o.length, 'há lições com o mesmo "o que é"');
@@ -130,6 +131,11 @@ for (const l of [...lessons, ...tests, ...projects]) {
       assert.ok(l.expectedRows, `${l.id} sem linhas esperadas: rode "npm run build:content"`);
       assert.deepEqual(l.expectedRows.rows, rb[rb.length - 1].values.map(v => JSON.stringify(v)), 'rode "npm run build:content" para atualizar os gabaritos SQL');
       assert.equal(l.expectedRows.ordered, ordered);
+    } else if (l.type === 'js') {
+      const r = require('../jsrunner').runSync(l.prelude || '', l.solution);
+      assert.equal(r.ok, true, r.err);
+      assert.equal(r.out.trim(), l.expectedOut, 'rode "npm run build:content" para atualizar os gabaritos JavaScript');
+      assert.notEqual(l.expectedOut, '', 'a solução precisa mostrar alguma coisa com console.log');
     } else {
       const r = spawnSync('python3', ['-I', '-c', (l.prelude || '') + '\n' + l.solution], { encoding: 'utf8', timeout: 30000 });
       if (r.status !== 0 && /ModuleNotFoundError/.test(r.stderr)) return t.skip('biblioteca (pandas) não instalada neste computador');
@@ -221,9 +227,9 @@ test('dados das lições, provas e projetos: sem acento (tabelas, textos, result
     chk(id + '.expectedOut', l.expectedOut); chk(id + '.prelude', l.prelude);
     if (l.exampleOut) deep(id + '.exampleOut', { cols: l.exampleOut.cols, rows: l.exampleOut.rows });
     deep(id + '.expectedRows', l.expectedRows);
-    if (l.track === 'python' || l.track === 'sql') {
+    if (l.track === 'python' || l.track === 'sql' || l.track === 'js') {
       (l.need || []).forEach(n => chk(id + '.need', n));
-      chk(id + '.solution', semComentario(l.solution, l.track === 'python' ? /\s*#.*$/ : /\s*--.*$/));
+      chk(id + '.solution', semComentario(l.solution, l.track === 'python' ? /\s*#.*$/ : l.track === 'js' ? /\s*\/\/.*$/ : /\s*--.*$/));
     }
     if (l.track === 'excel') {
       for (const r of (l.sheet && l.sheet.rows) || []) for (const c of r) formula(id + '.sheet', c);
@@ -276,6 +282,17 @@ test('exemplo ao vivo (Python): exemplos completos que imprimem algo, com a saí
     assert.ok(l.exampleOut && l.exampleOut.out === a.replace(/\n$/, ''), `${l.id}: a saída pronta do exemplo está desatualizada (rode npm run build:content)`);
     // só as lições de pandas usam dados escondidos (df); os outros exemplos precisam funcionar sozinhos
     if (!/\bdf\s*=/.test(l.prelude || '')) { const r = spawnSync('python3', ['-c', l.example], { encoding: 'utf8', timeout: 30000 }); assert.equal(r.status, 0, `${l.id}: o exemplo depende de dados escondidos`); }
+  }
+});
+
+const jsrunner = require('../jsrunner');
+test('exemplo ao vivo (JavaScript): exemplos completos que imprimem algo, sozinhos, com a saída pronta em dia', () => {
+  const ex = lessons.filter(l => l.type === 'js' && l.example);
+  assert.equal(ex.length, 30 * LEVELS_OF.js, 'todas as lições de JavaScript têm exemplo');
+  for (const l of ex) {
+    const r = jsrunner.runSync('', l.example);
+    assert.ok(r.ok && r.out.trim(), `${l.id}: o exemplo precisa rodar sozinho e mostrar algo com console.log (${r.err})`);
+    assert.ok(l.exampleOut && l.exampleOut.out === r.out.replace(/\s+$/, ''), `${l.id}: a saída pronta do exemplo está desatualizada (rode npm run build:content)`);
   }
 });
 

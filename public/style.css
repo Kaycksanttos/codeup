@@ -4,6 +4,8 @@ body.t-sql{--acc:#22d3ee;--acc2:#38bdf8}
 body.t-excel{--acc:#34d399;--acc2:#a3e635}
 body.t-powerbi{--acc:#fbbf24;--acc2:#fb923c}
 body.t-dados{--acc:#a78bfa;--acc2:#f472b6}
+body.t-js{--acc:#c6ea3a;--acc2:#facc15}
+body.t-html{--acc:#fb7a3c;--acc2:#38bdf8}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;min-height:100vh;color:var(--text);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);
  background-image:radial-gradient(700px 360px at 85% -80px,color-mix(in srgb,var(--acc) 22%,transparent),transparent),linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:auto,32px 32px,32px 32px;background-attachment:fixed}
@@ -288,12 +290,14 @@ h1,h2,h3,b,.btn,.nav button,.tabs button{font-weight:800}
 .skins{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}.skins .btn{margin:0;font-size:11px;padding:11px 4px;line-height:1.15}
 
 /* ======================= Visual "Neo": claro, vibrante e com cartões de vidro ======================= */
-body.neo,body.neo.t-python,body.neo.t-sql,body.neo.t-excel,body.neo.t-powerbi,body.neo.t-dados{--bg:#f1f4ff;--bg2:#e8edff;--panel:#ffffff;--panel2:#f4f6ff;--line:#e0e6f8;--text:#1a2040;--mute:#68729a;--ok:#10b981;--err:#ef4444;--gold:#f59e0b;--acc:#6c5ce7;--acc2:#ff9f43;--acc-d:#4a3bb5;--accfg:#ffffff;--py:#3b6df0;--sq:#00b8d4}
+body.neo,body.neo.t-python,body.neo.t-sql,body.neo.t-js,body.neo.t-html,body.neo.t-excel,body.neo.t-powerbi,body.neo.t-dados{--bg:#f1f4ff;--bg2:#e8edff;--panel:#ffffff;--panel2:#f4f6ff;--line:#e0e6f8;--text:#1a2040;--mute:#68729a;--ok:#10b981;--err:#ef4444;--gold:#f59e0b;--acc:#6c5ce7;--acc2:#ff9f43;--acc-d:#4a3bb5;--accfg:#ffffff;--py:#3b6df0;--sq:#00b8d4}
 body.neo.t-python{--acc:#3b6df0;--acc2:#ffb703;--acc-d:#2447b8}
 body.neo.t-sql{--acc:#00b8d4;--acc2:#7c4dff;--acc-d:#00798c}
 body.neo.t-excel{--acc:#10b981;--acc2:#84cc16;--acc-d:#047857}
 body.neo.t-powerbi{--acc:#f59e0b;--acc2:#ea580c;--acc-d:#b45309}
 body.neo.t-dados{--acc:#7c3aed;--acc2:#ec4899;--acc-d:#5b21b6}
+body.neo.t-js{--acc:#65a30d;--acc2:#ca8a04;--acc-d:#3f6212}
+body.neo.t-html{--acc:#ea580c;--acc2:#0284c7;--acc-d:#9a3412}
 body.neo{background:#f1f4ff;background-image:none;color:var(--text)}
 body.neo #bgfx .b1{background:radial-gradient(circle,color-mix(in srgb,var(--acc) 34%,transparent) 0%,transparent 62%)}
 body.neo #bgfx .b2{background:radial-gradient(circle,color-mix(in srgb,var(--acc2) 30%,transparent) 0%,transparent 62%)}
@@ -397,7 +401,7 @@ body .tl .ti.cp.ok .rail span.nd{background:var(--ok);color:#04200f;box-shadow:0
    Visuais com cenário (body.wild = Azul, a floresta azul; body.rose = Rosa, que usa a mesma estrutura com outra paleta).
    Só muda a aparência; nenhuma função muda. Os cenários são desenhados por /scene.js.
    =================================================================================================== */
-body.wild,body.wild.t-python,body.wild.t-sql,body.wild.t-excel,body.wild.t-powerbi,body.wild.t-dados{--bg:#0a1c40;--bg2:#0d2552;--panel:#10295c;--panel2:#173670;--line:#2d5cab;--text:#eef5ff;--mute:#a9c4ec;--acc:#5aa9ff;--acc2:#ffc94a;--acc-d:#1f5fc4;--accfg:#041633;--ok:#3be3b5;--err:#fb7185;--gold:#ffc94a;--py:#5aa9ff;--sq:#2dd4ee;
+body.wild,body.wild.t-python,body.wild.t-sql,body.wild.t-js,body.wild.t-html,body.wild.t-excel,body.wild.t-powerbi,body.wild.t-dados{--bg:#0a1c40;--bg2:#0d2552;--panel:#10295c;--panel2:#173670;--line:#2d5cab;--text:#eef5ff;--mute:#a9c4ec;--acc:#5aa9ff;--acc2:#ffc94a;--acc-d:#1f5fc4;--accfg:#041633;--ok:#3be3b5;--err:#fb7185;--gold:#ffc94a;--py:#5aa9ff;--sq:#2dd4ee;
   --accrgb:90,169,255;--gl1:rgba(30,84,176,.58);--gl2:rgba(11,36,94,.68);--gline:rgba(150,200,255,.24);--gline2:rgba(150,200,255,.3);--gchip:rgba(7,25,72,.66);--gink:rgba(4,15,46,.8);--gdeep:6,20,58;--soft:#c4daf8;--hi:#bfe0ff;--nav-off:#9fbfe8;--nav-on:#eef6ff;
   --bar-a:#3b82f6;--bar-b:#22d3ee;--bar-glow:rgba(70,160,255,.55);--u-a:rgba(90,169,255,.38);--u-b:rgba(30,72,172,.55);--u-line:rgba(170,210,255,.42);--u-soft:#d4e6ff;
   --n-a:#2f63b8;--n-b:#0f2d62;--n-fg:#a9cdff;--n-ring:rgba(120,180,255,.16);--n-line:rgba(190,220,255,.5);--lk-a:#2a4570;--lk-b:#142744;--lk-fg:#7592bd;
@@ -406,6 +410,8 @@ body.wild.t-sql{--acc:#2dd4ee;--acc-d:#0e7490;--accfg:#032229;--accrgb:45,212,23
 body.wild.t-excel{--acc:#4ade80;--acc-d:#15803d;--accfg:#04210f;--accrgb:74,222,128}
 body.wild.t-powerbi{--acc:#fbbf24;--acc-d:#b45309;--accfg:#2b1a02;--accrgb:251,191,36}
 body.wild.t-dados{--acc:#c4b5fd;--acc-d:#6d28d9;--accfg:#1e0b45;--accrgb:196,181,253}
+body.wild.t-js{--acc:#bef264;--acc-d:#4d7c0f;--accfg:#1a2e05;--accrgb:190,242,100}
+body.wild.t-html{--acc:#fdba74;--acc-d:#c2410c;--accfg:#2b1002;--accrgb:253,186,116}
 body.wild{background:#0a1c40;background-image:none}
 body.wild #bgfx{display:none}
 body.wild ::selection{background:#ffc94a;color:#2a1f00}
@@ -493,7 +499,7 @@ body.wild .steps span:not(.on){background:var(--gchip)}
 body.wild .logo b{color:var(--acc)}body.wild .logo i{color:#fff}body.wild .logo span{color:#ffc94a}
 
 /* ===== Rosa: o mesmo visual com paleta rosa/lilás, cenário de jardim e a personagem feminina ===== */
-body.rose,body.rose.t-python,body.rose.t-sql,body.rose.t-excel,body.rose.t-powerbi,body.rose.t-dados{--bg:#2b0f3d;--bg2:#3a1650;--panel:#43195e;--panel2:#552173;--line:#7a3a9c;--text:#fff1fa;--mute:#e0b8dc;--acc:#ff7ab8;--acc2:#ffd27a;--acc-d:#c93a85;--accfg:#3a0a28;--ok:#ff7ab8;--gold:#ffd27a;--py:#ff7ab8;--sq:#c79bff;
+body.rose,body.rose.t-python,body.rose.t-sql,body.rose.t-js,body.rose.t-html,body.rose.t-excel,body.rose.t-powerbi,body.rose.t-dados{--bg:#2b0f3d;--bg2:#3a1650;--panel:#43195e;--panel2:#552173;--line:#7a3a9c;--text:#fff1fa;--mute:#e0b8dc;--acc:#ff7ab8;--acc2:#ffd27a;--acc-d:#c93a85;--accfg:#3a0a28;--ok:#ff7ab8;--gold:#ffd27a;--py:#ff7ab8;--sq:#c79bff;
   --accrgb:255,122,184;--gl1:rgba(120,50,150,.55);--gl2:rgba(62,22,92,.66);--gline:rgba(255,180,225,.26);--gline2:rgba(255,180,225,.34);--gchip:rgba(52,18,80,.66);--gink:rgba(36,12,56,.82);--gdeep:34,10,52;--soft:#f3cfe8;--hi:#ffe3a3;--nav-off:#e9bfe0;--nav-on:#fff4fb;
   --bar-a:#ff7ab8;--bar-b:#ffd27a;--bar-glow:rgba(255,150,200,.55);--u-a:rgba(255,122,184,.42);--u-b:rgba(150,70,200,.55);--u-line:rgba(255,200,235,.45);--u-soft:#ffe3f3;
   --n-a:#8a3fb0;--n-b:#451a63;--n-fg:#f2c4ec;--n-ring:rgba(255,160,220,.16);--n-line:rgba(255,215,240,.5);--lk-a:#53306f;--lk-b:#2d1544;--lk-fg:#a98ac0;
@@ -502,6 +508,8 @@ body.rose.t-sql{--acc:#c79bff;--acc-d:#7c3aed;--accfg:#210a40;--accrgb:199,155,2
 body.rose.t-excel{--acc:#86efac;--acc-d:#16a34a;--accfg:#052e16;--accrgb:134,239,172}
 body.rose.t-powerbi{--acc:#ffd27a;--acc-d:#d97706;--accfg:#3a2204;--accrgb:255,210,122}
 body.rose.t-dados{--acc:#d8b4fe;--acc-d:#7e22ce;--accfg:#2e0a4d;--accrgb:216,180,254}
+body.rose.t-js{--acc:#d9f99d;--acc-d:#65a30d;--accfg:#1a2e05;--accrgb:217,249,157}
+body.rose.t-html{--acc:#ffb38a;--acc-d:#ea580c;--accfg:#3a1404;--accrgb:255,179,138}
 body.rose{background:#2b0f3d}
 body.rose ::selection{background:#ff7ab8;color:#2a0a20}
 body.rose #scene2{background:linear-gradient(180deg,#1b0a3a 0%,#4a1a78 26%,#9a3a9a 46%,#e0629f 60%,#f59a8a 72%,#7a2f7a 84%,#3a1450 100%)}
@@ -930,7 +938,7 @@ body.neo .boot .bootm{color:#4d5678}body.neo .boot .bb{background:#d9def0}
 .crl{display:flex;flex-direction:column;gap:12px;margin:4px 0 4px}
 .crl .cr{display:flex;gap:8px;align-items:center;padding:12px 14px 12px 8px;border-radius:22px;background:var(--panel);border:1px solid var(--line);cursor:pointer;transition:transform .15s,border-color .15s;position:relative;--tk:var(--acc)}
 .crl .cr[hidden]{display:none}.crl .cr:active{transform:scale(.99)}
-.crl .cr.python{--tk:#4b8bbe}.crl .cr.sql{--tk:#22d3ee}.crl .cr.excel{--tk:#22c55e}.crl .cr.powerbi{--tk:#fbbf24}.crl .cr.dados{--tk:#a78bfa}
+.crl .cr.python{--tk:#4b8bbe}.crl .cr.sql{--tk:#22d3ee}.crl .cr.excel{--tk:#22c55e}.crl .cr.powerbi{--tk:#fbbf24}.crl .cr.dados{--tk:#a78bfa}.crl .cr.js{--tk:#c6ea3a}.crl .cr.html{--tk:#fb7a3c}
 .crl .cr.cur{border-color:color-mix(in srgb,var(--tk) 70%,var(--line))}
 .crisl{position:relative;flex:none;width:124px;height:108px;display:block}
 .crisl .isl{position:absolute;left:0;right:0;bottom:0;width:100%;height:auto;overflow:visible}

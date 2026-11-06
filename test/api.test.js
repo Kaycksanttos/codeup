@@ -124,7 +124,7 @@ test('cadastro: validações, duplicidade e login', async () => {
 test('gabarito não vaza, ordem das lições e correção no servidor', async () => {
   const tk = await reg('bia@t.com');
   const list = (await call('/api/lessons', { token: tk })).j;
-  assert.equal(list.length, lessons.length); assert.equal(list.length, 270);
+  assert.equal(list.length, lessons.length); assert.equal(list.length, 300);
   const py1 = list.filter(l => l.track === 'python' && l.lv === 1).slice(0, 8).map(l => l.lock);
   assert.deepEqual(py1, [null, 'seq', 'seq', 'seq', 'seq', 'seq', 'seq', 'seq'], 'tudo gratuito; só a sequência das lições bloqueia');
   assert.equal((await call('/api/lessons/py-1-02', { token: tk })).status, 409, 'não pode pular lição');
@@ -272,7 +272,7 @@ test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10
 
 test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; errou as 2 volta 5 lições; XP só na 1ª vez', async () => {
   const tk = await reg('cp@teste.com'), C10 = lessons.checkpoints.find(c => c.id === 'cp-py-1-10'), C20 = lessons.checkpoints.find(c => c.id === 'cp-py-1-20'), L1 = lessonsOf('python', 1);
-  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 27, '18 checkpoints + 9 provas finais');
+  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 30, '20 checkpoints + 10 provas finais');
   assert.ok(list.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
   const c1 = list.find(c => c.id === 'cp-py-1-10'); assert.equal(c1.after, 10); assert.equal(c1.chances, 2); assert.equal(c1.left, 2); assert.equal(c1.back, 5); assert.equal(c1.backFrom, 6); assert.equal(c1.lock, 'seq'); assert.equal(c1.fin, false);
   assert.deepEqual(list.filter(c => c.track === 'python' && c.lv === 1).map(c => c.after), [10, 20, 30]);
@@ -323,7 +323,7 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(onlyCp(r.cps), ['cp-py-1-10', 'cp-py-1-20']);
   assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'checkpoint 2 feito: a lição 21 abre');
   assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
-  assert.equal((await call('/api/lessons', { token: tk })).j.length, 270);
+  assert.equal((await call('/api/lessons', { token: tk })).j.length, 300);
 });
 
 test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a solução) e a mesma regra de chances vale', async () => {
@@ -510,7 +510,7 @@ test('SQL: resposta certa é aprovada (inclusive várias de uma vez) e o autotes
 
 test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de marcar como errado', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nosql-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'guides.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'guides.js', 'jsrunner.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -541,7 +541,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
 
 test('SQL: com a cópia vendor/sql do projeto, corrige mesmo sem o pacote sql.js instalado (caso do "npm install" não rodado)', async () => {
   const root = path.join(__dirname, '..'), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vend-'));
-  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'guides.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
+  for (const f of ['server.js', 'admin.js', 'totp.js', 'qr.js', 'store.js', 'lessons.js', 'pysandbox.js', 'sqlcheck.js', 'xlcheck.js', 'daxcheck.js', 'quizcheck.js', 'explain.js', 'guides.js', 'jsrunner.js', 'package.json']) fs.copyFileSync(path.join(root, f), path.join(tmp, f));
   for (const d of ['content', 'public', 'legal', 'tools', 'vendor']) fs.cpSync(path.join(root, d), path.join(tmp, d), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'node_modules'));
   for (const m of fs.readdirSync(path.join(root, 'node_modules'))) if (m !== 'sql.js') try { fs.symlinkSync(path.join(root, 'node_modules', m), path.join(tmp, 'node_modules', m), 'dir'); } catch { }
@@ -688,7 +688,7 @@ test('admin: liberar curso tira os bloqueios daquele curso (inclusive a prova), 
   assert.equal((await call('/api/lessons/fin-py-1', { token: tk })).status, 200, 'prova final sem ter feito as 30 lições');
   assert.equal((await call('/api/lessons/cp-py-1-20', { token: tk })).status, 200, 'checkpoint também abre');
   assert.equal((await call('/api/me', { token: tk })).j.passed['python-1'], undefined, 'liberar não aprova a prova final');
-  r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['dados', 'excel', 'powerbi', 'python', 'sql']);
+  r = (await act(id, { action: 'unlock', tracks: 'all', on: true })).j; assert.deepEqual(r.user.unlock.sort(), ['dados', 'excel', 'js', 'powerbi', 'python', 'sql']);
   assert.equal((await call('/api/lessons/sql-1-12', { token: tk })).status, 200, 'agora SQL também');
   assert.equal((await A('users?status=unlocked&q=liberar')).j.total, 1);
   r = (await act(id, { action: 'unlock', tracks: 'all', on: false })).j; assert.deepEqual(r.user.unlock, []);
@@ -768,7 +768,7 @@ test('admin: cadastros fechados (e-mail e Google), comunicado do dono e modo liv
   s = await setSettings({ unlockAll: { on: true, days: 7 } }); assert.equal(s.unlockAll.on, true); assert.ok(Date.parse(s.unlockAll.until) - Date.now() > 6.9 * 864e5);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 200, 'modo livre abre para todos'); assert.equal((await call('/api/lessons/sql-3-30', { token: tk })).status, 200);
   assert.equal((await call('/api/lessons/fin-sql-1', { token: tk })).status, 200);
-  const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['dados', 'excel', 'powerbi', 'python', 'sql']);
+  const me = (await call('/api/me', { token: tk })).j; assert.deepEqual(Object.keys(me.unlocked).sort(), ['dados', 'excel', 'js', 'powerbi', 'python', 'sql']);
   assert.equal((await A('overview')).j.settings.unlockAll.on, true);
   s = await setSettings({ unlockAll: { on: false } }); assert.equal(s.unlockAll.on, false);
   assert.equal((await call('/api/lessons/py-1-20', { token: tk })).status, 409, 'desligou: bloqueios voltam');
@@ -778,21 +778,21 @@ test('admin: cadastros fechados (e-mail e Google), comunicado do dono e modo liv
 
 test('admin: cursos ativos no aplicativo: desligar esconde e bloqueia o curso (mesmo com tudo liberado), religar volta ao normal e o último curso não desliga', async () => {
   const tk = await reg('cursos-onoff@t.com', 'Cris Cursos');
-  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true, powerbi: true, dados: true }, 'começa tudo ativo');
-  const painel = (await A('settings')).j.courses; assert.deepEqual(painel.map(c => c.id), ['python', 'sql', 'excel', 'powerbi', 'dados']);
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, js: true, excel: true, powerbi: true, dados: true }, 'começa tudo ativo');
+  const painel = (await A('settings')).j.courses; assert.deepEqual(painel.map(c => c.id), ['python', 'sql', 'js', 'excel', 'powerbi', 'dados']);
   assert.ok(painel.every(c => c.on === true && c.lessons > 0 && typeof c.students === 'number' && c.name), 'o painel lista nome, lições e alunos de cada curso');
   assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 200);
   assert.equal((await call('/api/lessons/xl-1-01', { token: tk })).status, 200, 'Excel aberto');
 
   // validações
   for (const bad of [{ courses: { java: false } }, { courses: { excel: 'nao' } }, { courses: {} }, { courses: [] }, { courses: 'excel' }]) assert.equal((await A('settings', bad)).status, 400, JSON.stringify(bad));
-  const all = await A('settings', { courses: { python: false, sql: false, excel: false, powerbi: false, dados: false } }); assert.equal(all.status, 400); assert.match(all.j.error, /pelo menos um curso/);
+  const all = await A('settings', { courses: { python: false, sql: false, js: false, excel: false, powerbi: false, dados: false } }); assert.equal(all.status, 400); assert.match(all.j.error, /pelo menos um curso/);
   assert.equal((await call('/api/config')).j.courses.excel, true, 'pedido inválido não muda nada');
 
   // desliga o Excel
   let s = await setSettings({ courses: { excel: false } });
   assert.equal(s.courses.find(c => c.id === 'excel').on, false); assert.equal(s.courses.find(c => c.id === 'python').on, true);
-  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: false, powerbi: true, dados: true });
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, js: true, excel: false, powerbi: true, dados: true });
   const r = await call('/api/lessons/xl-1-01', { token: tk }); assert.equal(r.status, 409); assert.equal(r.j.lock, 'off');
   assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 409, 'ninguém escolhe curso desligado');
   assert.equal((await call('/api/lessons/py-1-01', { token: tk })).status, 200, 'os outros cursos seguem normais');
@@ -808,13 +808,13 @@ test('admin: cursos ativos no aplicativo: desligar esconde e bloqueia o curso (m
   assert.ok((await A('audit')).j.rows.some(x => /curso Excel desativado/.test(JSON.stringify(x))), 'a mudança fica no registro de ações do painel');
 
   // não deixa desligar o último ativo
-  await setSettings({ courses: { sql: false, powerbi: false, dados: false } });
+  await setSettings({ courses: { sql: false, js: false, powerbi: false, dados: false } });
   const last = await A('settings', { courses: { python: false } }); assert.equal(last.status, 400);
   assert.equal((await call('/api/lessons/py-1-01', { token: tk })).status, 200);
 
   // religa
-  s = await setSettings({ courses: { excel: true, sql: true, powerbi: true, dados: true } }); assert.ok(s.courses.every(c => c.on));
-  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, excel: true, powerbi: true, dados: true });
+  s = await setSettings({ courses: { excel: true, sql: true, js: true, powerbi: true, dados: true } }); assert.ok(s.courses.every(c => c.on));
+  assert.deepEqual((await call('/api/config')).j.courses, { python: true, sql: true, js: true, excel: true, powerbi: true, dados: true });
   assert.equal((await call('/api/lessons/xl-1-30', { token: tk })).status, 200, 'liberação individual volta a valer ao religar');
   assert.equal((await call('/api/track', { token: tk, body: { track: 'excel' } })).status, 200);
 });
@@ -906,7 +906,7 @@ test('admin: aprendizado, sistema e auditoria (registra quem fez o quê, sem gua
   const tk = await reg('trava@t.com', 'Tito Trava');
   await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'x' } });
   const l = (await A('learning')).j; assert.ok(l.stuck.some(r => r.id === 'py-1-01' && r.stuck >= 1), 'lição com tentativa sem conclusão aparece como "travada"');
-  assert.equal(l.exams.length, 9); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
+  assert.equal(l.exams.length, 10); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
   const sy = (await A('system')).j; assert.equal(sy.db, 'arquivo'); assert.equal(typeof sy.pyServer, 'boolean'); assert.equal(sy.keyFromEnv, true); assert.ok(sy.users >= 1 && sy.memMB > 0 && sy.uptime >= 0);
   assert.ok(!JSON.stringify(sy).includes('chave-admin'), 'a chave nunca aparece no painel');
   const au = (await A('audit?limit=300')).j.rows, acts = new Set(au.map(r => r.action));
@@ -1429,7 +1429,7 @@ test('Como funciona: 1ª parte do círculo de toda lição; o servidor só guard
   assert.equal((await doLesson(tk2, l1)).j.ok, true); const done2 = await rowOfL(tk2, l1); assert.equal(done2.cd, 1, 'lição concluída conta como Como funciona visto');
   assert.equal((await rowOfL(tk2, l2)).cd, undefined, 'a lição seguinte ainda não foi vista');
   // provas e projetos não têm essa parte
-  const ls = (await call('/api/lessons', { token: tk })).j; assert.ok(ls.every(x => x.cf === 1), 'as 270 lições têm a parte Como funciona'); assert.equal(ls.length, 270);
+  const ls = (await call('/api/lessons', { token: tk })).j; assert.ok(ls.every(x => x.cf === 1), 'as 300 lições têm a parte Como funciona'); assert.equal(ls.length, 300);
 });
 
 test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo animado), em 3 etapas clicáveis', () => {
@@ -1553,11 +1553,11 @@ test('acabamento: abertura com a marca, falha de carregamento, sessão expirada,
 test('cursos: logos de Python, SQL e Excel e a tela Cursos em lista (busca, categorias, XP e progresso)', async () => {
   const pubDir = path.join(__dirname, '..', 'public'), rd = f => fs.readFileSync(path.join(pubDir, f), 'utf8'), ui = rd('app.js'), css = rd('style.css'), sw = rd('sw.js');
   // as logos (fundo transparente) valem em todas as telas no lugar do "py" e do ícone de banco; a do Excel é um desenho original
-  for (const f of ['logo-python.webp', 'logo-sql.webp', 'logo-excel.webp', 'logo-powerbi.webp', 'logo-dados.webp']) {
+  for (const f of ['logo-python.webp', 'logo-sql.webp', 'logo-js.webp', 'logo-html.webp', 'logo-excel.webp', 'logo-powerbi.webp', 'logo-dados.webp']) {
     const b = fs.readFileSync(path.join(pubDir, 'img', f)); assert.equal(b.slice(0, 4).toString(), 'RIFF'); assert.equal(b.slice(8, 12).toString(), 'WEBP'); assert.ok(b.length > 8000 && b.length < 80000, `${f} tem tamanho razoável (${b.length})`);
     assert.equal((await fetch(`${U}/img/${f}`)).status, 200, f + ' é servida'); assert.ok(sw.includes(`/img/${f}`), f + ' fica no cache offline');
   }
-  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{\['python', 'excel', 'powerbi', 'dados'\]\.includes\(t\) \? t : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
+  assert.match(ui, /const tg = \(t, s = 40\) => `<img class=lgo src="\/img\/logo-\$\{\['python', 'js', 'html', 'excel', 'powerbi', 'dados'\]\.includes\(t\) \? t : 'sql'\}\.webp"/); assert.match(css, /\.lgo\{width:var\(--s\)/);
   assert.ok(!/\.tg\.py|\.tg\.sq/.test(css), 'sem o CSS antigo do "py" e do ícone de banco');
   // tela Cursos: cabeçalho com mascote e balão, busca, categorias e a lista (um cartão por curso + os que estão "em breve")
   for (const k of ['class=crh', 'class=crm', 'class=bub', 'class=crs', 'id=cq', 'oninput="cfilter()"', 'class=crc', "onclick=\"ccat('${c}')\"", 'class=crl id=crl', 'class=crx', 'class=crbar', 'class=crgo', "onclick=\"studyTrack('${t}')\"", 'class=sbadge', 'Em breve']) assert.ok(ui.includes(k), 'Cursos: ' + k);
@@ -1872,6 +1872,39 @@ test('Excel: o servidor entrega a planilha sem o gabarito, corrige as fórmulas 
   assert.ok([200, 409].includes(r.status)); assert.equal((await call('/api/me', { token: tk })).j.xp, before);
 });
 
+test('JavaScript: o servidor entrega a lição sem gabarito, roda o código do aluno de verdade e não aceita saída forjada', async () => {
+  const tk = await reg('js1@t.com', 'Jota');
+  assert.equal((await call('/api/track', { token: tk, body: { track: 'js' } })).j.track, 'js');
+  const list = (await call('/api/lessons', { token: tk })).j, js = list.filter(l => l.track === 'js');
+  assert.equal(js.length, 30); assert.deepEqual(js.map(l => l.n), Array.from({ length: 30 }, (_, i) => i + 1)); assert.ok(js.every(l => l.lv === 1 && l.type === 'js'));
+  assert.deepEqual(js.slice(0, 3).map(l => l.lock), [null, 'seq', 'seq']);
+  const l1 = (await call('/api/lessons/js-1-01', { token: tk })).j, L = lessons.find(l => l.id === 'js-1-01');
+  for (const k of ['expectedSql', 'need', 'expectedOut', 'expectedRows']) assert.ok(!(k in l1), `o gabarito (${k}) não pode chegar ao navegador`);
+  assert.ok(!('read' in l1) || !('ok' in (l1.read || {})), 'a resposta certa de ler o código não vai junto');
+  assert.equal((await call('/api/lessons/js-1-02', { token: tk })).status, 409, 'não pula lição');
+  assert.equal((await call('/api/lessons/js-2-01', { token: tk })).status, 404, 'o JavaScript Intermediário ainda não existe');
+  const sub = (code, out) => call('/api/submit', { token: tk, body: { id: 'js-1-01', code, ...(out === undefined ? {} : { out }) } });
+  // saída forjada: o servidor roda o código e ignora o que o navegador diz que saiu
+  let r = (await sub('console.log("outra coisa")', L.expectedOut)).j; assert.equal(r.ok, false, 'saída forjada não vale'); assert.equal((await call('/api/me', { token: tk })).j.xp, 0);
+  r = (await sub('')).j; assert.equal(r.ok, false, 'resposta vazia');
+  // o código tenta sair da caixa: sem process, sem require, sem eval de texto; o servidor segue de pé
+  for (const bad of ['console.log(process.env.PATH)', 'console.log(require("fs").readdirSync("/"))', 'console.log(this.constructor.constructor("return process")().pid)', 'console.log(globalThis.process)']) {
+    const t = (await sub(bad, L.expectedOut)); assert.equal(t.status, 200, bad); assert.equal(t.j.ok, false, bad); assert.ok(!/\/home|root|node_modules/.test(JSON.stringify(t.j)), 'nada do servidor vaza: ' + bad);
+  }
+  // laço infinito termina por tempo e o servidor responde logo depois
+  const t0 = Date.now(); r = (await sub('while (true) {}', L.expectedOut)); assert.equal(r.status, 200); assert.equal(r.j.ok, false); assert.ok(Date.now() - t0 < 12000, 'o laço infinito é cortado');
+  assert.equal((await call('/api/me', { token: tk })).status, 200);
+  // certo: o navegador nem precisa mandar a saída
+  r = (await sub(codeOf(L))).j; assert.equal(r.ok, true, JSON.stringify(r).slice(0, 200)); assert.ok(r.gained > 0 && r.xp === r.gained, 'a atividade 1 dá XP');
+  // repetir não dá XP de novo
+  const xp1 = (await call('/api/me', { token: tk })).j.xp; await sub(codeOf(L)); assert.equal((await call('/api/me', { token: tk })).j.xp, xp1);
+  // a 2ª atividade (ler o código) fecha a lição e abre a seguinte
+  r = (await doRead(tk, L)).j; assert.equal(r.ok, true); assert.equal((await call('/api/lessons/js-1-02', { token: tk })).status, 200, 'a lição seguinte abre');
+  // a prova do nível chega sem gabarito e fica bloqueada até a lição 10
+  const cps = (await call('/api/checkpoints', { token: tk })).j.filter(c => c.track === 'js');
+  assert.deepEqual(cps.map(c => c.id), ['cp-js-1-10', 'cp-js-1-20', 'fin-js-1']); assert.ok(cps.every(c => !LEAK.some(k => k in c)));
+  assert.equal((await call('/api/lessons/cp-js-1-10', { token: tk })).status, 409, 'checkpoint bloqueado antes da lição 10');
+});
 test('Excel: provas (checkpoints e prova final) sem gabarito, com chances e o curso conclui no nível Básico', async () => {
   const tk = await reg('excel2@t.com', 'Xavier');
   const cps = (await call('/api/checkpoints', { token: tk })).j.filter(c => c.track === 'excel');
@@ -1907,9 +1940,9 @@ test('Excel: arquivos da planilha no navegador (motor, tela, logo) e carregados 
 test('ler o código: toda lição tem a sua atividade e a resposta certa é provada rodando o código (npm run check:ler)', async () => {
   const lerCheck = require('../tools/check-ler'), st = await lerCheck.main();
   assert.deepEqual(lerCheck.bad, [], 'atividades de ler com problema:\n' + lerCheck.bad.join('\n'));
-  assert.equal(st.items, 210); assert.ok(st.proved >= 200, 'quase todas precisam de prova por execução: ' + st.proved);
-  assert.equal(lessons.filter(l => !l.read).length, 0, 'toda lição (Python, SQL, Excel e Power BI) tem a 2ª atividade');
-  assert.equal(lessons.filter(l => l.type === 'python').length, 90); assert.equal(lessons.filter(l => l.type === 'sql').length, 90); assert.equal(lessons.filter(l => l.type === 'excel').length, 30);
+  assert.equal(st.items, 240); assert.ok(st.proved >= 200, 'quase todas precisam de prova por execução: ' + st.proved);
+  assert.equal(lessons.filter(l => !l.read).length, 0, 'toda lição (Python, SQL, JavaScript, Excel e Power BI) tem a 2ª atividade');
+  assert.equal(lessons.filter(l => l.type === 'python').length, 90); assert.equal(lessons.filter(l => l.type === 'sql').length, 90); assert.equal(lessons.filter(l => l.type === 'excel').length, 30); assert.equal(lessons.filter(l => l.type === 'js').length, 30);
   assert.equal(lessons.filter(l => l.track === 'powerbi').length, 30, 'o Power BI e DAX tem 30 lições (dax ou quiz), conferidas em npm run check:pbi');
   const kinds = {}; for (const l of lessons) kinds[l.read.k] = (kinds[l.read.k] || 0) + 1; assert.ok(kinds.mc > 100 && kinds.type >= 10, 'mistura de escolher e digitar: ' + JSON.stringify(kinds));
   // as provas (checkpoints e prova final) continuam com uma atividade só
@@ -2450,10 +2483,10 @@ test('app nas lojas: assetlinks.json do Android só existe configurado e válido
 
 test('guias públicos: texto de verdade para o Google (sem login, sem gabarito), sitemap e robots; anúncios desligados não aparecem', async () => {
   const guides = require('../guides').build(lessons, lessons.projects, lessons.LEVEL_NAMES);
-  assert.equal(guides.length, 54, '270 lições ÷ 5 = 54 guias');
-  assert.equal(new Set(guides.map(g => g.slug)).size, 54);
+  assert.equal(guides.length, 60, '300 lições ÷ 5 = 60 guias');
+  assert.equal(new Set(guides.map(g => g.slug)).size, 60);
   const hub = await fetch(U + '/guias'); assert.equal(hub.status, 200); assert.match(hub.headers.get('content-type'), /text\/html/);
-  const hubHtml = await hub.text(); assert.match(hubHtml, /<h1>Guias gratuitos/); assert.equal((hubHtml.match(/href="\/guias\/[a-z0-9-]+"/g) || []).length, 54, 'a lista aponta para os 54 guias');
+  const hubHtml = await hub.text(); assert.match(hubHtml, /<h1>Guias gratuitos/); assert.equal((hubHtml.match(/href="\/guias\/[a-z0-9-]+"/g) || []).length, 60, 'a lista aponta para os 60 guias');
   assert.ok(!/adsbygoogle/.test(hubHtml), 'a lista é navegação: nunca tem anúncio');
   const words = h => h.replace(/<style>[\s\S]*?<\/style>/g, '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
   const seen = new Set();
@@ -2471,7 +2504,7 @@ test('guias públicos: texto de verdade para o Google (sem login, sem gabarito),
     for (const t of lessons.tests.filter(t => t.track === g.track && t.lv === g.lv)) assert.ok(!hid(t.solution), `${g.slug}: vazou a solução da prova ${t.id}`);
   }
   assert.equal((await fetch(U + '/guias/nao-existe')).status, 404);
-  const sm = await (await fetch(U + '/sitemap.xml')).text(); assert.match(sm, /<urlset/); assert.equal((sm.match(/<loc>/g) || []).length, 54 + 4, 'início + lista + 54 guias + termos + privacidade');
+  const sm = await (await fetch(U + '/sitemap.xml')).text(); assert.match(sm, /<urlset/); assert.equal((sm.match(/<loc>/g) || []).length, 60 + 4, 'início + lista + 60 guias + termos + privacidade');
   const rb = await (await fetch(U + '/robots.txt')).text(); assert.match(rb, /Sitemap: http:\/\/localhost:\d+\/sitemap\.xml/); assert.match(rb, /Disallow: \/api\//);
   assert.match(await (await fetch(U + '/')).text(), /<noscript>[\s\S]*href="\/guias"/, 'a página inicial aponta para os guias mesmo sem JavaScript');
   const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /'\/guias'/); assert.match(sw, /startsWith\('\/guias\/'\)/, 'o service worker não mexe nas páginas dos guias');
@@ -2480,7 +2513,7 @@ test('guias públicos: texto de verdade para o Google (sem login, sem gabarito),
 
 test('projetos: um depois de cada 5 lições, obrigatórios, sem chances nem prova; dicas e solução à mão; XP e 10 diamantes só na 1ª vez; liberam as próximas lições', async () => {
   const tk = await reg('proj1@t.com', 'Priscila Projeto'), P5 = pjOf('python', 1, 5), P10 = pjOf('python', 1, 10), L = lessonsOf('python', 1);
-  const list = (await call('/api/projects', { token: tk })).j; assert.equal(list.length, 54);
+  const list = (await call('/api/projects', { token: tk })).j; assert.equal(list.length, 60);
   assert.ok(list.every(p => p.proj === true && p.id.startsWith('pj-') && [5, 10, 15, 20, 25, 30].includes(p.after) && p.xp > 0 && !LEAK.some(k => k in p)), 'a lista não entrega gabarito');
   assert.equal(list.find(p => p.id === P5.id).lock, 'seq', 'o projeto só abre depois da lição dele');
   assert.equal((await call('/api/lessons/' + P5.id, { token: tk })).status, 409); assert.equal((await doProj(tk, P5)).status, 409);
@@ -2664,7 +2697,7 @@ test('mural: arquivos do app — aba, texto sempre escapado, link só https e te
   assert.match(css, /\.nav\.n6 button/, 'o menu com 6 abas cabe em telas estreitas'); assert.match(css, /\.mup\{[^}]*pre-wrap/, 'quebras de linha do post');
   assert.match(adm, /\['mural', 'chat', 'Mural'\]/, 'aba Mural no painel do dono'); for (const a of ['mu-keep', 'mu-hide', 'mu-del']) assert.match(adm, new RegExp(a), a); assert.match(adm, /id="mu"/, 'interruptor em Ajustes');
   const ov = (await A('overview')).j; assert.equal(typeof ov.mural.pending, 'number'); assert.equal(typeof ov.mural.total, 'number'); assert.equal(ov.settings.mural, true);
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v79/, 'cache do app renovado para chegar a todos');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'), /codeup-v80/, 'cache do app renovado para chegar a todos');
 });
 
 // ---------------- Mural: conquistas verificadas, avisos da Equipe, destaques e comentários do dono ----------------
