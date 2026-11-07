@@ -68,6 +68,27 @@ try { seedTables = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 's
 const seedKey = s => require('crypto').createHash('sha1').update(String(s || '')).digest('hex').slice(0, 10);
 lessons.forEach(x => { const r = RD[x.id]; if (r) { x.read = r; if (x.type === 'sql') x.read.seedKey = seedKey(r.seed || x.seed); } });
 
+// ATIVIDADES ESPECIAIS (hoje só no SQL Intermediário): duas atividades a mais em cada lição, para a pessoa provar que entendeu PARA QUE SERVE o que aprendeu:
+//   d) "Desafio novo": um problema novo com a mesma ideia da lição, em outra situação (outras tabelas ou outro objetivo), escrito do zero;
+//   f) "Conserte o erro": um código quase certo com UM erro escondido; a pessoa roda, descobre o que está errado e conserta.
+// Os itens ficam em content/sp-*.js (um por lição, pelo id) e são conferidos por `npm run check:sp` (a solução passa, o código com erro falha, as palavras obrigatórias valem).
+//   { d: { task, solution, need, hint, why, seed? }, f: { task, bug, solution, need, hint, why, seed? } }   (seed = outro banco de treino; sem ele vale o da lição)
+// Cada item vira um objeto parecido com uma lição de SQL (corrigido pelo mesmo corretor); as linhas esperadas vêm de content/expected-sql.json, na chave "id:d" / "id:f".
+const SP = {};
+for (const tr of TRACKS) FILES[tr].forEach(f => {
+  try { Object.assign(SP, require('./content/sp-' + f)); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND' || !/sp-/.test(e.message)) throw e; }
+});
+const SP_STARTER = '-- escreva sua consulta aqui\n';
+lessons.forEach(x => {
+  const s = SP[x.id]; if (!s || x.type !== 'sql' || !x.read) return;
+  x.sp = {};
+  for (const a of ['d', 'f']) {
+    const i = s[a]; if (!i || !i.task || !i.solution || !i.need || !i.why || !i.hint || (a === 'f' && !i.bug)) throw new Error(`atividade especial ${x.id}:${a} incompleta`);
+    x.sp[a] = { id: x.id, a, type: 'sql', track: x.track, lv: x.lv, n: x.n, level: x.level, xp: x.xp, title: x.title, seed: i.seed || x.seed, task: i.task, starter: a === 'f' ? i.bug : SP_STARTER,
+      hints: [i.hint, i.solution], solution: i.solution, expectedSql: i.solution, need: i.need, why: i.why, ...(expectedSql[x.id + ':' + a] ? { expectedRows: expectedSql[x.id + ':' + a] } : {}) };
+  }
+});
+
 // EXPLICAR O CÓDIGO (só Python e SQL, níveis Intermediário e Avançado): o aluno escreve com as próprias palavras o que um código faz. Não é atividade de dentro da lição: é um CÍRCULO PRÓPRIO
 // no mapa, de uma lição só, a cada 6 ou 7 lições (depois das lições 6, 13, 19 e 26 — veja EC_AFTER). Os itens ficam em content/ex-*.js (um por lição, pelo id; cada círculo usa o item da
 // lição em que ele aparece), são corrigidos por conceitos (veja explain.js) e conferidos por `npm run check:explicar`.

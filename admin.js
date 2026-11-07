@@ -262,7 +262,7 @@ module.exports = function mountAdmin(app, X) {
         const t = String(b.track || ''), all = b.level === 'all', lv = +b.level;
         if (!TRACKS.includes(t) || (!all && !lvs(t).includes(lv))) return res.status(400).json({ error: 'Curso ou nível inválido.' });
         for (const L of all ? lvs(t) : [lv]) {
-          lessons.filter(l => l.track === t && l.lv === L).forEach(l => { delete u.done[l.id]; for (const f of ['ex', 'ler', 'exp']) delete (u[f] || {})[l.id]; delete u.attempts[l.id]; });
+          lessons.filter(l => l.track === t && l.lv === L).forEach(l => { delete u.done[l.id]; for (const f of ['ex', 'ler', 'exp', 'des', 'fix']) delete (u[f] || {})[l.id]; delete u.attempts[l.id]; delete u.attempts[l.id + ':d']; delete u.attempts[l.id + ':f']; });
           [...checkpoints, ...finals, ...projects].filter(c => c.track === t && c.lv === L).forEach(c => { delete u.cpdone[c.id]; delete u.attempts[c.id]; delete u.cptry[c.id]; });
           (lessons.explains || []).filter(c => c.track === t && c.lv === L).forEach(c => { delete (u.ecdone || {})[c.id]; delete (u.etries || {})[c.id]; });   // os círculos de explicar o código do nível também
           delete u.passed[`${t}-${L}`]; delete u.exams[`${t}-${L}`];

@@ -50,6 +50,17 @@ console.log('gabaritos Python e JavaScript gerados:', Object.keys(out).length);
       } catch (e) { console.error(`✗ ${x.id}: ${e.message}`); process.exitCode = 1; }
     }
   }
+  // atividades especiais (desafio novo e conserte o erro): as linhas esperadas ficam na chave "id:d" e "id:f"
+  for (const f of ['sql1', 'sql2', 'sql3']) {
+    let sp; try { sp = require('../content/sp-' + f); } catch (e) { if (e.code === 'MODULE_NOT_FOUND' && /sp-/.test(e.message)) continue; throw e; }
+    for (const x of require('../content/' + f).lessons) for (const a of ['d', 'f']) {
+      const it = sp[x.id] && sp[x.id][a]; if (!it) continue;
+      try {
+        const db = new SQL.Database(); db.run(it.seed || x.seed); const r = db.exec(it.solution); const last = r[r.length - 1];
+        sqlOut[x.id + ':' + a] = { ordered: /order by/i.test(it.solution), rows: (last ? last.values : []).map(v => JSON.stringify(v)) }; db.close();
+      } catch (e) { console.error(`✗ ${x.id}:${a}: ${e.message}`); process.exitCode = 1; }
+    }
+  }
   fs.writeFileSync(path.join(__dirname, '..', 'content', 'expected-sql.json'), JSON.stringify(sqlOut));
   console.log('gabaritos SQL gerados:', Object.keys(sqlOut).length);
 

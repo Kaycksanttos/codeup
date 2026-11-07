@@ -178,7 +178,7 @@ const lessonsOf = (track, lv) => lessons.filter(l => l.track === track && l.lv =
 const premiumUser = (email, name) => reg(email, name);
 const quizcheck = require('../quizcheck');
 const codeOf = l => l.type === 'excel' ? JSON.stringify(l.answer) : l.type === 'quiz' ? JSON.stringify(quizcheck.solution(l)) : l.solution;           // no Excel a resposta é o JSON das fórmulas das células; no quiz, o JSON das respostas
-// Cada lição tem 2 atividades: executar (/api/submit) e ler (/api/read). A ORDEM é sorteada por aluno e lição (vem em `ord` de /api/lessons). doLesson faz as que faltam, na ordem,
+// Cada lição tem 2 atividades: executar (/api/submit) e ler (/api/read); no SQL Intermediário tem mais 2: desafio novo (d) e conserte o erro (f), as duas por /api/submit com `a`. A ORDEM é sorteada por aluno e lição (vem em `ord` de /api/lessons). doLesson faz as que faltam, na ordem,
 // e devolve o resultado somado (gained = XP de todas, ok = a lição ficou concluída). Quem quiser testar uma atividade só usa doExec / doRead.
 // "Explicar o código" (/api/explain) é um círculo próprio, de uma lição só, depois das lições 6, 13, 19 e 26 do Intermediário e do Avançado de Python e SQL: doEc / ecOf.
 const readAnswer = l => { const o = l.read && l.read.ok; return Array.isArray(o) ? o[0] : typeof o === 'number' ? String(o) : o; };
@@ -186,7 +186,8 @@ const doExec = (tk, l) => call('/api/submit', { token: tk, body: { id: l.id, cod
 const doRead = (tk, l, a = readAnswer(l)) => call('/api/read', { token: tk, body: { id: l.id, a } });
 const doExpl = (tk, l, a = l.expl && l.expl.model) => call('/api/explain', { token: tk, body: { id: l.id, a } });
 const rowOfL = async (tk, l) => ((await call('/api/lessons', { token: tk })).j || []).find(x => x.id === l.id) || {};
-const actCall = { x: doExec, r: doRead };
+const doSp = (tk, l, a, code = l.sp[a].solution) => call('/api/submit', { token: tk, body: { id: l.id, a, code } });         // atividade especial do SQL Intermediário: d = desafio novo, f = conserte o erro (corrigidas pelo mesmo corretor, com o item `l.sp[a]`)
+const actCall = { x: doExec, r: doRead, d: (tk, l) => doSp(tk, l, 'd'), f: (tk, l) => doSp(tk, l, 'f') };
 const ecOf = (track, lv, n) => lessons.explains.find(e => e.track === track && e.lv === lv && e.after === n);   // o círculo de explicar que vem depois da lição n (ou undefined)
 const doEc = async (tk, e) => { const r = await doExpl(tk, e); assert.equal(r.j && r.j.ok, true, `o círculo ${e.id} deveria passar: ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
 const doLesson = async (tk, l) => {
@@ -1446,7 +1447,7 @@ test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo
   assert.match(ui, /const steps = \(n, proj, two\)/, 'steps(n, proj, two)');
   assert.ok(ui.includes("[['Como funciona', 'intro'], ['Teoria', 'lesson'], ['Prática', 'practice']]") && ui.includes('onclick="${f}()"'), 'as 3 pílulas levam a intro(), lesson() e practice()');
   assert.match(ui, /\$\{l\.proj \? steps\(1, true\) : steps\(2\)\}/, 'teoria é a etapa 2 de 3 (projeto: 1 de 2)');
-  assert.match(ui, /\$\{T \? '' : l\.proj \? steps\(2, false, true\) : steps\(3\)\}/, 'prática é a etapa 3 de 3 (projeto: 2 de 2)');
+  assert.match(ui, /\$\{T \|\| l\.sp \? '' : l\.proj \? steps\(2, false, true\) : steps\(3\)\}/, 'prática é a etapa 3 de 3 (projeto: 2 de 2; as atividades especiais não têm etapas)');
   // o texto do passo 3 vem do exemplo (info.retorno é do exercício da prática e não pode aparecer aqui) e a classe das partes apagadas não colide com o cabeçalho .hd
   const g = ui.slice(ui.indexOf('function hwGo('), ui.indexOf('function hwFocus('));
   assert.ok(!/info\.retorno|info\.como/.test(g), 'passos do Como funciona não usam os textos do exercício');
@@ -1488,7 +1489,7 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   // provas: abertura com regras, chances em corações, sem dica/solução/teoria, tela de voltar lições e de prova final aprovada
   for (const f of ['async function openTest(', 'function testIntro(', 'function testFail(', 'function testPass(', 'const chHearts', 'const chanceMsg', 'const finOf', 'const isTest']) assert.ok(ui.includes(f), f);
   assert.match(ui, /\$\{T \? '' : `<button class="btn ghost" onclick=hint\(\)>/, 'prova não tem Dica');
-  assert.match(ui, /\$\{T \? '' : `\$\{Q \? '' : `<button class="btn ghost" onclick=sol\(\)>\$\{ic\('key', 20\)\}<span>Solução<\/span><\/button>`\}<button class="btn ghost" onclick=lesson\(\)>/, 'prova não tem Solução nem Teoria');
+  assert.match(ui, /\$\{T \? '' : `\$\{Q \? '' : `<button class="btn ghost" onclick=sol\(\)>\$\{ic\('key', 20\)\}<span>Solução<\/span><\/button>`\}<button class="btn ghost" onclick="\$\{l\.sp \? `openX\('\$\{l\.id\}'\)` : 'lesson\(\)'\}">/, 'prova não tem Solução nem Teoria');
   assert.match(ui, /err = e; r = \{ out: '', html: '' \}/, 'prova: código que dá erro também é enviado ao servidor e gasta chance'); assert.match(ui, /e\.message == 'OFFLINE'\) return setFb\('err'/, 'só o ambiente offline não gasta chance');
   // prova reprovada: o personagem chorando (Cut azul / Tay rosa) aparece na tela "Não foi dessa vez"
   assert.match(ui, /reel == 'fail' \? `<img class="body fimg" src="\$\{failImg\(\)\}"/); assert.match(ui, /stage\(270, 'Calma, vamos relembrar!', 'bad', '', 'fail'\)/);
@@ -1544,7 +1545,7 @@ test('acabamento: abertura com a marca, falha de carregamento, sessão expirada,
   // Desafios: título igual ao da aba e regras em linhas com ícone
   assert.match(ui, /<h2 class=ttl>Desafios<\/h2>/); assert.match(ui, /class="panel rules2"/); assert.ok(!ui.includes('<h2 class=ttl>Provas e certificados</h2>'));
   // prática: barra de ajudas com ícone e texto em todos os botões (antes o "limpar" era só um ícone sem nome)
-  assert.match(ui, /class=acts role=toolbar/); for (const n of ['Dica', 'Solução', 'Teoria', 'Limpar']) assert.ok(ui.includes(`<span>${n}</span>`), 'botão ' + n); assert.ok(ui.includes("<span>${l.type == 'html' ? 'Página' : 'Dados'}</span>"), 'botão Dados (Página no HTML e CSS)');
+  assert.match(ui, /class=acts role=toolbar/); for (const n of ['Dica', 'Solução', 'Teoria']) assert.ok(ui.includes(`<span>${n}</span>`), 'botão ' + n); assert.ok(ui.includes("<span>${l.sp == 'f' ? 'Original' : 'Limpar'}</span>"), 'botão Limpar (no conserte o erro volta ao código original)'); assert.ok(ui.includes("<span>${l.type == 'html' ? 'Página' : 'Dados'}</span>"), 'botão Dados (Página no HTML e CSS)');
   assert.match(css, /\.acts\{display:grid;grid-auto-flow:column/);
   // o logo da Python (.tg) não pode ser sobrescrito pela grade de títulos do Perfil (.tgr): era isso que cortava o "py"
   assert.ok(!/(^|\n)\.tg\{display:grid/.test(css), '.tg do logo não vira grade'); assert.match(css, /\.tgr\{display:grid/); assert.match(ui, /<div class=tgr>/);
@@ -2067,7 +2068,7 @@ test('duas atividades: o app mostra o anel no círculo, a tela de ler e o result
   for (const f of ['function resultAct(', 'function openR(', 'async function openEc(', 'function resultEc(', 'function readAct(', 'function expAct(', 'function expCheck(', 'function expOk(', 'function rdPick(', 'function rdCheck(', 'function rdOk(', 'const whyHtml', 'const pips = l =>', 'const actNext', 'async function openL(', 'async function loadMap(', 'const ecBefore', 'const openStep']) assert.ok(ui.includes(f), 'app.js: ' + f);
   assert.ok(!ui.includes('function openE('), 'a lição não abre mais a tela de explicar: ela é um círculo à parte');
   assert.match(ui, /class="rdr-ring n\$\{ord\.length\} \$\{cls\}"/, 'o anel do círculo: um arco por parte (Como funciona, executar e ler)'); assert.match(ui, /<i class=nn>\$\{l\.n\}<\/i>\$\{pips\(l\)\}<\/span>/, 'o anel fica dentro do círculo');
-  assert.match(ui, /if \(s\.next\) resultAct\('x', s\.next\)/, 'depois de executar, se falta atividade, vem a tela que leva à próxima'); assert.ok(ui.includes("api('read'") && ui.includes("api('explain'"), 'o app chama as APIs de ler e de explicar');
+  assert.match(ui, /if \(s\.next\) resultAct\(l\.sp \|\| 'x', s\.next\)/, 'depois de executar, se falta atividade, vem a tela que leva à próxima'); assert.ok(ui.includes("api('read'") && ui.includes("api('explain'"), 'o app chama as APIs de ler e de explicar');
   assert.ok(ui.includes('openAct(id, nx || \'x\')'), 'abrir a lição leva à próxima atividade da ordem sorteada');
   assert.ok(!/ACT_NM = \{[^}]*\be:/.test(ui) && !/ACT_SH = \{[^}]*\be:/.test(ui), 'explicar não é mais uma atividade da lição');
   // o mapa: o círculo de explicar vem depois da lição 6, 13, 19 e 26, tem o seu ícone, o seu aviso de bloqueio e entra no "continuar"
@@ -2247,8 +2248,13 @@ test('ordem sorteada: cada aluno cai numa ordem diferente, ela não muda e o XP 
     }
     const ordOf = async (u, id) => { const r = (await j('/api/lessons', null, u.tk)).j.find(x => x.id === id); return r && r.ord; };
     // toda lição de Python, SQL e Excel (Básico, Intermediário e Avançado): 2 atividades, a ordem varia entre "xr" e "rx" e nunca tem "e"
-    for (const id of ['py-1-01', 'sql-1-01', 'xl-1-01', 'py-2-01', 'py-3-07', 'sql-2-05', 'sql-3-12']) {
+    for (const id of ['py-1-01', 'sql-1-01', 'xl-1-01', 'py-2-01', 'py-3-07', 'sql-3-12']) {
       const seen = new Set(); for (const u of users) { const o = await ordOf(u, id); assert.match(o, /^(xr|rx)$/, id + ' → ' + o); seen.add(o); } assert.equal(seen.size, 2, id + ': com 40 alunos aparecem as duas ordens ' + [...seen]);
+    }
+    // SQL Intermediário: 4 atividades; executar e ler vêm primeiro (em ordem sorteada) e o desafio novo e o conserte o erro depois (também sorteados)
+    for (const id of ['sql-2-05', 'sql-2-17']) {
+      const seen = new Set(), a = new Set(), b = new Set(); for (const u of users) { const o = await ordOf(u, id); assert.match(o, /^(xr|rx)(df|fd)$/, id + ' → ' + o); seen.add(o); a.add(o.slice(0, 2)); b.add(o.slice(2)); }
+      assert.equal(a.size, 2, id + ': as duas ordens de executar/ler'); assert.equal(b.size, 2, id + ': as duas ordens de desafio/conserte'); assert.ok(seen.size >= 3, id + ': várias combinações ' + [...seen]);
     }
     // a ordem de um aluno numa lição é sempre a mesma (reabrir, outra sessão, outra chamada)
     const u0 = users[0], o0 = await ordOf(u0, 'py-2-01'); for (let i = 0; i < 3; i++) assert.equal(await ordOf(u0, 'py-2-01'), o0);
@@ -2256,7 +2262,7 @@ test('ordem sorteada: cada aluno cai numa ordem diferente, ela não muda e o XP 
     // a ordem muda de lição para lição (não é sempre a mesma para o mesmo aluno)
     const mesma = new Set(); for (const n of ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16']) mesma.add(await ordOf(u0, 'py-2-' + n)); assert.ok(mesma.size >= 2, 'o mesmo aluno cai em ordens diferentes em lições diferentes: ' + [...mesma]);
     // a lista inteira: nenhuma lição tem "e" (explicar é um círculo à parte)
-    const rows = (await j('/api/lessons', null, users[1].tk)).j; for (const r of rows) assert.ok(!/e/.test(r.ord || ''), r.id + ' ' + r.ord); assert.equal(rows.filter(r => r.rd).every(r => r.ord.length === 2), true);
+    const rows = (await j('/api/lessons', null, users[1].tk)).j; for (const r of rows) assert.ok(!/e/.test(r.ord || ''), r.id + ' ' + r.ord); assert.equal(rows.filter(r => r.rd).every(r => r.ord.length === (r.track === 'sql' && r.lv === 2 ? 4 : 2)), true);
     // faz uma lição na ordem sorteada: errar a ordem é barrado, e o XP (8 + 7) e os diamantes (2 + 3) se dividem
     const L = lessons.find(x => x.id === 'py-2-01'), act = { x: () => j('/api/submit', { id: L.id, code: L.solution, out: L.expectedOut }, u.tk), r: () => j('/api/read', { id: L.id, a: readAnswer(L) }, u.tk) };
     const lessonOrd = {}; let u; const perm = new Set();
@@ -2307,10 +2313,77 @@ test('explicar o código: quem já estava no meio do Intermediário (explicar er
 test('ordem sorteada: a variável de teste que fixa a ordem é ignorada em produção e a versão do app foi atualizada', () => {
   const srvSrc = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(srvSrc, /const FIXED_ORDER = process\.env\.FIXED_ACT_ORDER === '1' && !PROD;/, 'só vale fora de produção');
-  assert.match(srvSrc, /ordOf = \(u, ?l\) => \{ const a = actsOf\(l\); return a\.length > 1 && !FIXED_ORDER \? shuffled\(a, u\.id \+ ':ord:' \+ l\.id\) : a; \}/, 'a ordem sorteada depende só do aluno e da lição (não muda sozinha)');
+  assert.match(srvSrc, /ordOf = \(u, ?l\) => \{ const a = actsOf\(l\); if \(a\.length < 2 \|\| FIXED_ORDER\) return a; return \[\.\.\.shuffled\(a\.filter\(x => !SP_ACTS\.includes\(x\)\), u\.id \+ ':ord:' \+ l\.id\), \.\.\.shuffled\(a\.filter\(x => SP_ACTS\.includes\(x\)\), u\.id \+ ':sp:' \+ l\.id\)\]; \}/, 'a ordem sorteada depende só do aluno e da lição (não muda sozinha)');
   const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /codeup-v(60|[6-9]\d)/, 'a versão do cache subiu para o app novo chegar ao celular');
 });
 
+
+// ---------------- atividades ESPECIAIS do SQL Intermediário: desafio novo (d) e conserte o erro (f) ----------------
+test('atividades especiais: o SQL Intermediário tem 4 atividades por lição (executar, ler, desafio novo, conserte o erro), as especiais vêm depois, o XP e os diamantes se dividem e o gabarito não vaza', async () => {
+  const tk = await regP('sp-fluxo1@teste.com', 'Paula Especial', { sex: 'f', guide: 'tay', gname: 'Tay' });
+  await setSettings({ unlockAll: { on: true, days: 1 } });
+  try {
+    await call('/api/track', { token: tk, body: { track: 'sql' } });
+    const L = lessons.find(x => x.id === 'sql-2-01'), row = async (id = L.id) => (await call('/api/lessons', { token: tk })).j.find(x => x.id === id);
+    const r0 = await row(); assert.equal(r0.ord, 'xrdf', 'ordem fixa dos testes: executar, ler, desafio novo, conserte o erro'); assert.equal(r0.rd, 1); assert.equal(r0.dn, undefined);
+    assert.equal((await row('sql-1-01')).ord, 'xr', 'o Básico segue com 2 atividades'); assert.equal((await row('sql-3-01')).ord, 'xr', 'o Avançado ainda também'); assert.equal((await row('py-2-01')).ord, 'xr');
+    // a lição em si não traz as atividades especiais nem o gabarito delas
+    const full = (await call('/api/lessons/' + L.id, { token: tk })).j; assert.equal(full.sp, undefined); assert.ok(!JSON.stringify(full).includes(L.sp.d.solution), 'a solução do desafio não vai junto da lição');
+    // as especiais só abrem depois de executar e ler (a ordem da fila)
+    let r = await doSp(tk, L, 'd'); assert.equal(r.status, 409); assert.equal(r.j.lock, 'ord'); assert.equal(r.j.need, 'x'); assert.match(r.j.error, /executar o código/);
+    r = await call(`/api/lessons/${L.id}/sp/d`, { token: tk }); assert.equal(r.status, 409); assert.equal(r.j.need, 'x');
+    r = await call('/api/check', { token: tk, body: { id: L.id, a: 'd', code: L.sp.d.solution } }); assert.equal(r.status, 409, 'a conferência também respeita a fila');
+    const g0 = (await call('/api/me', { token: tk })).j.gems, xp0 = (await call('/api/me', { token: tk })).j.xp;
+    const x = await doExec(tk, L); assert.equal(x.j.ok, true); assert.equal(x.j.gained, L.xp / 4, 'o XP da lição (20) se divide em 4 partes de 5'); assert.equal(x.j.next, 'r'); assert.equal(x.j.done[L.id], undefined);
+    r = await doSp(tk, L, 'f'); assert.equal(r.status, 409); assert.equal(r.j.need, 'r', 'o conserte o erro espera o ler, que vem antes');
+    const rd = await doRead(tk, L); assert.equal(rd.j.ok, true); assert.equal(rd.j.gained, L.xp / 4); assert.equal(rd.j.next, 'd', 'depois de ler vem o desafio novo'); assert.equal(rd.j.done[L.id], undefined, 'a lição não conclui com 2 de 4');
+    // o desafio chega sem gabarito, sem palavras obrigatórias e sem o "por quê"
+    r = await call(`/api/lessons/${L.id}/sp/d`, { token: tk }); assert.equal(r.status, 200);
+    assert.equal(r.j.sp, 'd'); assert.equal(r.j.id, L.id); assert.equal(r.j.type, 'sql'); assert.equal(r.j.task, L.sp.d.task); assert.equal(r.j.seed, L.sp.d.seed); assert.match(r.j.starter, /^--/); assert.equal(r.j.done, false);
+    for (const k of ['expectedSql', 'expectedRows', 'need', 'why', 'a']) assert.equal(r.j[k], undefined, k + ' não pode ir para o navegador'); assert.equal(r.j.solution, L.sp.d.solution, 'a solução só aparece pelo botão Solução, como nas lições');
+    // errar não gasta nada, não dá XP e não revela o "por quê"
+    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'd', code: 'SELECT 1' } }); assert.equal(r.j.ok, false); assert.equal(r.j.gained, 0); assert.equal(r.j.why, undefined); assert.equal(r.j.tries, 1);
+    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'd', code: 'SELECT usuarios.nome FROM usuarios' } }); assert.equal(r.j.ok, false, 'faltam as palavras obrigatórias (JOIN e ON)'); assert.deepEqual([r.j.missing], ['join']);
+    // a lição de execução não vale como o desafio: o código da lição (outras tabelas) não passa no desafio
+    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'd', code: L.solution } }); assert.equal(r.j.ok, false, 'a solução da lição não resolve o desafio novo');
+    r = await call('/api/check', { token: tk, body: { id: L.id, a: 'd', code: L.sp.d.solution } }); assert.equal(r.j.ok, true, 'a conferência ao vivo usa o item do desafio'); assert.equal((await call('/api/me', { token: tk })).j.xp, xp0 + L.xp / 2, 'conferir não grava nada');
+    const d = await doSp(tk, L, 'd'); assert.equal(d.j.ok, true); assert.equal(d.j.gained, L.xp / 4); assert.equal(d.j.next, 'f'); assert.equal(d.j.why, L.sp.d.why, 'depois do acerto vem o "para que serve"'); assert.equal(d.j.done[L.id], undefined, 'falta o conserte o erro');
+    assert.equal(d.j.tries, 4, 'as tentativas do desafio se contam à parte');
+    // o conserte o erro começa com o código quebrado e o código quebrado NÃO passa
+    r = await call(`/api/lessons/${L.id}/sp/f`, { token: tk }); assert.equal(r.status, 200); assert.equal(r.j.starter, L.sp.f.starter); assert.equal(r.j.sp, 'f'); assert.equal(r.j.why, undefined); assert.equal(r.j.need, undefined);
+    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'f', code: L.sp.f.starter } }); assert.equal(r.j.ok, false, 'o código com erro continua errado'); assert.equal(r.j.gained, 0);
+    const f = await doSp(tk, L, 'f'); assert.equal(f.j.ok, true); assert.equal(f.j.gained, L.xp / 4); assert.equal(f.j.why, L.sp.f.why); assert.ok(f.j.done[L.id], 'com as 4 atividades a lição conclui'); assert.equal(f.j.next, undefined);
+    // XP total = o XP da lição; diamantes = 1 + 1 + 1 + 2 = 5 (fora o bônus da sequência)
+    const me = (await call('/api/me', { token: tk })).j; assert.equal(me.xp - xp0, L.xp, 'as 4 partes somam o XP da lição');
+    assert.deepEqual([x, rd, d, f].map(o => (o.j.gemsGot || 0) - (o.j.gemBonus || 0)), [1, 1, 1, 2], 'diamantes: 1 + 1 + 1 + 2 = 5, como os 2 + 3 de antes'); assert.equal(f.j.gems - g0, 5 + [x, rd, d, f].reduce((a, o) => a + (o.j.gemBonus || 0), 0));
+    const r1 = await row(); assert.equal(r1.dn, 'xrdf'); assert.equal((await doSp(tk, L, 'd')).j.gained, 0, 'refazer não rende XP de novo'); assert.equal((await call('/api/me', { token: tk })).j.xp, me.xp);
+    // pedidos inválidos
+    assert.equal((await call('/api/lessons/sql-1-01/sp/d', { token: tk })).status, 404, 'o Básico não tem desafio novo'); assert.equal((await call(`/api/lessons/${L.id}/sp/x`, { token: tk })).status, 404); assert.equal((await call(`/api/lessons/${L.id}/sp/__proto__`, { token: tk })).status, 404);
+    assert.equal((await call('/api/submit', { token: tk, body: { id: 'sql-1-01', a: 'd', code: 'SELECT 1' } })).status, 404, 'a: d numa lição sem desafio');
+    r = await call('/api/submit', { token: tk, body: { id: 'sql-2-02', a: '__proto__', code: lessons.find(y => y.id === 'sql-2-02').solution } }); assert.equal(r.j.ok, true, 'a inválido vira a atividade de executar'); assert.equal(r.j.gained, 5);
+  } finally { await setSettings({ unlockAll: { on: false } }); }
+});
+
+test('atividades especiais: quem já tinha lições do SQL Intermediário concluídas continua concluído e não perde nada; as lições novas pedem as 4 atividades', async () => {
+  await withSeed('sp3', PORT + 888,
+    async j => { const rg = await j('/api/register', { name: 'Antiga SQL', email: 'antiga-sp@teste.com', password: 'segredo1', accept: true }); await j('/api/track', { track: 'sql' }, rg.j.token); return { tk: rg.j.token }; },
+    D => { const u = Object.values(D.users).find(x => x.email === 'antiga-sp@teste.com'); seedLv2(u, 'sql', 3); u.xp = 300; (u.ex ??= {})['sql-2-04'] = { date: '2026-10-01T10:00:00.000Z', code: 'x' }; u.xpd['sql-2-04:x'] = 1; u.xp += 10; },
+    async (j, { tk }, { restart }) => {
+      const sp = (L, a) => j('/api/submit', { id: L.id, a, code: L.sp[a].solution }, tk), rdA = L => j('/api/read', { id: L.id, a: readAnswer(L) }, tk);
+      const rows = async () => (await j('/api/lessons', null, tk)).j, by = async id => (await rows()).find(x => x.id === id), me = async () => (await j('/api/me', null, tk)).j;
+      let m = await me(); assert.deepEqual(['sql-2-01', 'sql-2-02', 'sql-2-03'].filter(id => m.done[id]).length, 3, 'as 3 lições concluídas continuam concluídas'); assert.equal(m.xp, 310, 'nenhum XP muda');
+      for (const id of ['sql-2-01', 'sql-2-02', 'sql-2-03']) { const r = await by(id); assert.equal(r.dn, 'xrdf', id + ': concluída = as 4 atividades contam como feitas'); assert.equal(r.lock, null); }
+      // a lição 4 estava no meio (só executar): agora faltam ler, o desafio novo e o conserte o erro; a 5 continua trancada
+      const r4 = await by('sql-2-04'); assert.equal(r4.dn, 'x'); assert.equal(r4.lock, null); assert.equal((await by('sql-2-05')).lock, 'seq');
+      // treinar o desafio de uma lição já concluída é livre (sem fila) e não rende XP de novo
+      const L1 = lessons.find(x => x.id === 'sql-2-01'); let r = await sp(L1, 'f'); assert.equal(r.j.ok, true); assert.equal(r.j.gained, 0); assert.equal((await me()).xp, 310);
+      // a lição 4: segue a fila (ler, desafio, conserte) e só então conclui e abre a 5
+      const L4 = lessons.find(x => x.id === 'sql-2-04'); r = await sp(L4, 'd'); assert.equal(r.status, 409); assert.equal(r.j.need, 'r');
+      assert.equal((await rdA(L4)).j.ok, true); assert.equal((await sp(L4, 'd')).j.ok, true); assert.equal((await by('sql-2-05')).lock, 'seq', 'com 3 de 4 a lição 5 continua trancada');
+      r = await sp(L4, 'f'); assert.equal(r.j.ok, true); assert.ok(r.j.done['sql-2-04']); assert.equal((await by('sql-2-05')).lock, null, 'com as 4 a lição 5 abre');
+      await restart(); m = await me(); assert.ok(m.done['sql-2-04']); assert.equal((await by('sql-2-04')).dn, 'xrdf', 'depois de reiniciar o servidor nada muda');
+    });
+});
 
 // ---------------- Power BI e DAX: lições de DAX (o aluno escreve medidas e colunas) e de quiz (várias perguntas numa tela) ----------------
 test('Power BI e DAX: o servidor entrega as lições sem gabarito, mostra a comparação do que errou e corrige qualquer fórmula certa', async () => {

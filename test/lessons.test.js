@@ -360,3 +360,26 @@ test('palavras obrigatórias: ignoram maiúsculas, quebras de linha e espaços a
   assert.equal(lessons.needMissing({ need: ['print('] }, 'print ( "oi" )'), undefined); assert.equal(lessons.needMissing({ need: ['print('] }, 'imprimir("oi")'), 'print(');
   assert.equal(lessons.needMissing({ need: ['x = ['] }, 'x=[1,2]'), undefined, 'espaços ao redor do = e do [ não importam'); assert.equal(lessons.needMissing({ need: [] }, ''), undefined);
 });
+
+test('atividades especiais (SQL Intermediário): toda lição tem um desafio novo e um conserte o erro; a solução passa, o ponto de partida não e o gabarito não vaza', async () => {
+  const r = await require('../tools/check-sp')();
+  assert.deepEqual(r.erros, [], 'npm run check:sp precisa passar');
+  assert.equal(r.d, 30); assert.equal(r.f, 30);
+  assert.ok(r.fErr >= 5 && r.fWrong >= 5, 'o conserte o erro mistura erros que quebram a consulta e erros que só deixam o resultado errado');
+  const sql2 = lessons.filter(l => l.track === 'sql' && l.lv === 2);
+  assert.ok(sql2.every(l => l.sp && l.sp.d && l.sp.f), 'as 30 lições do SQL Intermediário têm as duas atividades especiais');
+  assert.ok(lessons.filter(l => !(l.track === 'sql' && l.lv === 2)).every(l => !l.sp), 'por enquanto só o SQL Intermediário tem atividades especiais');
+  const SQL = await initSqlJs();
+  for (const l of sql2) for (const a of ['d', 'f']) {
+    const g = l.sp[a], tag = l.id + ':' + a;
+    assert.equal(g.id, l.id); assert.equal(g.sp, undefined); assert.equal(g.a, a); assert.equal(g.type, 'sql');
+    assert.deepEqual(g.hints, [g.hint ?? g.hints[0], g.solution], tag + ': a 2ª dica é a solução');
+    const exp = g.expectedRows; assert.ok(exp && Array.isArray(exp.rows) && exp.rows.length > 0, tag + ': falta o gabarito em content/expected-sql.json (rode npm run build:content)');
+    // o gabarito gravado é o que a solução devolve de verdade
+    const db = new SQL.Database(); db.run(g.seed); const res = db.exec(g.solution), last = res[res.length - 1];
+    assert.deepEqual(exp.rows, last.values.map(v => JSON.stringify(v)), tag + ': gabarito desatualizado'); assert.equal(exp.ordered, /order by/i.test(g.solution));
+    assert.equal(lessons.needMissing(g, g.solution), undefined, tag + ': a solução cumpre as palavras obrigatórias');
+    if (a === 'f') assert.notEqual(g.starter.trim(), g.solution.trim(), tag + ': o código com erro começa diferente da solução');
+    else assert.match(g.starter, /^--/, tag + ': o desafio começa em branco (só o comentário)');
+  }
+});

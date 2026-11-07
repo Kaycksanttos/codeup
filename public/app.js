@@ -31,6 +31,7 @@ const IC = {
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-5M13 16V8M18 16v-9"/>',
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
   pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
   eraser: '<path d="M4 17 15 6a2 2 0 0 1 3 0l1 1a2 2 0 0 1 0 3L10 19H6z"/><path d="M10 19h10"/>',
@@ -537,9 +538,9 @@ async function go(t) {
     A.innerHTML = `<div class="c auth"><div class="boot err" role=alert><h1 class=logo aria-label="CodeUp"><b>Code</b><span>Up</span></h1><div class=bootm>${ic('info', 24)}<b>Não foi possível carregar</b><small>${esc(e.error || 'Verifique sua internet e tente de novo.')}</small></div><button class="btn pri" onclick="go('home')">Tentar de novo</button></div></div>`; }
 }
 const done = l => S.me.done[l.id];
-// As atividades de cada lição (x executar · r ler o código): a ORDEM é sorteada pelo servidor para cada lição
+// As atividades de cada lição (x executar · r ler o código · d desafio novo · f conserte o erro: as duas últimas só no SQL Intermediário): a ORDEM é sorteada pelo servidor para cada lição
 // e vem em `l.ord` (ex.: 'rx'). O "Explicar o código" é um círculo próprio no mapa (S.ecs), de uma lição só; `l.dn` diz quais já estão feitas. A próxima atividade é sempre a primeira da ordem que ainda falta.
-const ACT_NM = { c: 'Como funciona', x: 'Executar o código', r: 'Ler o código' }, ACT_SH = { c: 'ver como funciona', x: 'executar', r: 'ler' };
+const ACT_NM = { c: 'Como funciona', x: 'Executar o código', r: 'Ler o código', d: 'Desafio novo', f: 'Conserte o erro' }, ACT_SH = { c: 'ver como funciona', x: 'executar', r: 'ler', d: 'fazer o desafio novo', f: 'consertar o erro' };
 const actOrd = l => (l && l.cf ? ['c'] : []).concat(String(l && l.ord || '').split('').filter(Boolean));      // 'c' = "Como funciona": 1ª parte do círculo, sempre antes das outras
 const actDn = (l, a) => !!(l && (S.me.done[l.id] || (a == 'c' ? l.cd : String(l.dn || '').includes(a))));
 const actNext = l => actOrd(l).find(a => !actDn(l, a)) || null;
@@ -1243,8 +1244,8 @@ async function openL(id) {
   const nx = !S.me.done[id] ? actNext(m) : null;   // a lição ainda não feita abre na próxima parte do círculo: o "Como funciona" vem sempre primeiro
   openAct(id, nx || 'x');
 }
-const openAct = (id, a) => a == 'c' ? openC(id) : a == 'r' ? openR(id) : openX(id);
-const resetLs = () => { S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false; };
+const openAct = (id, a) => a == 'c' ? openC(id) : a == 'r' ? openR(id) : a == 'd' || a == 'f' ? openSp(id, a) : openX(id);
+const resetLs = () => { S.h = 0; S.hearts = 5; S.tries = 0; S.errs = 0; S.lastRes = null; S.unl = null; S.rdMode = false; S.why = ''; };
 async function openC(id) {   // 1ª parte: para que serve e como funciona (animado)
   try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
   resetLs(); intro();
@@ -1252,6 +1253,14 @@ async function openC(id) {   // 1ª parte: para que serve e como funciona (anima
 async function openX(id) {
   try { S.cur = await api('lessons/' + id); } catch (e) { return fail(e); }
   resetLs(); lesson();
+}
+// Atividades ESPECIAIS (SQL Intermediário): d = desafio novo (o mesmo assunto numa situação nova, escrito do zero) e f = conserte o erro (código quase certo com um erro escondido).
+// Usam a mesma tela de prática da lição (o servidor manda um objeto parecido com a lição, com `sp` = 'd' | 'f') e o mesmo corretor; só mudam o texto, o código inicial e o envio (`a`).
+async function openSp(id, a) {
+  const m = S.ls.find(l => l.id == id); if (!m) return;
+  if (lockToast(m)) return;
+  try { S.cur = await api('lessons/' + id + '/sp/' + a); } catch (e) { return fail(e); }
+  resetLs(); practice();
 }
 const isTest = l => !!(l && (l.cp || l.fin));
 // Enunciado em passos: parágrafos, listas ("- item" e "1. item"), `código`, **negrito** e destaque para "Dica:" / "Atenção:" (o texto vem de content/enunciados.txt; enunciado curto de lição é um parágrafo só)
@@ -1932,12 +1941,12 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   const l = S.cur, T = isTest(l), ok = T && testDone(l), X = l.type == 'excel', Q = l.type == 'quiz', DX = l.type == 'dax'; theme(l.track); S.step = 'pratica'; S.lt = 0; S.t0 = Date.now(); S.h = 0; clearTimeout(LT);
   const left = l.left ?? l.chances;
   A.innerHTML = `<div class="c pr"><div class=top><button class=ibtn onclick="go('home')" aria-label="Fechar">${ic('x', 20)}</button><div class=bar><i style="width:${(T ? l.after : l.n) / 30 * 100}%"></i></div>${T ? `<b class=hearts id=chh aria-label="${ok ? 'Treino' : left + ' chances'}">${ok ? '' : chHearts(left, l.chances, 20)}</b>` : `<b class=hearts style="color:var(--acc)">${l.n}/30</b>${tutBtn}`}</div>
-  ${T ? '' : l.proj ? steps(2, false, true) : steps(3)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
-  <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : l.proj ? 'Projeto' : (rowOf(l.id) || {}).rd ? actTag(l, 'x') : 'Desafio'}</small><div class="tk${String(l.task).length > 170 ? ' long' : ''}">${taskHtml(l.task)}</div></div></div>
+  ${T || l.sp ? '' : l.proj ? steps(2, false, true) : steps(3)}<div class=crumb>${tg(l.track, 24)}<span>${esc(l.title)}</span><span class=cdp aria-hidden=true>${poseChip('codando', 40)}</span></div>
+  <div class=task>${ic(T ? 'flag' : 'target', 20)}<div><small>${T ? (l.fin ? 'Prova final: use tudo o que você aprendeu desde a lição 1' : `Checkpoint: use o que você aprendeu até a lição ${l.after}`) : l.proj ? 'Projeto' : l.sp ? actTag(l, l.sp) : (rowOf(l.id) || {}).rd ? actTag(l, 'x') : 'Desafio'}</small><div class="tk${String(l.task).length > 170 ? ' long' : ''}">${taskHtml(l.task)}</div></div></div>
   ${tblFor(l, '', 'Toque em <b>Dados</b> para ver as linhas de cada tabela.')}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${DX ? daxViewsNote(l) : ''}${X ? xlBox(l) : Q ? qzBox(l) : edBox(l, l.starter)}
-  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="${l.type == 'html' ? 'Ver a página' : 'Ver dados'}">${ic('eye', 20)}<span>${l.type == 'html' ? 'Página' : 'Dados'}</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick=lesson()>${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="Limpar o código">${ic('eraser', 20)}<span>Limpar</span></button></div>
+  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="${l.type == 'html' ? 'Ver a página' : 'Ver dados'}">${ic('eye', 20)}<span>${l.type == 'html' ? 'Página' : 'Dados'}</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick="${l.sp ? `openX('${l.id}')` : 'lesson()'}">${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="${l.sp == 'f' ? 'Voltar ao código original' : 'Limpar o código'}">${ic('eraser', 20)}<span>${l.sp == 'f' ? 'Original' : 'Limpar'}</span></button></div>
   ${outBox(X ? OUT0X : Q ? OUT0Q : DX ? OUT0D : l.type == 'html' ? OUT0H : OUT0)}
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
@@ -2055,7 +2064,7 @@ async function concluir() {
     }
     if (!err && !SRV) { o.className = 'out'; o.innerHTML = r.html; }
     let s;
-    try { s = await api('submit', { body: { id: l.id, code, out: r.out || '' } }); }
+    try { s = await api('submit', { body: { id: l.id, code, out: r.out || '', a: l.sp || undefined } }); }
     catch (e) { if (e.engine || e.status == 503) return setFb('srv', fixit(0, '', [esc(e.error || 'O servidor não respondeu agora. Toque em Concluído de novo.')])); throw e; }
     const T = isTest(l), before0 = l.left ?? l.chances;
     if (!s.ok) {
@@ -2076,7 +2085,7 @@ async function concluir() {
     S.unl = unlocksOf(lk0, xb, s);                                                   // o cartão "Desbloqueado!" da tela de conclusão
     if (l.fin) { try { await new Promise(res => passFx(s, l, res)); } catch { closeOv(true); } testPass(s); return streakLater(s); }   // prova final: tela do troféu e depois o resultado
     try { await okFx(s); } catch { closeOv(true); }          // tela do acerto (1–2 s, toque para pular) e só então o resultado da lição (se a tela falhar, o resultado vem do mesmo jeito)
-    S.nAct = 0; if (s.next) resultAct('x', s.next); else result();
+    S.nAct = 0; S.why = l.sp ? s.why || '' : ''; if (s.next) resultAct(l.sp || 'x', s.next); else result();
     streakLater(s);
   } catch (e) { setFb('idle'); fail(e); }
   finally { S.busy = false; const bb = $('#bdone'); if (bb) { bb.disabled = false; bb.innerHTML = DONE_BTN; } }
@@ -2085,7 +2094,7 @@ async function concluir() {
 function limpar() {
   if (S.cur && S.cur.type == 'excel') { if (S.busy) return; xlClear(); const o = $('#out'); o.className = 'out'; o.innerHTML = OUT0X; setFb('idle'); return; }
   if (S.cur && S.cur.type == 'quiz') { if (S.busy) return; qzClear(); const o = $('#out'); o.className = 'out'; o.innerHTML = OUT0Q; setFb('idle'); return; }
-  const ed = $('#ed'); if (!ed || S.busy) return; ++S.lt; ed.value = ''; ed.dispatchEvent(new Event('input')); ed.focus();
+  const ed = $('#ed'); if (!ed || S.busy) return; ++S.lt; ed.value = S.cur && S.cur.sp == 'f' ? S.cur.starter : ''; ed.dispatchEvent(new Event('input')); ed.focus();   // no "conserte o erro" o botão devolve o código original
   const o = $('#out'); o.className = 'out'; o.innerHTML = S.cur && S.cur.type == 'dax' ? OUT0D : OUT0; setFb('idle');
 }
 // O botão Concluído (e o Conferir das outras atividades) fica PARADO no rodapé da tela: é só CSS (position: fixed), sem nenhum código que o mova.
@@ -2224,19 +2233,21 @@ function showErr(e) {
 const ACT_TX = {
   x: ['executar o código', 'Hora de escrever e rodar um código por conta própria: primeiro uma explicação rápida, depois a prática.', 'pencil'],
   r: ['ler o código', 'Você vai ver um código pronto e dizer o que ele faz. Ler bem é metade de programar bem.', 'eye'],
+  d: ['desafio novo', 'Um problema novo com a mesma ideia, em outra situação. Escreva a consulta do zero para mostrar que você entendeu para que serve o que aprendeu.', 'target'],
+  f: ['conserte o erro', 'Um código quase certo, com um erro escondido. Rode, descubra o que está errado e conserte.', 'wrench'],
   e: ['explicar o código', 'Você vai explicar, com as suas palavras, o que um código faz ou o que ele traz como resultado.', 'bulb']
 };
 function resultAct(a, nxt) {
   delete document.body.dataset.calm;
   const l = S.cur, m = rowOf(l.id) || {}, N = actOrd(m).length || 2, dn = actOrd(m).filter(b => actDn(m, b)).length || 1, [nt, nd, ni] = ACT_BY[l.type] ? [ACT_BY[l.type][nxt][0], ACT_BY[l.type][nxt][2], ACT_TX[nxt][2]] : ACT_TX[nxt];
-  const tries = a == 'x' ? `<div><b>${S.h}</b><small>dicas usadas</small></div>` : `<div><b>${S.rtries || 1}</b><small>${(S.rtries || 1) == 1 ? 'tentativa' : 'tentativas'}</small></div>`;
+  const tries = 'xdf'.includes(a) ? `<div><b>${S.h}</b><small>dicas usadas</small></div>` : `<div><b>${S.rtries || 1}</b><small>${(S.rtries || 1) == 1 ? 'tentativa' : 'tentativas'}</small></div>`;
   sfx('done'); confetti(30); A.innerHTML = `<div class="c res">${winStage(210, 'Mandou bem!')}<h1>${dn} de ${N} atividades feitas!</h1><p class=sub>Lição ${l.n} de 30 · ${TN[l.track]} ${esc(l.level)} · ${actSh(l, a)}</p>
   <div class=rdr-next><span class=rdr-ni>${ic(ni, 22)}</span><div><b>Agora vem a atividade ${actPos(m, nxt)}: ${nt}</b><small>${nd} Quando as ${N} atividades estiverem feitas, a lição conclui e a próxima abre.</small></div></div>
-  <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div>${tries}<div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>${a == 'x' ? 'na prática' : a == 'r' ? 'lendo' : 'explicando'}</small></div></div>
+  <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div>${tries}<div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>${'xdf'.includes(a) ? 'na prática' : a == 'r' ? 'lendo' : 'explicando'}</small></div></div>
   ${gemGot()}
-  ${resBox()}
+  ${whyBox()}${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos desta atividade.</p>'}
-  <button class="btn pri block" onclick="openAct('${l.id}','${nxt}')">Atividade ${actPos(m, nxt)}: ${nt} ${ic('arrow', 16)}</button><button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button><button class="btn ghost block" onclick=lesson()>Rever explicação</button></div>`;
+  <button class="btn pri block" onclick="openAct('${l.id}','${nxt}')">Atividade ${actPos(m, nxt)}: ${nt} ${ic('arrow', 16)}</button><button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button><button class="btn ghost block" onclick="${l.sp ? `openX('${l.id}')` : 'lesson()'}">Rever explicação</button></div>`;
 }
 // "Precisa relembrar?": a teoria da lição, escondida até o aluno abrir (a ordem das atividades é sorteada, então ele pode cair em ler/explicar antes de executar)
 const theoryBox = l => `<details class=rdr-th><summary>${ic('file', 16)} Precisa relembrar? Veja a explicação da lição</summary><div class=rdr-thb><div class=sb>${esc(l.info && l.info.oque || l.explain)}</div>${infoCards(l.info, ['serve', 'como'])}${l.example ? codeBox(l.example, lang(l), 'Exemplo') : ''}${l.mat ? matHtml(l.mat) : ''}</div></details>`;
@@ -2248,6 +2259,8 @@ async function openR(id) {
 }
 // o texto "por quê" do servidor: `código` vira destaque e quebra de linha vira parágrafo
 const whyHtml = t => String(t || '').split('\n').filter(x => x.trim()).map(x => `<p>${esc(x).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')}</p>`).join('');
+// "Para que isso serve" (desafio novo e conserte o erro): o texto do servidor aparece depois que o aluno acerta, na tela do resultado
+const whyBox = () => S.why && S.cur && S.cur.sp ? `<div class=rdr-why><div class=rdr-wh>${ic('bulb', 20)}<b>${S.cur && S.cur.sp == 'f' ? 'Qual era o erro' : 'Para que isso serve'}</b></div>${whyHtml(S.why)}</div>` : '';
 const dataTables = r => (r.tables || []).map(t => `<div class=rdr-tb><small>Dados da tabela <b>${esc(t.name)}</b></small>${table({ columns: t.cols, values: t.rows })}</div>`).join('');
 function readAct() {
   delete document.body.dataset.calm;
@@ -2388,9 +2401,9 @@ function result() {
   ${needCp ? `<p class=gl>Checkpoint liberado! Monte ${what} com o que você aprendeu nas lições 1 a ${needCp.after} para abrir a lição ${nx.n}. São 2 chances.</p>` : ''}
   <div class=stats3><div><b>+${S.gained}</b><small>XP</small></div>${S.rdMode ? `<div><b>${S.rtries || 1}</b><small>${(S.rtries || 1) == 1 ? 'tentativa' : 'tentativas'}</small></div>` : `<div><b>${S.h}</b><small>dicas usadas</small></div>`}<div><b>${Math.max(1, Math.round((Date.now() - S.t0) / 1000))}s</b><small>${S.rdMode ? (S.lastAct == 'e' ? 'explicando' : 'lendo') : 'na prática'}</small></div></div>
   ${gemGot()}
-  ${resBox()}
+  ${whyBox()}${resBox()}
   ${S.gained ? '' : '<p class=tn>Você já tinha ganhado os pontos desta lição.</p>'}
-  ${btn}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button><button class="btn ghost block" onclick=lesson()>Rever explicação</button></div>`;
+  ${btn}<button class="btn ghost block" onclick="go('home')">Voltar ao mapa</button><button class="btn ghost block" onclick="${l.sp ? `openX('${l.id}')` : 'lesson()'}">Rever explicação</button></div>`;
 }
 
 // círculo de explicar o código concluído: o botão leva à lição que ele abriu

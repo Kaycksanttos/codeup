@@ -19,7 +19,8 @@
     "check:explicar": "node tools/check-explicar.js",
     "check:tente": "node tools/check-tente.js",
     "check:como": "node tools/check-como.js",
-    "check:usar": "node tools/check-usar.js"
+    "check:usar": "node tools/check-usar.js",
+    "check:sp": "node tools/check-sp.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
