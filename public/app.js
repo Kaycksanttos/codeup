@@ -2008,7 +2008,7 @@ async function diagSql(l, code, raw, missing, view) {   // view: resultado esper
   else {
     const S1 = x => x.values.map(v => JSON.stringify(v.map(norm))).sort();
     const U1 = x => x.values.map(v => JSON.stringify(v.map(norm)));
-    if (sameRows(U1(got), U1(exp))) tips.push('<b>Seu resultado está igual ao esperado</b>, mas o servidor não conseguiu confirmar agora. Tente de novo em instantes; se continuar, avise quem administra o site.');
+    if (sameRows(U1(got), U1(exp))) tips.push(missing ? '<b>Seu resultado está igual ao esperado.</b> Para concluir, escreva a consulta usando o que esta lição pede (veja o aviso acima).' : '<b>Seu resultado está igual ao esperado</b>, mas o servidor não conseguiu confirmar agora. Tente de novo em instantes; se continuar, avise quem administra o site.');
     else if (sameRows(S1(got), S1(exp))) tips.push('<b>As linhas estão certas, mas na ordem errada.</b> Revise o <b>ORDER BY</b> (e ASC/DESC).');
     else { let k = -1, c = -1; for (let i = 0; i < exp.values.length && k < 0; i++) for (let j = 0; j < exp.columns.length; j++) if (norm(got.values[i][j]) != norm(exp.values[i][j])) { k = i; c = j; break; }
       tips.push(k < 0 ? 'Os valores estão diferentes do esperado.' : `<b>Valor diferente</b> na linha ${k + 1}, coluna <b>${esc(exp.columns[c])}</b>: você tem <b>${esc(norm(got.values[k][c]))}</b>, o esperado é <b>${esc(norm(exp.values[k][c]))}</b>. Confira a conta, a função ou o filtro dessa coluna.`); }

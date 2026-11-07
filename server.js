@@ -862,8 +862,7 @@ async function grade(l, code, out, authoritative) {
   if (l.type === 'quiz') { let a; try { a = JSON.parse(code); } catch { a = []; } return quizcheck.grade(l, a, isTest(l)); }   // quiz: as respostas vão em JSON
   if (l.type === 'html') { const r = htmlcheck.grade(l, code); return isTest(l) ? { ok: r.ok, hc: { items: r.hc.items.map(({ ok, d }) => ({ ok, d })), hints: [] } } : r; }   // HTML e CSS: confere cada item da lista; nas provas o aluno vê só quais itens faltam (sem a dica do que está errado)
   if (l.type === 'excel') return xlcheck.grade(l, code);                  // Excel: compara o resultado das fórmulas (com os números da planilha e com outros)
-  const flat = code.toLowerCase().replace(/\s+/g, ' ');
-  const missing = (l.need || []).find(t => !flat.includes(t));
+  const missing = lessons.needMissing(l, code);                          // palavras obrigatórias: ignora maiúsculas e espaços/quebras de linha ao redor de sinais ("(\n SELECT AVG(" vale como "(select avg(")
   if (missing) return { ok: false, missing };
   if (l.type === 'js') {                                                   // JavaScript: igual ao Python (o servidor roda o código do aluno num processo restrito e compara a saída do console)
     if (authoritative && JS_SERVER) { const r = await jsrunner.run(l.prelude || '', code); if (r.err === 'BUSY') return { ok: false, busy: true }; return { ok: r.ok && r.out.trim() === l.expectedOut }; }

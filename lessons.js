@@ -111,3 +111,18 @@ for (const x of [...lessons, ...tests, ...projects]) if (x.checks) x.req = x.che
 
 module.exports = lessons;
 Object.assign(module.exports, { checkpoints, finals, tests, projects, explains, EC_AFTER, EC_XP, EC_GEMS, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });
+
+// ---- Palavras obrigatórias de uma lição (campo `need`, só Python, SQL e JavaScript). Quem corrige é o servidor.
+// O aluno escreve do jeito dele: "(\n  SELECT AVG(preco)\n  FROM produtos\n)" tem que valer como "(select avg(preco) from produtos)".
+// Por isso a conferência ignora maiúsculas e minúsculas e os espaços/quebras de linha ao redor de qualquer sinal: ( ) [ ] , . = + - * etc.
+// Um espaço na ponta da palavra ("for ", " and ", "if ") quer dizer "palavra inteira": vale "for x", "if(x > 3)" e "a and b", mas não "format" nem "android".
+const NEED_W = '[\\p{L}\\p{N}_]';
+const needFlat = s => String(s == null ? '' : s).toLowerCase().replace(/\s+/g, ' ').replace(/\s*([^\p{L}\p{N}_\s])\s*/gu, '$1');
+const needHas = (flat, term) => {
+  const t = needFlat(term); if (!t.trim()) return true;
+  if (flat.includes(t)) return true;                                       // jeito simples: o texto aparece como está
+  const core = t.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp((/^\s/.test(t) ? `(?<!${NEED_W})` : '') + core + (/\s$/.test(t) ? `(?!${NEED_W})` : ''), 'u').test(flat);
+};
+const needMissing = (l, code) => { const flat = needFlat(code); return (l.need || []).find(t => !needHas(flat, t)); };
+Object.assign(module.exports, { needFlat, needHas, needMissing });

@@ -2820,6 +2820,17 @@ test('mural: arquivos do app — aba Conquistas, conquista só da lista, Equipe 
   assert.match(adm, /esc\(c\.text\)/, 'comentário escapado no painel');
 });
 
+test('SQL: a subconsulta em várias linhas vale (palavras obrigatórias ignoram quebras de linha e espaços ao redor dos sinais)', async () => {
+  const tk = await regP('need-sub@teste.com', 'Nina Necessária', { sex: 'f', guide: 'tay', gname: 'Tay' });
+  await setSettings({ unlockAll: { on: true, days: 1 } });
+  try {
+    await call('/api/track', { token: tk, body: { track: 'sql' } });
+    const sub = async code => (await call('/api/submit', { token: tk, body: { id: 'sql-2-14', code } })).j;
+    let r = await sub('SELECT nome, preco\nFROM produtos\nWHERE preco > (\n  SELECT AVG(preco)\n  FROM produtos\n)'); assert.equal(r.ok, true, 'o código do print do aluno: ' + JSON.stringify(r));
+    r = await sub('select nome,preco from produtos where preco>( select  avg ( preco ) from produtos )'); assert.equal(r.ok, true, JSON.stringify(r));
+    r = await sub('SELECT nome, preco FROM produtos WHERE preco > 1000'); assert.equal(r.ok, false); assert.equal(r.missing, '(select avg', 'sem a subconsulta o aviso continua');
+  } finally { await setSettings({ unlockAll: { on: false } }); }
+});
 test('mural: cartões de progresso (XP e tempo de estudo): números do servidor, um de cada por dia, só quem tem o que mostrar', async () => {
   const email = 'mu-cartao1@teste.com', tk = await regP(email, 'Carla Cartão Souza', { sex: 'f', guide: 'tay', gname: 'Tay' });
   const bad = async (body, st, re) => { const x = await postMu(tk, { kind: 'progresso', ...body }); assert.equal(x.status, st, JSON.stringify(body)); if (re) assert.match(x.j.error, re); };

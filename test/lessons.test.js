@@ -111,8 +111,10 @@ test('ids únicos e campos obrigatórios', () => {
 
 for (const l of [...lessons, ...tests, ...projects]) {
   test(`${l.fin ? 'prova final' : l.cp ? 'checkpoint' : l.proj ? 'projeto' : 'lição'} ${l.id} — ${l.title}`, async t => {
-    const flat = String(l.solution || '').toLowerCase().replace(/\s+/g, ' ');
-    if (l.type !== 'excel' && l.type !== 'quiz' && l.type !== 'html') for (const w of l.need) assert.ok(flat.includes(String(w).toLowerCase()), `a solução não contém a palavra obrigatória "${w}"`);
+    if (l.type !== 'excel' && l.type !== 'quiz' && l.type !== 'html' && l.type !== 'dax') {
+      assert.equal(lessons.needMissing(l, l.solution), undefined, `a solução não contém a palavra obrigatória "${lessons.needMissing(l, l.solution)}"`);
+      for (const v of [String(l.solution).replace(/\s+/g, ' '), String(l.solution).replace(/([(),])/g, '\n  $1  \n'), String(l.solution).replace(/ /g, '   ')]) assert.equal(lessons.needMissing(l, v), undefined, 'o mesmo código escrito com outros espaços e quebras de linha também vale: ' + JSON.stringify(v.slice(0, 60)));
+    }
     if (l.type === 'html') {
       const g = htmlcheck.grade(l, l.solution); assert.equal(g.ok, true, 'a solução oficial deve passar nas verificações: ' + JSON.stringify(g.hc.items.filter(i => !i.ok)));
       assert.equal(htmlcheck.grade(l, l.starter).ok, false, 'o ponto de partida não pode passar');
@@ -340,4 +342,21 @@ test('quando usar e como usar: toda lição com exemplo (SQL, Python, Excel e DA
   assert.deepEqual(erros, []);
   for (const l of lessons.filter(x => ['sql', 'python', 'excel', 'dax'].includes(x.type) && x.example)) assert.ok(l.usar && l.usar.q && l.usar.m, `${l.id}: o servidor precisa mandar l.usar`);
   assert.equal(lessons.filter(x => x.type === 'quiz').every(x => !x.usar), true, 'lição de quiz não tem molde');
+});
+
+test('palavras obrigatórias: ignoram maiúsculas, quebras de linha e espaços ao redor dos sinais, mas continuam exigindo o que a lição pede', () => {
+  const l = id => [...lessons, ...lessons.tests, ...lessons.projects].find(x => x.id === id);
+  const sub = l('sql-2-14');                                                                    // exige "select" e "(select avg"
+  assert.deepEqual(sub.need, ['select', '(select avg']);
+  for (const ok of ['SELECT nome, preco FROM produtos WHERE preco > (SELECT AVG(preco) FROM produtos)', 'SELECT nome, preco\nFROM produtos\nWHERE preco > (\n  SELECT AVG(preco)\n  FROM produtos\n)', 'select nome,preco from produtos where preco>( select  avg ( preco ) from produtos )', 'SELECT nome, preco FROM produtos WHERE preco > (\n\tSELECT\n\tAVG(preco) FROM produtos)'])
+    assert.equal(lessons.needMissing(sub, ok), undefined, ok);
+  assert.equal(lessons.needMissing(sub, 'SELECT nome, preco FROM produtos WHERE preco > 1000'), '(select avg', 'sem a subconsulta continua faltando');
+  assert.equal(lessons.needMissing(sub, 'SELECT nome FROM produtos WHERE preco > (SELECT MAX(preco) FROM produtos)'), '(select avg', 'outra função não vale');
+  assert.equal(lessons.needMissing(sub, 'SELECT AVG(preco) FROM produtos'), '(select avg', 'AVG fora de uma subconsulta não vale');
+  // espaço na ponta da palavra = palavra inteira
+  const w = { need: ['for ', ' and ', 'if '] };
+  assert.equal(lessons.needMissing(w, 'for x in y:\n  if(x>3 and x<9): pass'), undefined, 'for x / if(x...) / and entre condições');
+  assert.equal(lessons.needMissing(w, 'format(1) android(2) gift(3)'), 'for ', 'palavra dentro de outra não vale');
+  assert.equal(lessons.needMissing({ need: ['print('] }, 'print ( "oi" )'), undefined); assert.equal(lessons.needMissing({ need: ['print('] }, 'imprimir("oi")'), 'print(');
+  assert.equal(lessons.needMissing({ need: ['x = ['] }, 'x=[1,2]'), undefined, 'espaços ao redor do = e do [ não importam'); assert.equal(lessons.needMissing({ need: [] }, ''), undefined);
 });
