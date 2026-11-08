@@ -652,17 +652,33 @@ function achEarned(u) {
   if ((u.xp || 0) >= 1000) got.add('xp1000');
   return got;
 }
-// Cartões de progresso (a "imagem" do XP e do tempo de estudo): o aluno só escolhe SE quer compartilhar e qual cartão. Os números NÃO vêm do navegador:
+// Conquista NOVA: depois de executar, ler ou explicar, o servidor compara as conquistas de antes e de depois da ação e devolve `newAch` (os ids) para o app comemorar e oferecer
+// "Compartilhar no Mural". Cada conquista é avisada uma vez só (`u.achSeen`). Quem já tinha conquistas antes desta função existir não recebe aviso atrasado: na 1ª ação o que já era dele vira "visto".
+const achWatch = (req, res, next) => {
+  const u = req.u; if (!u) return next();
+  const before = achEarned(u); u.achSeen ??= Object.fromEntries([...before].map(k => [k, 1]));
+  const json = res.json.bind(res);
+  res.json = body => {
+    if (res.statusCode < 400 && body && typeof body === 'object' && !Array.isArray(body)) {
+      const fresh = [...achEarned(u)].filter(k => !u.achSeen[k]);
+      if (fresh.length) { fresh.forEach(k => { u.achSeen[k] = 1; }); save(); body = { ...body, newAch: fresh }; }
+    }
+    return json(body);
+  };
+  next();
+};
+// Cartões de progresso (a "imagem" do XP, da sequência e do tempo de estudo): o aluno só escolhe SE quer compartilhar e qual cartão. Os números NÃO vêm do navegador:
 // o servidor monta o retrato na hora de postar e guarda junto do post, então ninguém consegue inventar XP nem dias. Um cartão de cada tipo por dia.
-const CARDS = { xp: 'Meu XP', tempo: 'Meu tempo de estudo' }, CARD_MSG = 200, CARD_MIN = { xp: 10, tempo: 1 };
+const CARDS = { xp: 'Meu XP', seq: 'Minha sequência', tempo: 'Meu tempo de estudo' }, CARD_MSG = 200, CARD_MIN = { xp: 10, seq: 2, tempo: 1 };   // seq = dias seguidos (a chama); só de 2 dias para cima, porque 1 dia ainda não é "seguido"
 const cardSnap = (u, card) => {
   const xp = Math.max(0, Math.floor(u.xp || 0)), today = day(new Date()), yest = day(new Date(Date.now() - 864e5));
   if (card === 'xp') return { xp, lvl: Math.floor(xp / 100) + 1, tier: R.tierOf(xp), lessons: lessons.filter(l => u.done && u.done[l.id]).length, exams: Object.keys(u.passed || {}).length };
   const since = Math.max(0, Math.floor((Date.now() - (Date.parse(u.created) || Date.now())) / 864e5));
-  return { days: daysOf(u), streak: u.last === today || u.last === yest ? (u.streak || 0) : 0, since, xp };       // sequência só conta se ainda está valendo (hoje ou ontem)
+  return { days: daysOf(u), streak: u.last === today || u.last === yest ? (u.streak || 0) : 0, since, xp };       // sequência só conta se ainda está valendo (hoje ou ontem); "seq" e "tempo" usam o mesmo retrato
 };
-const cardValue = (card, snap) => card === 'xp' ? snap.xp : snap.days;
-const cardAuto = (card, snap) => card === 'xp' ? `Cheguei a ${snap.xp.toLocaleString('pt-BR')} XP no CodeUp!` : `${snap.days} ${snap.days === 1 ? 'dia' : 'dias'} de estudo no CodeUp!`;
+const cardValue = (card, snap) => card === 'xp' ? snap.xp : card === 'seq' ? snap.streak : snap.days;
+const cardAuto = (card, snap) => card === 'xp' ? `Cheguei a ${snap.xp.toLocaleString('pt-BR')} XP no CodeUp!` : card === 'seq' ? `${snap.streak} dias seguidos de estudo no CodeUp!` : `${snap.days} ${snap.days === 1 ? 'dia' : 'dias'} de estudo no CodeUp!`;
+const CARD_LOW = { xp: 'Faça algumas lições para ter XP e compartilhar o cartão.', seq: 'Estude 2 dias seguidos para compartilhar a sua sequência.', tempo: 'Estude pelo menos um dia para compartilhar o cartão.' };
 const cardsToday = uid => Object.values(DB.posts || {}).filter(p => p.uid === uid && p.kind === 'progresso' && Date.now() - Date.parse(p.at) < 864e5).map(p => p.card);
 const SNAP_KEYS = ['xp', 'lvl', 'tier', 'lessons', 'exams', 'days', 'streak', 'since'];
 const snapOut = p => { if (p.kind !== 'progresso' || !CARDS[p.card] || !p.snap) return {}; const o = {}; for (const k of SNAP_KEYS) if (Number.isFinite(p.snap[k])) o[k] = p.snap[k]; return { card: p.card, snap: o, auto: p.auto ? true : undefined }; };
@@ -713,7 +729,7 @@ app.get('/api/mural', auth, uLimit('mural-ler', 90, 60e3), (req, res) => {
   const pinned = plain ? seen.filter(p => p.pin && !p.hidden).sort(desc).slice(0, MURAL_PINS) : [];                 // destaques da Equipe: só no "Tudo", em cima, uma vez
   const all = seen.filter(p => (!kind || p.kind === kind) && (!mine || p.uid === req.u.id) && (!before || muralKey(p) < before) && !pinned.includes(p)).sort(desc);
   const page = all.slice(0, MURAL_PAGE), shared = Object.values(DB.posts).filter(p => p.uid === req.u.id && ACH[p.ach]).map(p => p.ach);
-  const cards = kind === 'progresso' && !before && !mine ? { xp: cardSnap(req.u, 'xp'), tempo: cardSnap(req.u, 'tempo'), min: CARD_MIN, today: cardsToday(req.u.id) } : undefined;   // a prévia dos SEUS cartões vem do servidor: é exatamente o que será postado
+  const cards = kind === 'progresso' && !before && !mine ? { xp: cardSnap(req.u, 'xp'), seq: cardSnap(req.u, 'seq'), tempo: cardSnap(req.u, 'tempo'), min: CARD_MIN, today: cardsToday(req.u.id) } : undefined;   // a prévia dos SEUS cartões vem do servidor: é exatamente o que será postado
   res.json({ on: true, cards, items: page.map(p => muralItem(p, req.u)), pinned: !before ? pinned.map(p => muralItem(p, req.u)) : undefined, shared, more: all.length > MURAL_PAGE, next: page.length ? muralKey(page[page.length - 1]) : null });
 });
 
@@ -725,9 +741,9 @@ app.post('/api/mural/new', auth, muralGate, uLimit('mural-novo', 20, 3600e3), (r
   let card = '', snap = null, auto = false;
   if (kind === 'progresso') {                                                                    // cartão de XP ou de tempo: escolhe o cartão, o servidor coloca os números
     card = String(b.card || ''); link = '';
-    if (!Object.prototype.hasOwnProperty.call(CARDS, card)) return res.status(400).json({ error: 'Escolha um cartão para compartilhar: ' + Object.values(CARDS).join(' ou ') + '.' });
+    if (!Object.prototype.hasOwnProperty.call(CARDS, card)) return res.status(400).json({ error: 'Escolha um cartão para compartilhar: ' + Object.values(CARDS).join(', ').replace(/, ([^,]*)$/, ' ou $1') + '.' });
     snap = cardSnap(req.u, card);
-    if (cardValue(card, snap) < CARD_MIN[card]) return res.status(403).json({ error: card === 'xp' ? 'Faça algumas lições para ter XP e compartilhar o cartão.' : 'Estude pelo menos um dia para compartilhar o cartão.' });
+    if (cardValue(card, snap) < CARD_MIN[card]) return res.status(403).json({ error: CARD_LOW[card] });
     if (cardsToday(req.u.id).includes(card)) return res.status(409).json({ error: 'Você já compartilhou esse cartão hoje. Volte amanhã com números maiores!' });
     if (text.length > CARD_MSG) return res.status(400).json({ error: `A mensagem passou de ${CARD_MSG} letras. Encurte um pouco.` });
     if (!text) { text = cardAuto(card, snap); auto = true; }
@@ -916,7 +932,7 @@ app.post('/api/check', auth, limit(900 * RELAX, 60e3), async (req, res) => {
   res.json({ ok, missing: ok ? undefined : missing, xl: ok ? undefined : xl, dx: ok ? undefined : dx, hc, quiz, expected: !ok && (l.type === 'python' || l.type === 'js') ? l.expectedOut : undefined });
 });
 
-app.post('/api/submit', auth, limit(120 * RELAX, 60e3), async (req, res) => {
+app.post('/api/submit', auth, achWatch, limit(120 * RELAX, 60e3), async (req, res) => {
   const l = actOf(req.body.id);
   if (!l || l.ec) return res.sendStatus(404);
   const u = req.u, k = l.id, lock = lockOf(u, l), test = isTest(l), lk = key(l.track, l.lv);
@@ -1009,7 +1025,7 @@ app.get('/api/lessons/:id/sp/:a', auth, (req, res) => {
   res.json({ ...spPub(g, a), done: actDone(req.u, l, a) });
 });
 app.get('/api/lessons/:id/read', auth, (req, res) => { const l = actLesson(req, res, 'r'); if (l) res.json(readPub(req.u, l)); });
-app.post('/api/read', auth, limit(240 * RELAX, 60e3), (req, res) => {
+app.post('/api/read', auth, achWatch, limit(240 * RELAX, 60e3), (req, res) => {
   const l = actLesson(req, res, 'r'); if (!l) return;
   const u = req.u, k = l.id, r = l.read, a = String(req.body.a ?? '').slice(0, 2000);
   const okAns = r.k === 'mc' ? a === r.ok : r.k === 'num' ? quizcheck.gradeItem({ t: 'num', ok: r.ok, tol: r.tol }, a) === true : (Array.isArray(r.ok) ? r.ok : [r.ok]).some(x => norm(x) === norm(a));
@@ -1034,7 +1050,7 @@ function ecDoneRes(req, l, txt) {
   return { ok: true, gained, streakUp: streakUp || undefined, gemsGot: (u.gems || 0) - gems0 || undefined, gemBonus: gemBonus || undefined, newCos: cosOwned(u).filter(x => !own0.has(x)), ...pub(u) };
 }
 app.get('/api/lessons/:id/explain', auth, (req, res) => { const l = actLesson(req, res, 'e'); if (l) res.json(explainPub(req.u, l)); });
-app.post('/api/explain', auth, limit(240 * RELAX, 60e3), (req, res) => {
+app.post('/api/explain', auth, achWatch, limit(240 * RELAX, 60e3), (req, res) => {
   const l = actLesson(req, res, 'e'); if (!l) return;
   const u = req.u, k = l.id, e = l.expl, txt = String(req.body.a ?? '').slice(0, EXPLAIN.MAXC).trim();
   const g = EXPLAIN.grade(e, txt);

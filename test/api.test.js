@@ -2942,6 +2942,74 @@ test('mural: cartões de progresso (XP e tempo de estudo): números do servidor,
   // o painel do dono lista o cartão com a frase (nunca vazio)
   assert.ok((await A('mural?f=all')).j.rows.some(r => r.kind === 'progresso' && r.text === 'Cheguei a 5.000 XP no CodeUp!'));
 });
+test('mural: cartão "Minha sequência" (dias seguidos): só de 2 dias para cima, o número é do servidor, um por dia e só vale se a chama ainda está acesa', async () => {
+  const dia = n => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  await withSeed('seq89', PORT + 889,
+    async j => { const out = {}; for (const [k, n] of [['a', 'Ana Seguida'], ['b', 'Bia Novata'], ['c', 'Caio Parado']]) out[k] = (await j('/api/register', { name: n, email: `seq-${k}@teste.com`, password: 'segredo1', accept: true })).j.token; return out; },
+    D => { const us = e => Object.values(D.users).find(x => x.email === e);
+      Object.assign(us('seq-a@teste.com'), { verified: true, xp: 1250, days: 12, streak: 9, last: dia(0) });
+      Object.assign(us('seq-b@teste.com'), { verified: true, xp: 40, days: 1, streak: 1, last: dia(0) });
+      Object.assign(us('seq-c@teste.com'), { verified: true, xp: 300, days: 6, streak: 6, last: dia(3) });        // parou há 3 dias: a chama apagou
+    },
+    async (j, tk) => {
+      const post = (t, b) => j('/api/mural/new', { kind: 'progresso', ...b }, t), prog = async t => (await j('/api/mural?k=progresso', null, t)).j;
+      // 1 dia ainda não é "seguido"; sequência que apagou também não conta (mesmo com o número guardado)
+      let x = await post(tk.b, { card: 'seq' }); assert.equal(x.status, 403); assert.match(x.j.error, /2 dias seguidos/);
+      x = await post(tk.c, { card: 'seq' }); assert.equal(x.status, 403, 'a sequência de quem parou há 3 dias vale 0');
+      assert.equal((await prog(tk.c)).cards.seq.streak, 0);
+      x = await post(tk.a, { card: 'nao-existe' }); assert.equal(x.status, 400); assert.match(x.j.error, /Minha sequência/, 'a lista de cartões inclui a sequência'); assert.match(x.j.error, / ou Meu tempo de estudo\.$/);
+      // a prévia vem do servidor
+      const pv = await prog(tk.a); assert.equal(pv.cards.seq.streak, 9); assert.equal(pv.cards.min.seq, 2); assert.deepEqual(pv.cards.today, []);
+      // o navegador só escolhe o cartão: número, retrato, link e "equipe" que ele mandar são ignorados
+      x = await post(tk.a, { card: 'seq', snap: { streak: 999 }, streak: 999, days: 999, link: 'https://exemplo.com/x', staff: true, pin: true, text: 'Bora, turma! <b>oi</b>' });
+      assert.equal(x.status, 200, JSON.stringify(x.j)); const it = x.j.item;
+      assert.deepEqual([it.kind, it.card, it.mine], ['progresso', 'seq', true]); assert.deepEqual(it.snap, { streak: 9, days: 12, since: it.snap.since, xp: 1250 }); assert.ok(!it.link && !it.staff && !it.pin);
+      assert.equal(it.text, 'Bora, turma! <b>oi</b>', 'a mensagem é opcional e a tela escapa o HTML');
+      x = await post(tk.a, { card: 'seq' }); assert.equal(x.status, 409); assert.match(x.j.error, /já compartilhou esse cartão hoje/);        // um por dia
+      assert.deepEqual((await prog(tk.a)).cards.today, ['seq']);
+      // os outros cartões continuam livres; sem mensagem, o servidor escreve a frase
+      x = await post(tk.a, { card: 'tempo' }); assert.equal(x.status, 200); assert.equal(x.j.item.text, '12 dias de estudo no CodeUp!');
+      await j('/api/mural/' + it.id, null, tk.a);
+      // quem vê o cartão da Ana: só nome curto, sem e-mail
+      const seen = (await prog(tk.b)).items.find(i => i.card === 'seq'); assert.ok(seen && seen.snap.streak === 9 && seen.name === 'Ana S.' && !JSON.stringify(seen).includes('@'));
+    });
+});
+test('conquista nova: o servidor avisa (newAch) uma vez só, no acerto que a destravou, e nunca avisa de conquista antiga nem em resposta com erro', async () => {
+  const email = 'novaconq@teste.com', tk = await regP(email, 'Nina Conquista', { sex: 'f', guide: 'tay', gname: 'Tay' });
+  await call('/api/track', { token: tk, body: { track: 'sql' } });
+  await setXp(email, 999);                                                                        // já passou de 1.000 XP no 1º acerto, mas as conquistas que ela JÁ tinha antes não são "novidade"
+  const L = lessonsOf('sql', 1).slice(0, 2);
+  const err = await call('/api/submit', { token: tk, body: { id: L[0].id, code: 'SELECT 1' } });
+  assert.equal(err.status, 200); assert.equal(err.j.ok, false); assert.equal(err.j.newAch, undefined, 'errar não destrava nada');
+  const miss = await call('/api/submit', { token: tk, body: { id: 'nao-existe', code: 'x' } }); assert.ok(miss.status >= 400); assert.equal((miss.j || {}).newAch, undefined);
+  const r1 = await doExec(tk, L[0]); assert.equal(r1.j.ok, true, JSON.stringify(r1.j)); assert.ok(r1.j.xp >= 1000, 'o acerto levou o XP a 1.000 ou mais');
+  assert.deepEqual(r1.j.newAch, ['xp1000'], 'a conquista de 1.000 XP foi destravada exatamente neste acerto');
+  const r2 = await doRead(tk, L[0]); assert.equal(r2.j.ok, true, JSON.stringify(r2.j)); assert.deepEqual(r2.j.newAch, ['primeira'], 'a lição ficou concluída: Primeira lição; 1.000 XP não avisa de novo');
+  const r3 = await doLesson(tk, L[1]); assert.equal(r3.j.ok, true); assert.equal(r3.j.newAch, undefined, 'nada de novo na 2ª lição');
+  // a conquista avisada pode ser compartilhada (o servidor confere); a que ela não tem, não
+  assert.equal((await call('/api/mural/new', { token: tk, body: { kind: 'conquista', ach: 'xp1000' } })).status, 200);
+  assert.equal((await call('/api/mural/new', { token: tk, body: { kind: 'conquista', ach: 'basico' } })).status, 403);
+  // quem já tinha conquistas antes desta função existir não recebe comemoração atrasada: a 1ª ação só marca o que já era dela
+  const e2 = 'velhaconq@teste.com', t2 = await regP(e2, 'Vera Velha'); await call('/api/track', { token: t2, body: { track: 'sql' } }); await setXp(e2, 1500);
+  assert.equal((await doExec(t2, L[0])).j.newAch, undefined, 'os 1.500 XP dela já existiam: sem comemoração atrasada'); assert.deepEqual((await doRead(t2, L[0])).j.newAch, ['primeira'], 'só o que aconteceu agora é novidade');
+});
+test('mural: arquivos do app — compartilhar a sequência e a conquista direto da comemoração (só se a pessoa quiser, sem número vindo do navegador)', async () => {
+  const rd = f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8'), ui = rd('app.js'), css = rd('style.css');
+  for (const f of ['function streakFx(', 'function achFx(', 'const shareBtn', 'async function ovShare(', 'async function ovSend(', 'const shortMe', "seq: ['Minha sequência', 'flame', 'dias seguidos']", "['xp', 'seq', 'tempo']"]) assert.ok(ui.includes(f), f);
+  const sfx = ui.slice(ui.indexOf('function streakFx('), ui.indexOf('function achFx('));
+  assert.match(sfx, /n >= 2 && muOn\(\) \? shareBtn\('card', 'seq'\)/, 'a tela da sequência oferece compartilhar (a partir de 2 dias, se o Mural estiver ligado)');
+  assert.match(ui.slice(ui.indexOf('function achFx('), ui.indexOf('const shareBtn')), /muOn\(\) \? shareBtn\('ach', A\[0\]\)/, 'a conquista nova também');
+  assert.match(ui, /class="btn ghost block fxsh"/, 'o botão é secundário: Continuar continua sendo o principal'); assert.match(ui, /data-go>Agora não<\/button>/, '"Agora não" fecha sem postar');
+  const ov = ui.slice(ui.indexOf('async function ovSend('), ui.indexOf('// depois da tela de resultado'));
+  assert.match(ov, /body: what == 'ach' \? \{ kind: 'conquista', ach: id, text \} : \{ kind: 'progresso', card: id, text \}/, 'o navegador manda só QUAL cartão ou conquista e a mensagem');
+  assert.ok(!/(xp|days|streak|snap)\s*:/.test(ov), 'nenhum número vai no pedido');
+  assert.match(ui, /Confirme seu e-mail para compartilhar\./, 'sem e-mail confirmado só avisa'); assert.match(ui, /\(c\.today \|\| \[\]\)\.includes\(id\)/, 'se já compartilhou hoje, avisa em vez de abrir a prévia');
+  const sl = ui.slice(ui.indexOf('function streakLater('), ui.indexOf('function setSfx'));
+  assert.match(sl, /s\.newAch/); assert.match(sl, /await new Promise\(r => streakFx\(s\.streakUp, r\)\)/, 'a sequência vem primeiro'); assert.match(sl, /for \(const a of ach\) await new Promise\(r => achFx\(a, r\)\)/, 'depois cada conquista nova, uma de cada vez');
+  assert.match(ui.slice(ui.indexOf('function shCard('), ui.indexOf('function muCard(')), /esc\(id\)|card == 'seq' \? shNum\(sn\.streak\)/, 'o cartão da sequência usa o número do retrato');
+  for (const c of ['.fxo.acv{', '.acm{', '.fxsh{', '.ovach{', '.ovta{']) assert.ok(css.includes(c), c);
+  assert.ok(!/openOv\('ach'/.test(ui) && !css.includes('.fxo.ach{'), 'a classe .ach já é da lista de conquistas do Perfil: a comemoração usa outra');
+});
 test('mural: arquivos do app — cartões de progresso (aba Progresso, atalho no Perfil, números só do servidor, texto escapado)', async () => {
   const rd = f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8'), ui = rd('app.js'), css = rd('style.css');
   for (const f of ['function shCard(', 'function muProg(', 'function muShc(', 'function muShcSend(', 'function muShareProg(', "['prog', 'Progresso']", "['progresso', 'Progresso']", 'Compartilhar meu progresso', 'Meus cartões', 'Cartões da turma']) assert.ok(ui.includes(f), f);

@@ -653,6 +653,7 @@ body.neo .stk{background:#fff}
 .fxo.pass{--fc:#fbbf24;--r1:rgba(251,191,36,.26);--fo1:#5a3d06;cursor:default}
 .fxo.streak{--fc:#fb923c;--r1:rgba(251,146,60,.26);--fo1:#5a2306;cursor:default}
 .fxo.streak.mk{--fc:#fbbf24;--r1:rgba(251,191,36,.3);--fo1:#6b3a05}
+.fxo.acv{--fc:#fbbf24;--r1:rgba(251,191,36,.28);--fo1:#5a3d06;cursor:default}
 .fxo .rays{position:absolute;left:50%;top:38%;width:170vmax;height:170vmax;margin:-85vmax 0 0 -85vmax;background:repeating-conic-gradient(var(--r1) 0 7deg,transparent 7deg 18deg);-webkit-mask:radial-gradient(circle,#000 3%,transparent 44%);mask:radial-gradient(circle,#000 3%,transparent 44%);animation:fxSpin 24s linear infinite;pointer-events:none}
 .fxin{position:relative;width:min(92vw,420px);max-height:100svh;overflow:hidden;padding:18px 6px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
 .fxt{margin:0;font-size:clamp(30px,9.4vw,44px);line-height:1.05;font-weight:900;color:#fff;text-shadow:0 3px 0 #0006,0 0 26px color-mix(in srgb,var(--fc) 65%,transparent);animation:fxPop .6s cubic-bezier(.3,1.7,.5,1) .15s both}
@@ -691,6 +692,22 @@ body.neo .stk{background:#fff}
 .wd.on i{background:linear-gradient(180deg,#fb923c,#ea580c);box-shadow:0 3px 0 #9a3412}
 .wd.td i{outline:2px solid #fff6;outline-offset:2px}
 .wd.td.on i{animation:fxPop .55s 1.2s cubic-bezier(.3,1.8,.5,1) both}
+/* conquista nova: medalha dourada */
+.acm{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;color:#5a3300;background:radial-gradient(circle at 34% 26%,#fff6c2,#fbbf24 52%,#d97706);box-shadow:0 0 0 6px #ffffff26,0 9px 0 #92400e,0 0 46px #fbbf2499;animation:fxTrophy 1s cubic-bezier(.3,1.5,.5,1) both}
+.acm svg{width:62px;height:62px}
+/* "Compartilhar no Mural" dentro das comemorações (só se a pessoa quiser): botão discreto e a tela de prévia com mensagem opcional */
+.fxsh{opacity:0;animation:fxBtn .4s var(--bd,1.7s) both;margin-top:0;background:#ffffff14;border:2px solid #ffffff40;color:#fff;box-shadow:none}
+.fxsh:active{background:#ffffff26}
+.fxin.shp{overflow-y:auto;max-height:100svh;gap:12px;justify-content:center;animation:fxPop .35s both}
+.fxt.sm{font-size:clamp(24px,7vw,30px);animation:none}
+.fxin.shp .shc{width:100%;margin:0;box-sizing:border-box}
+.ovach{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;text-align:left;color:#fff;background:linear-gradient(160deg,#3b2a06,#1a1204);border:1px solid #fbbf2466;border-radius:20px;padding:14px 16px}
+.ovach .mqi{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#5a3300;background:radial-gradient(circle at 34% 26%,#fff6c2,#fbbf24 55%,#d97706)}
+.ovach small{display:block;font-size:12px;font-weight:700;color:#fde68a;opacity:.9}.ovach b{display:block;font-size:18px;font-weight:900}
+.fxo .ovta{margin:0;min-height:0;height:74px;resize:none;background:#0b1220e6!important;color:#fff!important;border-color:#ffffff40!important}
+.fxo .ovta::placeholder{color:#ffffff99}
+.ovbt{width:100%;margin-top:0}.ovbt .btn{flex:1;justify-content:center}
+@media (max-height:700px){.fxo.streak .fxch,.fxo.acv .fxch{display:none}}
 /* erro: a carinha pensando pula para fora do aviso */
 .fb .fbh{position:relative}
 .fb .fbc{position:absolute;right:-2px;top:-52px;pointer-events:none;filter:drop-shadow(0 5px 6px #0009);animation:fbPz .55s cubic-bezier(.3,1.7,.5,1) .12s both}

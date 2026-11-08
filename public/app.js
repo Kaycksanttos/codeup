@@ -293,13 +293,58 @@ function streakFx(n, done) {
     <path class=f1 d="M60 5C65 34 97 52 97 95c0 28-17 48-37 48S23 123 23 95c0-18 8-29 17-39 2 12 8 18 14 20-3-26 0-51 6-71z" fill=url(#fg1) /><path class=f2 d="M60 68c3 16 22 28 22 52 0 16-10 25-22 25s-22-9-22-25c0-10 4-16 10-22 2 8 5 10 8 10-1-16 0-30 4-40z" fill=url(#fg2) /></svg>`;
   const num = n > 1 ? `<span class=o>${n - 1}</span><span class=n>${n}</span>` : `<span class="n one">${n}</span>`;
   openOv('streak' + (mk ? ' mk' : ''), `<div class=flw>${flame}<div class=sn>${num}</div></div><h2 class=fxt>${title}</h2><p class=fxm>${msg}</p><div class=wk>${days.map(d => `<div class="wd${d.on ? ' on' : ''}${d.td ? ' td' : ''}"><small>${d.l}</small><i>${d.on ? ic('check', 15) : ''}</i></div>`).join('')}</div>
-    <div class=fxch>${sparks(mk ? 14 : 8, mk)}${ovHero(ovH(mk ? 200 : 170), mk ? 'streak7' : 'streak', '#fb923c')}</div><button class="btn pri block fxbtn" data-go style="--bd:1.5s">Continuar</button>`, { tap: false, label: title, done });
+    <div class=fxch>${sparks(mk ? 14 : 8, mk)}${ovHero(ovH(mk ? 200 : 170), mk ? 'streak7' : 'streak', '#fb923c')}</div><button class="btn pri block fxbtn" data-go style="--bd:1.5s">Continuar</button>${n >= 2 && muOn() ? shareBtn('card', 'seq') : ''}`, { tap: false, label: title, done });
   if (mk) confetti(60); sfx(mk ? 'streak7' : 'streak');
 }
-// depois da tela de resultado: se hoje foi o primeiro dia de treino, mostra a sequência (só se a pessoa ainda estiver nela)
+// conquista nova (Primeira lição, Sequência de 3 dias, Básico aprovado…): medalha dourada + "Compartilhar no Mural" (o servidor avisa quais são novas em `newAch`)
+function achFx(id, done) {
+  const A = achBy(id); if (!A) return done && done();
+  const T = 'Conquista desbloqueada!';
+  openOv('acv', `<div class=acm>${ic(A[1], 64)}</div><h2 class=fxt>${T}</h2><div class=fxscore><b>${esc(A[2])}</b></div><p class=fxm>Você ganhou mais uma conquista no CodeUp!</p>
+    <div class=fxch>${sparks(12, true)}${ovHero(ovH(150), 'pass', '#fbbf24')}</div><button class="btn pri block fxbtn" data-go style="--bd:1.5s">Continuar</button>${muOn() ? shareBtn('ach', A[0]) : ''}`, { tap: false, label: T, done });
+  confetti(50); sfx('pass');
+}
+const shareBtn = (what, id) => `<button class="btn ghost block fxsh" onclick="ovShare('${what}','${esc(id)}')" style="--bd:1.7s">${ic('chat', 17)} Compartilhar no Mural</button>`;
+// "Compartilhar no Mural" direto da comemoração (sequência ou conquista), só se a pessoa quiser: a tela troca por uma prévia do que vai para o Mural e uma mensagem opcional.
+// A prévia da sequência vem do servidor (é exatamente o que será postado); o navegador só manda QUAL cartão ou conquista e a mensagem, nunca número.
+async function ovShare(what, id) {
+  const d = document.getElementById('fxo'), box = d && d.querySelector('.fxin'); if (!box || d._sh) return;
+  if (!S.me.verified) return toast('Confirme seu e-mail para compartilhar.', true);
+  d._sh = 1; let pv = '';
+  try {
+    if (what == 'card') {
+      const c = (await api('mural?k=progresso')).cards, sn = c && c[id];
+      if (!sn) throw { error: 'Não foi possível carregar a prévia agora. Tente de novo.' };
+      if ((c.today || []).includes(id)) { d._sh = 0; return toast('Você já compartilhou isso hoje. Volte amanhã com números maiores!', true); }
+      pv = shCard(id, sn, avatar(64, 'ring'), shortMe());
+    } else {
+      const A = achBy(id); if (!A) throw { error: 'Essa conquista não existe.' };
+      pv = `<div class=ovach><span class=mqi>${ic(A[1], 28)}</span><div><small>Conquista desbloqueada</small><b>${esc(A[2])}</b></div></div>`;
+    }
+  } catch (e) { d._sh = 0; return fail(e); }
+  box.classList.add('shp');
+  box.innerHTML = `<h2 class="fxt sm">Compartilhar no Mural?</h2><p class=fxm style="animation:none">Só vai para o Mural se você tocar em Compartilhar.</p>${pv}
+    <textarea id=ovcm class=ovta maxlength=200 rows=2 placeholder="Quer dizer algo? (opcional) Ex.: Bora, turma!" aria-label="Mensagem opcional"></textarea>
+    <div class="mucs ovbt"><button class="btn ghost" data-go>Agora não</button><button class="btn pri" id=ovsend onclick="ovSend('${what}','${esc(id)}')">Compartilhar</button></div>`;
+}
+async function ovSend(what, id) {
+  const t = $('#ovcm'), b = $('#ovsend'), text = t ? t.value.trim() : ''; if (b) b.disabled = true;
+  try { await api('mural/new', { body: what == 'ach' ? { kind: 'conquista', ach: id, text } : { kind: 'progresso', card: id, text } }); closeOv(); toast(what == 'ach' ? 'Conquista compartilhada com a turma!' : 'Sequência compartilhada com a turma!'); }
+  catch (e) { fail(e); if (b) b.disabled = false; if (e.status == 409) closeOv(); }
+}
+// depois da tela de resultado: se hoje foi o primeiro dia de treino, mostra a sequência; se a pessoa ganhou conquista nova (`newAch`), mostra cada uma (só se ela ainda estiver no resultado)
 function streakLater(s) {
-  if (!s || !s.streakUp) return; const id = S.cur && S.cur.id;
-  setTimeout(() => { if (document.querySelector('.res') && S.cur && S.cur.id == id && !document.getElementById('fxo')) streakFx(s.streakUp); }, 2600);
+  const ach = s && Array.isArray(s.newAch) ? s.newAch.filter(a => achBy(a)).slice(0, 3) : [];
+  if (!s || (!s.streakUp && !ach.length)) return; const id = S.cur && S.cur.id;
+  let tries = 0;
+  const tick = async () => {                                                                   // espera o resultado aparecer: na atividade de ler a pessoa ainda lê o "porquê" (ler-ok) antes de ver o resultado
+    if (!(S.cur && S.cur.id == id) || ++tries > 120) return;
+    if (!document.querySelector('.res')) return S.step == 'ler-ok' || S.step == 'exp-ok' ? setTimeout(tick, 700) : undefined;   // saiu da lição (ou foi para outra tela): não comemora fora de hora
+    if (document.getElementById('fxo')) return setTimeout(tick, 700);
+    if (s.streakUp) await new Promise(r => streakFx(s.streakUp, r));
+    for (const a of ach) await new Promise(r => achFx(a, r));
+  };
+  setTimeout(tick, 2600);
 }
 function setSfx(v) { const on = window.CodeUpSfx ? CodeUpSfx.set(v) : false; if (on) sfx('ok'); render(); }
 
@@ -849,16 +894,18 @@ function muComposer() {
     <div class=mucs><button class="btn ghost" onclick=muCancel()>Cancelar</button><button class="btn pri" id=musend onclick=muSend()>Publicar</button></div></div>`;
 }
 // ---- o CARTÃO de progresso (a "imagem" do XP e do tempo de estudo). Os números vêm do servidor; aqui só desenhamos. Tudo que é texto passa por esc() e número por nf(Number()).
-const SH = { xp: ['Meu XP', 'bolt', 'XP'], tempo: ['Meu tempo de estudo', 'flame', 'dias de estudo'] };
+const SH = { xp: ['Meu XP', 'bolt', 'XP'], seq: ['Minha sequência', 'flame', 'dias seguidos'], tempo: ['Meu tempo de estudo', 'clock', 'dias de estudo'] };
+const shortMe = () => { const p = String(S.me.name || '').trim().split(/\s+/).filter(Boolean); return !p.length ? 'Aluno' : p[0].slice(0, 16) + (p.length > 1 ? ' ' + p[p.length - 1].charAt(0).toUpperCase() + '.' : ''); };   // o mesmo nome curto que o Mural mostra
 const shNum = v => Math.max(0, Math.floor(Number(v) || 0));
 const shChip = (i, t) => `<span>${ic(i, 14)}${t}</span>`;
 function shCard(card, sn, face, name) {
   const K = SH[card]; if (!K || !sn) return '';
-  const xp = shNum(sn.xp), ti = Math.min(CR.TIERS.length - 1, card == 'xp' && Number.isFinite(sn.tier) ? Math.max(0, sn.tier) : CR.tierOf(xp)), T = CR.TIERS[ti], big = card == 'xp' ? xp : shNum(sn.days), unit = card == 'tempo' && big == 1 ? 'dia de estudo' : K[2];
+  const xp = shNum(sn.xp), ti = Math.min(CR.TIERS.length - 1, card == 'xp' && Number.isFinite(sn.tier) ? Math.max(0, sn.tier) : CR.tierOf(xp)), T = CR.TIERS[ti], big = card == 'xp' ? xp : card == 'seq' ? shNum(sn.streak) : shNum(sn.days), unit = big == 1 && card == 'tempo' ? 'dia de estudo' : big == 1 && card == 'seq' ? 'dia seguido' : K[2];
   const chips = card == 'xp'
     ? [shChip('crown', esc(T.title)), shChip('chart', 'Nível ' + nf(shNum(sn.lvl))), shChip('file', nf(shNum(sn.lessons)) + (shNum(sn.lessons) == 1 ? ' lição' : ' lições')), shNum(sn.exams) ? shChip('cap', nf(shNum(sn.exams)) + (shNum(sn.exams) == 1 ? ' prova' : ' provas')) : '']
+    : card == 'seq' ? [shChip('clock', shNum(sn.since) ? 'No CodeUp há ' + nf(shNum(sn.since)) + (shNum(sn.since) == 1 ? ' dia' : ' dias') : 'Começou hoje'), shNum(sn.days) ? shChip('file', nf(shNum(sn.days)) + (shNum(sn.days) == 1 ? ' dia de estudo' : ' dias de estudo')) : '', shChip('bolt', nf(xp) + ' XP'), shChip('crown', esc(T.title))]
     : [shNum(sn.streak) ? shChip('flame', nf(shNum(sn.streak)) + (shNum(sn.streak) == 1 ? ' dia seguido' : ' dias seguidos')) : '', shChip('clock', shNum(sn.since) ? 'No CodeUp há ' + nf(shNum(sn.since)) + (shNum(sn.since) == 1 ? ' dia' : ' dias') : 'Começou hoje'), shChip('bolt', nf(xp) + ' XP'), shChip('crown', esc(T.title))];
-  return `<div class="shc k-${card}" style="--tc:${T.color}" role=img aria-label="${esc(K[0])}: ${nf(big)} ${esc(unit)}"><div class=shh><span class=shl>Code<b>Up</b></span><span class=sht>${ic(K[1], 14)} ${esc(K[0])}</span></div>
+  return `<div class="shc k-${card}" style="--tc:${card == 'seq' ? '#fb923c' : T.color}" role=img aria-label="${esc(K[0])}: ${nf(big)} ${esc(unit)}"><div class=shh><span class=shl>Code<b>Up</b></span><span class=sht>${ic(K[1], 14)} ${esc(K[0])}</span></div>
     <div class=shm>${face}<div class=shn><b>${nf(big)}</b><span>${esc(unit)}</span></div></div>
     <div class=shf>${chips.join('')}</div><div class=shw>${esc(name)}</div></div>`;
 }
@@ -906,12 +953,12 @@ function muConq() {
 }
 // aba Progresso: os SEUS cartões (prévia do que vai ser postado) e os cartões da turma
 function muProg() {
-  const s = muSt(), m = S.me, c = s.cards, today = c && c.today || [], me = (() => { const p = String(m.name || '').trim().split(/\s+/).filter(Boolean); return !p.length ? 'Aluno' : p[0].slice(0, 16) + (p.length > 1 ? ' ' + p[p.length - 1].charAt(0).toUpperCase() + '.' : ''); })();
+  const s = muSt(), m = S.me, c = s.cards, today = c && c.today || [], me = shortMe();
   const mine = !c ? `<div class=panel><p>Não foi possível carregar os seus cartões agora.</p><button class="btn pri block" onclick=muReload()>Tentar de novo</button></div>`
-    : ['xp', 'tempo'].map(k => {
-      const sn = c[k], ok = (k == 'xp' ? sn.xp : sn.days) >= ((c.min || {})[k] || 1), did = today.includes(k), open = s.shc == k;
+    : ['xp', 'seq', 'tempo'].map(k => {
+      const sn = c[k], ok = (k == 'xp' ? sn.xp : k == 'seq' ? sn.streak : sn.days) >= ((c.min || {})[k] || 1), did = today.includes(k), open = s.shc == k;
       const act = did ? `<span class=mqs2>${ic('check', 13)} Compartilhado hoje. Volte amanhã com números maiores!</span>`
-        : !ok ? `<small class=mut>${k == 'xp' ? 'Faça algumas lições para liberar este cartão.' : 'Estude um dia para liberar este cartão.'}</small>`
+        : !ok ? `<small class=mut>${k == 'xp' ? 'Faça algumas lições para liberar este cartão.' : k == 'seq' ? 'Estude 2 dias seguidos para liberar este cartão.' : 'Estude um dia para liberar este cartão.'}</small>`
         : open ? `<textarea id=mucm class=muta maxlength=200 rows=2 placeholder="Quer dizer algo? (opcional) Ex.: Bora, turma!" oninput="muSt().cm=this.value" aria-label="Mensagem opcional">${esc(s.cm || '')}</textarea><div class=mucs><button class="btn ghost" onclick=muShcCancel()>Cancelar</button><button class="btn pri" id=mushsend onclick=muShcSend()>Compartilhar na turma</button></div>`
         : `<button class="btn pri block" onclick="muShc('${k}')">${ic('chat', 16)} Compartilhar este cartão</button>`;
       return `<div class=shbox>${shCard(k, sn, avatar(64, 'ring'), me)}<div class=shact>${act}</div></div>`;
