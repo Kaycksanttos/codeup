@@ -79,15 +79,21 @@ for (const tr of TRACKS) FILES[tr].forEach(f => {
   try { Object.assign(SP, require('./content/sp-' + f)); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND' || !/sp-/.test(e.message)) throw e; }
 });
 const SP_STARTER = '-- escreva sua consulta aqui\n';
+const SC_XP = { d: 5, f: 5 }, SC_GEMS = { d: 1, f: 2 };                // XP e diamantes de cada círculo de desafio novo / conserte o erro (só na 1ª vez)
 lessons.forEach(x => {
   const s = SP[x.id]; if (!s || x.type !== 'sql' || !x.read) return;
   x.sp = {};
   for (const a of ['d', 'f']) {
     const i = s[a]; if (!i || !i.task || !i.solution || !i.need || !i.why || !i.hint || (a === 'f' && !i.bug)) throw new Error(`atividade especial ${x.id}:${a} incompleta`);
-    x.sp[a] = { id: x.id, a, type: 'sql', track: x.track, lv: x.lv, n: x.n, level: x.level, xp: x.xp, title: x.title, seed: i.seed || x.seed, task: i.task, starter: a === 'f' ? i.bug : SP_STARTER,
+    x.sp[a] = { id: x.id, a, type: 'sql', track: x.track, lv: x.lv, n: x.n, level: x.level, xp: SC_XP[a], title: x.title, seed: i.seed || x.seed, task: i.task, starter: a === 'f' ? i.bug : SP_STARTER,
       hints: [i.hint, i.solution], solution: i.solution, expectedSql: i.solution, need: i.need, why: i.why, ...(expectedSql[x.id + ':' + a] ? { expectedRows: expectedSql[x.id + ':' + a] } : {}) };
   }
 });
+
+// Cada item acima também vira um CÍRCULO PRÓPRIO no mapa (um "Desafio novo" e um "Conserte o erro" por lição): não são atividades de dentro da lição (ela fica só com executar e ler).
+// O círculo fica depois da lição de origem, numa posição sorteada por aluno (veja `scSlot` no server.js). XP e diamantes são só dele, uma vez.
+const extras = [];
+for (const x of lessons) if (x.sp) for (const a of ['d', 'f']) extras.push({ id: x.id + ':' + a, sc: true, a, src: x.id, track: x.track, lv: x.lv, level: x.level, after: x.n, xp: SC_XP[a], gems: SC_GEMS[a], title: a === 'd' ? 'Desafio novo' : 'Conserte o erro', lt: x.title, type: x.type });
 
 // EXPLICAR O CÓDIGO (só Python e SQL, níveis Intermediário e Avançado): o aluno escreve com as próprias palavras o que um código faz. Não é atividade de dentro da lição: é um CÍRCULO PRÓPRIO
 // no mapa, de uma lição só, a cada 6 ou 7 lições (depois das lições 6, 13, 19 e 26 — veja EC_AFTER). Os itens ficam em content/ex-*.js (um por lição, pelo id; cada círculo usa o item da
@@ -131,7 +137,7 @@ const htmlcheck = require('./htmlcheck');
 for (const x of [...lessons, ...tests, ...projects]) if (x.checks) x.req = x.checks.map(htmlcheck.describe);
 
 module.exports = lessons;
-Object.assign(module.exports, { checkpoints, finals, tests, projects, explains, EC_AFTER, EC_XP, EC_GEMS, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });
+Object.assign(module.exports, { checkpoints, finals, tests, projects, explains, extras, SC_XP, SC_GEMS, EC_AFTER, EC_XP, EC_GEMS, TRACKS, LEVELS_OF, LEVEL_NAMES, CHANCES, BACK, KEYS, RD, EX, seedTables, seedKey });
 
 // ---- Palavras obrigatórias de uma lição (campo `need`, só Python, SQL e JavaScript). Quem corrige é o servidor.
 // O aluno escreve do jeito dele: "(\n  SELECT AVG(preco)\n  FROM produtos\n)" tem que valer como "(select avg(preco) from produtos)".

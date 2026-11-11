@@ -383,3 +383,16 @@ test('atividades especiais (SQL Intermediário): toda lição tem um desafio nov
     else assert.match(g.starter, /^--/, tag + ': o desafio começa em branco (só o comentário)');
   }
 });
+
+test('círculos de desafio (SQL Intermediário): 60 círculos no mapa, um desafio novo e um conserte o erro por lição, com XP e diamantes próprios', () => {
+  const ex = lessons.extras, sql2 = lessons.filter(l => l.track === 'sql' && l.lv === 2);
+  assert.equal(ex.length, 60); assert.deepEqual(lessons.SC_XP, { d: 5, f: 5 }); assert.deepEqual(lessons.SC_GEMS, { d: 1, f: 2 });
+  assert.equal(new Set(ex.map(e => e.id)).size, 60, 'ids únicos');
+  for (const l of sql2) for (const a of ['d', 'f']) {
+    const e = ex.find(x => x.id === l.id + ':' + a); assert.ok(e, `${l.id}:${a} tem círculo`);
+    assert.equal(e.sc, true); assert.equal(e.src, l.id); assert.equal(e.a, a); assert.equal(e.after, l.n); assert.equal(e.track, 'sql'); assert.equal(e.lv, 2); assert.equal(e.type, 'sql'); assert.equal(e.lt, l.title);
+    assert.equal(e.title, a === 'd' ? 'Desafio novo' : 'Conserte o erro'); assert.equal(e.xp, 5); assert.equal(e.gems, a === 'd' ? 1 : 2); assert.equal(l.sp[a].xp, 5, 'o item mostra o XP do círculo, não o da lição');
+  }
+  // a lição em si segue com 2 atividades e o XP todo dela: os círculos são um bônus
+  assert.ok(sql2.every(l => l.xp === 20 || l.xp > 0)); assert.ok(lessons.filter(l => !l.sp).every(l => !ex.some(e => e.src === l.id)), 'só as lições com item especial têm círculo');
+});

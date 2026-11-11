@@ -178,7 +178,7 @@ const lessonsOf = (track, lv) => lessons.filter(l => l.track === track && l.lv =
 const premiumUser = (email, name) => reg(email, name);
 const quizcheck = require('../quizcheck');
 const codeOf = l => l.type === 'excel' ? JSON.stringify(l.answer) : l.type === 'quiz' ? JSON.stringify(quizcheck.solution(l)) : l.solution;           // no Excel a resposta é o JSON das fórmulas das células; no quiz, o JSON das respostas
-// Cada lição tem 2 atividades: executar (/api/submit) e ler (/api/read); no SQL Intermediário tem mais 2: desafio novo (d) e conserte o erro (f), as duas por /api/submit com `a`. A ORDEM é sorteada por aluno e lição (vem em `ord` de /api/lessons). doLesson faz as que faltam, na ordem,
+// Cada lição tem 2 atividades: executar (/api/submit) e ler (/api/read). A ORDEM é sorteada por aluno e lição (vem em `ord` de /api/lessons). doLesson faz as que faltam, na ordem,
 // e devolve o resultado somado (gained = XP de todas, ok = a lição ficou concluída). Quem quiser testar uma atividade só usa doExec / doRead.
 // "Explicar o código" (/api/explain) é um círculo próprio, de uma lição só, depois das lições 6, 13, 19 e 26 do Intermediário e do Avançado de Python e SQL: doEc / ecOf.
 const readAnswer = l => { const o = l.read && l.read.ok; return Array.isArray(o) ? o[0] : typeof o === 'number' ? String(o) : o; };
@@ -186,8 +186,13 @@ const doExec = (tk, l) => call('/api/submit', { token: tk, body: { id: l.id, cod
 const doRead = (tk, l, a = readAnswer(l)) => call('/api/read', { token: tk, body: { id: l.id, a } });
 const doExpl = (tk, l, a = l.expl && l.expl.model) => call('/api/explain', { token: tk, body: { id: l.id, a } });
 const rowOfL = async (tk, l) => ((await call('/api/lessons', { token: tk })).j || []).find(x => x.id === l.id) || {};
-const doSp = (tk, l, a, code = l.sp[a].solution) => call('/api/submit', { token: tk, body: { id: l.id, a, code } });         // atividade especial do SQL Intermediário: d = desafio novo, f = conserte o erro (corrigidas pelo mesmo corretor, com o item `l.sp[a]`)
-const actCall = { x: doExec, r: doRead, d: (tk, l) => doSp(tk, l, 'd'), f: (tk, l) => doSp(tk, l, 'f') };
+const doSp = (tk, l, a, code = l.sp[a].solution) => call('/api/submit', { token: tk, body: { id: l.id, a, code } });         // círculo do SQL Intermediário: d = desafio novo, f = conserte o erro (corrigidos pelo mesmo corretor, com o item `l.sp[a]`)
+// faz os círculos de Desafio novo / Conserte o erro (SQL Intermediário) que caem depois da lição n e já estão abertos; nos testes a posição é fixa (logo depois da lição de origem). Quem não tem círculos não faz nada.
+const doScs = async (tk, track, lv, n) => {
+  if (track !== 'sql' || lv !== 2) return;
+  for (const e of ((await call('/api/extras', { token: tk })).j || []).filter(x => x.track === track && x.lv === lv && x.slot === n && !x.done && !x.lock)) { const r = await doSp(tk, lessons.find(x => x.id === e.src), e.a); assert.equal(r.j && r.j.ok, true, `o círculo ${e.id} deveria passar: ${JSON.stringify(r.j).slice(0, 200)}`); }
+};
+const actCall = { x: doExec, r: doRead };
 const ecOf = (track, lv, n) => lessons.explains.find(e => e.track === track && e.lv === lv && e.after === n);   // o círculo de explicar que vem depois da lição n (ou undefined)
 const doEc = async (tk, e) => { const r = await doExpl(tk, e); assert.equal(r.j && r.j.ok, true, `o círculo ${e.id} deveria passar: ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
 const doLesson = async (tk, l) => {
@@ -216,17 +221,18 @@ const doPj = async (tk, track, lv, n) => { const p = pjOf(track, lv, n), r = (aw
 const doLevelLessons = async (tk, track, lv) => {
   let last;
   for (const l of lessonsOf(track, lv)) {
+    if (l.n > 1) await doScs(tk, track, lv, l.n - 1);                                     // os círculos de desafio que ficam depois da lição anterior vêm antes do projeto, do círculo de explicar e da lição
     if (l.n > 1 && (l.n - 1) % 5 === 0) { await doPj(tk, track, lv, l.n - 1); const c = cpBefore(l); if (c) { const r = (await doCp(tk, c)).j; assert.equal(r.ok, true, `checkpoint ${c.id} deveria passar`); } }
     const ec = ecOf(track, lv, l.n - 1); if (ec) await doEc(tk, ec);                     // o círculo de explicar o código que vem antes das lições 7, 14, 20 e 27
     last = (await doLesson(tk, l)).j; assert.equal(last.ok, true, `lição ${l.id} deveria passar`);
   }
-  await doPj(tk, track, lv, 30);
+  await doScs(tk, track, lv, 30); await doPj(tk, track, lv, 30);
   return last;
 };
 // faz as lições a..b do nível, com o projeto depois de cada 5 lições que ficarem no meio (sem os checkpoints: cada teste faz os seus à mão)
-const doRange = async (tk, track, lv, a, b) => { for (const l of lessonsOf(track, lv).filter(l => l.n >= a && l.n <= b)) { if (l.n > a && (l.n - 1) % 5 === 0) await doPj(tk, track, lv, l.n - 1); const ec = l.n > a && ecOf(track, lv, l.n - 1); if (ec) await doEc(tk, ec); const r = (await doLesson(tk, l)).j; assert.equal(r.ok, true, `lição ${l.id} deveria passar`); } };
+const doRange = async (tk, track, lv, a, b) => { for (const l of lessonsOf(track, lv).filter(l => l.n >= a && l.n <= b)) { if (l.n > 1) await doScs(tk, track, lv, l.n - 1); if (l.n > a && (l.n - 1) % 5 === 0) await doPj(tk, track, lv, l.n - 1); const ec = l.n > a && ecOf(track, lv, l.n - 1); if (ec) await doEc(tk, ec); const r = (await doLesson(tk, l)).j; assert.equal(r.ok, true, `lição ${l.id} deveria passar`); } };
 const onlyCp = a => (a || []).filter(id => !id.startsWith('pj-'));       // `cps` do perfil traz os checkpoints e também os projetos concluídos
-const levelXp = (track, lv) => lessonsOf(track, lv).reduce((a, l) => a + l.xp, 0) + lessons.checkpoints.filter(c => c.track === track && c.lv === lv).reduce((a, c) => a + c.xp, 0) + lessons.projects.filter(p => p.track === track && p.lv === lv).reduce((a, p) => a + p.xp, 0) + lessons.explains.filter(e => e.track === track && e.lv === lv).reduce((a, e) => a + e.xp, 0);
+const levelXp = (track, lv) => lessonsOf(track, lv).reduce((a, l) => a + l.xp, 0) + lessons.checkpoints.filter(c => c.track === track && c.lv === lv).reduce((a, c) => a + c.xp, 0) + lessons.projects.filter(p => p.track === track && p.lv === lv).reduce((a, p) => a + p.xp, 0) + lessons.explains.filter(e => e.track === track && e.lv === lv).reduce((a, e) => a + e.xp, 0) + lessons.extras.filter(e => e.track === track && e.lv === lv).reduce((a, e) => a + e.xp, 0);
 
 test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10 lições; acertou libera o próximo nível', async () => {
   const tk = await premiumUser('prova@t.com', 'Paula Prova'), F = finOf('python', 1);
@@ -1339,7 +1345,7 @@ test('animação: expressões da folha (poses) valem no motor, nas comemoraçõe
   assert.ok(!/eval\(|new Function\(|innerHTML\s*=/.test(anim), 'sem eval/innerHTML');
   // telas: cada situação pede a sua sequência de expressões
   assert.match(ui, /winStage\(230, 'Mandou bem!'\)/); assert.match(ui, /'good epic2', t\.color, 'big'/); assert.ok(!/const hero = [^\n]*(body\(|class=hb\b|<img)/.test(ui) && !/'hello'/.test(ui), 'a tela de entrada (login/cadastro) não tem personagem: só a marca CodeUp'); assert.match(ui, /'Qual curso você quer fazer\?', '', '', 'think'/);
-  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 5, 'o mapa usa o personagem nas cinco paradas (lição, círculo de explicar, projeto, checkpoint e prova final)');
+  assert.match(ui, /Você consegue!', '', '', 'intro'/); assert.match(ui, /'Calma, vamos relembrar!', 'bad', '', 'fail'/); assert.match(ui, /const walker = /); assert.match(ui, /reel: 'mapa'/, 'o personagem do mapa fica de frente'); assert.ok(!/reel: 'walk'/.test(ui) && !/'back'/.test(ui.slice(ui.indexOf('const EXPR'), ui.indexOf('const IMG'))), 'sem personagem de costas'); assert.equal((ui.match(/walker\(\)/g) || []).length, 6, 'o mapa usa o personagem nas seis paradas (lição, círculo de desafio, círculo de explicar, projeto, checkpoint e prova final)');
   assert.ok(!/<img class=pm/.test(ui.replace(/const walker[^\n]*\n/, '')), 'sem a imagem parada no mapa (só o fallback do walker)');
   assert.match(css, /span\.abody\.pm/); assert.match(css, /\.czg\.ex/); assert.match(css, /canvas\.ac\{filter:grayscale/, 'o cinza da prova não pega as poses');
   assert.match(sw, /codeup-v(3[6-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
@@ -1507,10 +1513,10 @@ test('app: cartões de explicação, provas com chances, tela de voltar lições
   for (const c of ['.infos{', '.inf{', '.inf.oque', '.inf.retorno', '.chances{', '.ht.on', '.backl', '.bk span']) assert.ok(css.includes(c), 'css ' + c);
   assert.match(sw, /codeup-v(3[7-9]|[4-9]\d)/, 'cache novo para quem já tinha a versão anterior');
   // quem acerta vê o resultado (tabela do SQL ou saída do Python) na tela de conclusão: lição, checkpoint e prova final
-  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : Q \? qzStatic\(\) : DX \? daxStatic\(l, code\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 5, 'as 5 telas de acerto (lição inteira, 1ª atividade, checkpoint, projeto e prova final) mostram o resultado'); assert.ok(css.includes('.resbox'));
+  assert.match(ui, /S\.lastRes = X \? xlStatic\(\) : Q \? qzStatic\(\) : DX \? daxStatic\(l, code\) : r\.html/); assert.equal((ui.match(/\$\{resBox\(\)\}/g) || []).length, 6, 'as 6 telas de acerto (lição inteira, 1ª atividade, círculo de desafio, checkpoint, projeto e prova final) mostram o resultado'); assert.ok(css.includes('.resbox'));
   // ao conquistar algo a tela mostra o que foi desbloqueado: lição, checkpoint, prova final, nível, certificado e (por XP) título, moldura e itens de personalização
   assert.match(ui, /function unlocksOf\(lk0, xb, s\)/); assert.match(ui, /S\.unl = unlocksOf\(lk0, xb, s\)/); assert.match(ui, /Desbloqueado!/);
-  assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 5, 'as 5 telas de acerto (lição, círculo de explicar, checkpoint, projeto e prova final) mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
+  assert.equal((ui.match(/\$\{unlockCard\(\)\}/g) || []).length, 6, 'as 6 telas de acerto (lição, círculo de desafio, círculo de explicar, checkpoint, projeto e prova final) mostram o cartão "Desbloqueado!"'); assert.ok(!/tierCard/.test(ui));
   for (const c of ['.unl{', '.unl .uig', '.unl .uic', '.unl .sw']) assert.ok(css.includes(c), 'css ' + c);
 });
 
@@ -1583,8 +1589,8 @@ test('mapa com cenário: floresta ao longo da trilha, personagem no pedestal e c
   assert.match(ui, /<div class=tl style="--n:\$\{NR\};--row:\$\{MAP\.row\}px;--top:\$\{MAP\.top\}px">\$\{scene\}\$\{pathSvg\}/);
   assert.match(ui, /Math\.sin\(\(r - 1\) \* Math\.PI \/ 4\)/, 'a trilha começa à esquerda, como no modelo');
   // lição, checkpoint e prova final do momento: personagem em pé no pedestal e cartão "INICIAR" (nos outros visuais continua o "COMEÇAR")
-  assert.equal((ui.match(/walker\(\) \+ lcard\(/g) || []).length, 5, 'os cinco tipos de passo (lição, círculo de explicar, projeto, checkpoint e prova final) têm o cartão');
-  assert.equal((ui.match(/<span class=start>COMEÇAR<\/span>/g) || []).length, 5); assert.match(ui, /<em class=lcb>INICIAR<\/em>/);
+  assert.equal((ui.match(/walker\(\) \+ lcard\(/g) || []).length, 6, 'os seis tipos de passo (lição, círculo de desafio, círculo de explicar, projeto, checkpoint e prova final) têm o cartão');
+  assert.equal((ui.match(/<span class=start>COMEÇAR<\/span>/g) || []).length, 6); assert.match(ui, /<em class=lcb>INICIAR<\/em>/);
   assert.match(ui, /<i class=nn>\$\{l\.n\}<\/i>/, 'número da lição no botão (os títulos saem do mapa no visual Azul)');
   assert.match(ui, /class="card cont tkc"/); assert.match(ui, /<div class=tkb><i style="width:/); assert.match(ui, /Vamos continuar seus estudos\?/);
   assert.match(ui, /class=cprog/, 'os outros visuais mantêm o cartão Continuar com o progresso');
@@ -2068,7 +2074,7 @@ test('duas atividades: o app mostra o anel no círculo, a tela de ler e o result
   for (const f of ['function resultAct(', 'function openR(', 'async function openEc(', 'function resultEc(', 'function readAct(', 'function expAct(', 'function expCheck(', 'function expOk(', 'function rdPick(', 'function rdCheck(', 'function rdOk(', 'const whyHtml', 'const pips = l =>', 'const actNext', 'async function openL(', 'async function loadMap(', 'const ecBefore', 'const openStep']) assert.ok(ui.includes(f), 'app.js: ' + f);
   assert.ok(!ui.includes('function openE('), 'a lição não abre mais a tela de explicar: ela é um círculo à parte');
   assert.match(ui, /class="rdr-ring n\$\{ord\.length\} \$\{cls\}"/, 'o anel do círculo: um arco por parte (Como funciona, executar e ler)'); assert.match(ui, /<i class=nn>\$\{l\.n\}<\/i>\$\{pips\(l\)\}<\/span>/, 'o anel fica dentro do círculo');
-  assert.match(ui, /if \(s\.next\) resultAct\(l\.sp \|\| 'x', s\.next\)/, 'depois de executar, se falta atividade, vem a tela que leva à próxima'); assert.ok(ui.includes("api('read'") && ui.includes("api('explain'"), 'o app chama as APIs de ler e de explicar');
+  assert.match(ui, /if \(s\.next\) resultAct\('x', s\.next\)/, 'depois de executar, se falta atividade, vem a tela que leva à próxima'); assert.ok(ui.includes("api('read'") && ui.includes("api('explain'"), 'o app chama as APIs de ler e de explicar');
   assert.ok(ui.includes('openAct(id, nx || \'x\')'), 'abrir a lição leva à próxima atividade da ordem sorteada');
   assert.ok(!/ACT_NM = \{[^}]*\be:/.test(ui) && !/ACT_SH = \{[^}]*\be:/.test(ui), 'explicar não é mais uma atividade da lição');
   // o mapa: o círculo de explicar vem depois da lição 6, 13, 19 e 26, tem o seu ícone, o seu aviso de bloqueio e entra no "continuar"
@@ -2079,6 +2085,20 @@ test('duas atividades: o app mostra o anel no círculo, a tela de ler e o result
   assert.ok(xui.includes('function xlRead('), 'xlui.js: a planilha de ler com as fórmulas à mostra');
   // sem texto do tipo "trilha"/"certificado" nas telas novas
   const bloco = ui.slice(ui.indexOf('function resultAct(')); assert.ok(!/certificado/i.test(bloco.slice(0, 14000)));
+});
+
+test('círculos de desafio: o app desenha os círculos no mapa (só o primeiro com o personagem), bloqueia, abre a prática e mostra o resultado com o próximo passo', () => {
+  const pub = path.join(__dirname, '..', 'public'), ui = fs.readFileSync(path.join(pub, 'app.js'), 'utf8'), css = fs.readFileSync(path.join(pub, 'style.css'), 'utf8');
+  for (const f of ['async function openSc(', 'function resultSc(', 'function scToast(', 'const scAt =', 'const scNext =', 'const afterOf =', 'const lockMap =']) assert.ok(ui.includes(f), 'app.js: ' + f);
+  assert.match(ui, /api\('extras'\)/, 'o app busca os círculos do aluno (cada um com a sua posição)'); assert.match(ui, /S\.scs = scs/, 'a atualização automática do mapa também traz os círculos');
+  assert.match(ui, /scsLv\.filter\(s => s\.slot == l\.n\)\.forEach\(s => rows\.push\(\{ s \}\)\)/, 'os círculos entram no mapa logo depois da lição do ponto sorteado, antes do círculo de explicar, do projeto e do checkpoint');
+  assert.ok(ui.includes("onclick=\"openSc('${e.id}')\""), 'tocar no círculo abre a prática'); assert.match(ui, /need = k == curK && !ok/, 'só o primeiro círculo pendente leva o personagem e o cartão');
+  assert.match(ui, /m\.lock == 'sc'\) return scToast\(m\.track, m\.lv, m\.n - 1\)/, 'a lição trancada pelos círculos abre o primeiro que falta'); assert.match(ui, /x\.lock == 'sc'/, '"continuar" leva ao círculo quando é ele que falta');
+  for (const k of ["p.lock == 'sc'", "c.lock == 'sc'", "m.lock == 'sc'"]) assert.ok(ui.includes(k), 'projeto, checkpoint e círculo de explicar também avisam: ' + k);
+  assert.match(ui, /if \(S\.cur\.sp\) return resultSc\(\)/); assert.match(ui, /api\('lessons\/' \+ e\.src \+ '\/sp\/' \+ e\.a\)/, 'a prática vem de GET /api/lessons/:id/sp/:a');
+  assert.ok(!ui.includes('resultAct(l.sp'), 'a lição não passa mais por "atividade 3 de 5"'); assert.ok(!/'xdf'/.test(ui)); assert.ok(!/openAct = .*openSp/.test(ui), 'não existe mais o desafio como atividade da lição');
+  assert.match(ui, /\(S\.scs \|\| \[\]\)\.filter\(e => e\.track == t && e\.done\)/, 'o XP dos círculos entra na conta do curso');
+  for (const k of ['.ti.cp.sc', '.ti.sc.f', '@keyframes scp']) assert.ok(css.includes(k), 'css ' + k); assert.ok(!css.includes('.rdr-ring.n5'), 'sem o anel de 5 arcos');
 });
 
 // ---------------- explicar o código: um círculo próprio, de uma lição só, a cada 6 ou 7 lições ----------------
@@ -2133,9 +2153,9 @@ test('explicar o código: o corretor confere ideias (não letras), ignora acento
 // ---------------- círculo de "Explicar o código" (uma lição só, a cada 6 ou 7 lições) ----------------
 // Sobe um servidor à parte com um arquivo de dados montado pelo teste (contas em estados antigos ou específicos): `build(j)` cria as contas, `seed(D)` mexe nos dados
 // com o servidor parado, e `run(j, ctx)` roda de novo com o servidor ligado. `j(caminho, corpo?, token?)` chama a API.
-async function withSeed(tag, port, build, seed, run) {
+async function withSeed(tag, port, build, seed, run, extraEnv = {}) {
   const base = 'http://localhost:' + port, d = path.join(fs.mkdtempSync(path.join(os.tmpdir(), tag + '-')), 'data.json');
-  const boot = async () => { let lg = ''; const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: port, DATA_FILE: d, BASE_URL: base, RELAX_SUBMIT_LIMIT: '1', ADMIN_KEY: 'chave-seed-123456', DATABASE_URL: '' } }); p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x); for (let i = 0; i < 450 && !/rodando/.test(lg); i++) await new Promise(z => setTimeout(z, 100)); assert.match(lg, /rodando/, lg); return p; };
+  const boot = async () => { let lg = ''; const p = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, ...extraEnv, PORT: port, DATA_FILE: d, BASE_URL: base, RELAX_SUBMIT_LIMIT: '1', ADMIN_KEY: 'chave-seed-123456', DATABASE_URL: '' } }); p.stdout.on('data', x => lg += x); p.stderr.on('data', x => lg += x); for (let i = 0; i < 450 && !/rodando/.test(lg); i++) await new Promise(z => setTimeout(z, 100)); assert.match(lg, /rodando/, lg); return p; };
   const stop = async p => { if (p.exitCode === null) { p.kill(); await new Promise(r => p.once('exit', r)); } };
   let ip = 0; const j = async (pth, body, t, h) => { const x = await fetch(base + pth, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.66.' + (++ip % 200) + '.1', ...(t ? { 'x-token': t } : {}), ...h }, body: body ? JSON.stringify(body) : undefined }); return { status: x.status, j: await x.json().catch(() => null) }; };
   let p = await boot();
@@ -2150,8 +2170,9 @@ async function withSeed(tag, port, build, seed, run) {
 const seedLv2 = (u, track, n, novo = true) => {
   const date = '2026-10-01T10:00:00.000Z'; u.passed ??= {}; u.passed[track + '-1'] = date; u.unlock = null;
   for (const l of lessonsOf(track, 2).filter(x => x.n <= n)) { u.done[l.id] = { code: 'x', date }; u.xpd[l.id] = 1; (u.ex ??= {})[l.id] = { date, code: 'x' }; (u.ler ??= {})[l.id] = { date }; }
+  for (const l of lessonsOf(track, 2).filter(x => x.n <= n && x.sp)) { (u.des ??= {})[l.id] = { date, code: 'x' }; (u.fix ??= {})[l.id] = { date, code: 'x' }; u.xpd[l.id + ':d'] = 1; u.xpd[l.id + ':f'] = 1; }    // SQL Intermediário: os círculos de desafio novo e conserte o erro dessas lições também estão feitos
   for (const p of lessons.projects.filter(x => x.track === track && x.lv === 2 && x.after <= n)) u.cpdone[p.id] = { code: 'x', date };
-  if (novo) u.ecm = 1;
+  if (novo) { u.ecm = 1; u.scm = 1; }
 };
 
 test('explicar o código: o círculo só abre depois da lição, não entrega a resposta, errar é de graça, acertar conta uma vez e libera a lição seguinte', async () => {
@@ -2248,21 +2269,29 @@ test('ordem sorteada: cada aluno cai numa ordem diferente, ela não muda e o XP 
     }
     const ordOf = async (u, id) => { const r = (await j('/api/lessons', null, u.tk)).j.find(x => x.id === id); return r && r.ord; };
     // toda lição de Python, SQL e Excel (Básico, Intermediário e Avançado): 2 atividades, a ordem varia entre "xr" e "rx" e nunca tem "e"
-    for (const id of ['py-1-01', 'sql-1-01', 'xl-1-01', 'py-2-01', 'py-3-07', 'sql-3-12']) {
+    for (const id of ['py-1-01', 'sql-1-01', 'xl-1-01', 'py-2-01', 'py-3-07', 'sql-3-12', 'sql-2-05', 'sql-2-17']) {
       const seen = new Set(); for (const u of users) { const o = await ordOf(u, id); assert.match(o, /^(xr|rx)$/, id + ' → ' + o); seen.add(o); } assert.equal(seen.size, 2, id + ': com 40 alunos aparecem as duas ordens ' + [...seen]);
     }
-    // SQL Intermediário: 4 atividades; executar e ler vêm primeiro (em ordem sorteada) e o desafio novo e o conserte o erro depois (também sorteados)
-    for (const id of ['sql-2-05', 'sql-2-17']) {
-      const seen = new Set(), a = new Set(), b = new Set(); for (const u of users) { const o = await ordOf(u, id); assert.match(o, /^(xr|rx)(df|fd)$/, id + ' → ' + o); seen.add(o); a.add(o.slice(0, 2)); b.add(o.slice(2)); }
-      assert.equal(a.size, 2, id + ': as duas ordens de executar/ler'); assert.equal(b.size, 2, id + ': as duas ordens de desafio/conserte'); assert.ok(seen.size >= 3, id + ': várias combinações ' + [...seen]);
+    // SQL Intermediário: a lição também tem só executar e ler; o "Desafio novo" e o "Conserte o erro" são círculos à parte, com a posição sorteada por aluno (de 0 a 4 lições depois da lição de origem)
+    const exOf = async u => (await j('/api/extras', null, u.tk)).j, fimLv2 = lessons.filter(x => x.track === 'sql' && x.lv === 2).length, sigs = new Set(), cnt = {};
+    for (const u of users) {
+      const ex = await exOf(u); assert.equal(ex.length, 60, '30 lições x 2 círculos');
+      for (const e of ex) { assert.ok(e.slot >= e.after && e.slot <= Math.min(e.after + 4, fimLv2), `${e.id}: posição ${e.slot} fora de ${e.after}..${e.after + 4}`); cnt[e.after + ':' + e.slot] = (cnt[e.after + ':' + e.slot] || 0) + 1; }
+      const pt = {}; for (const e of ex) pt[e.slot] = (pt[e.slot] || 0) + 1; assert.ok(Math.max(...Object.entries(pt).filter(([s]) => +s <= 24).map(([, v]) => v)) <= 3, 'no meio do nível nunca mais de 3 círculos no mesmo ponto'); assert.ok(Math.max(...Object.values(pt)) <= 6, 'nem no fim do nível se junta demais');
+      sigs.add(ex.map(e => e.slot).join(','));
     }
+    assert.ok(sigs.size >= 38, 'cada aluno tem as suas posições: ' + sigs.size + ' de ' + N);
+    for (let after = 1; after <= 20; after++) assert.ok(Object.keys(cnt).filter(k => k.startsWith(after + ':')).length >= 4, `lição ${after}: com 40 alunos os círculos caem em várias posições`);
+    // a posição de um aluno é sempre a mesma (outra chamada, outra sessão) e a lista vem em ordem de posição
+    const e1 = await exOf(users[1]), e2 = await exOf(users[1]); assert.deepEqual(e1, e2); assert.deepEqual(e1.map(e => e.slot), [...e1.map(e => e.slot)].sort((a, b) => a - b), 'a lista vem na ordem do mapa');
+    const lgx = await j('/api/login', { email: users[1].email, password: 'segredo1' }); assert.deepEqual((await j('/api/extras', null, lgx.j.token)).j, e1, 'outra sessão do mesmo aluno vê as mesmas posições');
     // a ordem de um aluno numa lição é sempre a mesma (reabrir, outra sessão, outra chamada)
     const u0 = users[0], o0 = await ordOf(u0, 'py-2-01'); for (let i = 0; i < 3; i++) assert.equal(await ordOf(u0, 'py-2-01'), o0);
     const lg2 = await j('/api/login', { email: u0.email, password: 'segredo1' }); assert.equal((await j('/api/lessons', null, lg2.j.token)).j.find(x => x.id === 'py-2-01').ord, o0, 'outra sessão do mesmo aluno vê a mesma ordem');
     // a ordem muda de lição para lição (não é sempre a mesma para o mesmo aluno)
     const mesma = new Set(); for (const n of ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16']) mesma.add(await ordOf(u0, 'py-2-' + n)); assert.ok(mesma.size >= 2, 'o mesmo aluno cai em ordens diferentes em lições diferentes: ' + [...mesma]);
     // a lista inteira: nenhuma lição tem "e" (explicar é um círculo à parte)
-    const rows = (await j('/api/lessons', null, users[1].tk)).j; for (const r of rows) assert.ok(!/e/.test(r.ord || ''), r.id + ' ' + r.ord); assert.equal(rows.filter(r => r.rd).every(r => r.ord.length === (r.track === 'sql' && r.lv === 2 ? 4 : 2)), true);
+    const rows = (await j('/api/lessons', null, users[1].tk)).j; for (const r of rows) assert.ok(!/e/.test(r.ord || ''), r.id + ' ' + r.ord); assert.equal(rows.filter(r => r.rd).every(r => r.ord.length === 2), true, 'toda lição tem só 2 atividades');
     // faz uma lição na ordem sorteada: errar a ordem é barrado, e o XP (8 + 7) e os diamantes (2 + 3) se dividem
     const L = lessons.find(x => x.id === 'py-2-01'), act = { x: () => j('/api/submit', { id: L.id, code: L.solution, out: L.expectedOut }, u.tk), r: () => j('/api/read', { id: L.id, a: readAnswer(L) }, u.tk) };
     const lessonOrd = {}; let u; const perm = new Set();
@@ -2313,76 +2342,150 @@ test('explicar o código: quem já estava no meio do Intermediário (explicar er
 test('ordem sorteada: a variável de teste que fixa a ordem é ignorada em produção e a versão do app foi atualizada', () => {
   const srvSrc = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(srvSrc, /const FIXED_ORDER = process\.env\.FIXED_ACT_ORDER === '1' && !PROD;/, 'só vale fora de produção');
-  assert.match(srvSrc, /ordOf = \(u, ?l\) => \{ const a = actsOf\(l\); if \(a\.length < 2 \|\| FIXED_ORDER\) return a; return \[\.\.\.shuffled\(a\.filter\(x => !SP_ACTS\.includes\(x\)\), u\.id \+ ':ord:' \+ l\.id\), \.\.\.shuffled\(a\.filter\(x => SP_ACTS\.includes\(x\)\), u\.id \+ ':sp:' \+ l\.id\)\]; \}/, 'a ordem sorteada depende só do aluno e da lição (não muda sozinha)');
+  assert.match(srvSrc, /ordOf = \(u, ?l\) => \{ const a = actsOf\(l\); return a\.length < 2 \|\| FIXED_ORDER \? a : shuffled\(a, u\.id \+ ':ord:' \+ l\.id\); \}/, 'a ordem sorteada depende só do aluno e da lição (não muda sozinha)');
+  assert.match(srvSrc, /FIXED_ORDER \? e\.after : e\.after \+ off|const at = FIXED_ORDER \? e\.after : e\.after \+ off/, 'a posição sorteada dos círculos de desafio também é fixa nos testes automáticos e sorteada em produção');
   const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /codeup-v(60|[6-9]\d)/, 'a versão do cache subiu para o app novo chegar ao celular');
 });
 
 
-// ---------------- atividades ESPECIAIS do SQL Intermediário: desafio novo (d) e conserte o erro (f) ----------------
-test('atividades especiais: o SQL Intermediário tem 4 atividades por lição (executar, ler, desafio novo, conserte o erro), as especiais vêm depois, o XP e os diamantes se dividem e o gabarito não vaza', async () => {
-  const tk = await regP('sp-fluxo1@teste.com', 'Paula Especial', { sex: 'f', guide: 'tay', gname: 'Tay' });
-  await setSettings({ unlockAll: { on: true, days: 1 } });
-  try {
-    await call('/api/track', { token: tk, body: { track: 'sql' } });
-    const L = lessons.find(x => x.id === 'sql-2-01'), row = async (id = L.id) => (await call('/api/lessons', { token: tk })).j.find(x => x.id === id);
-    const r0 = await row(); assert.equal(r0.ord, 'xrdf', 'ordem fixa dos testes: executar, ler, desafio novo, conserte o erro'); assert.equal(r0.rd, 1); assert.equal(r0.dn, undefined);
-    assert.equal((await row('sql-1-01')).ord, 'xr', 'o Básico segue com 2 atividades'); assert.equal((await row('sql-3-01')).ord, 'xr', 'o Avançado ainda também'); assert.equal((await row('py-2-01')).ord, 'xr');
-    // a lição em si não traz as atividades especiais nem o gabarito delas
-    const full = (await call('/api/lessons/' + L.id, { token: tk })).j; assert.equal(full.sp, undefined); assert.ok(!JSON.stringify(full).includes(L.sp.d.solution), 'a solução do desafio não vai junto da lição');
-    // as especiais só abrem depois de executar e ler (a ordem da fila)
-    let r = await doSp(tk, L, 'd'); assert.equal(r.status, 409); assert.equal(r.j.lock, 'ord'); assert.equal(r.j.need, 'x'); assert.match(r.j.error, /executar o código/);
-    r = await call(`/api/lessons/${L.id}/sp/d`, { token: tk }); assert.equal(r.status, 409); assert.equal(r.j.need, 'x');
-    r = await call('/api/check', { token: tk, body: { id: L.id, a: 'd', code: L.sp.d.solution } }); assert.equal(r.status, 409, 'a conferência também respeita a fila');
-    const g0 = (await call('/api/me', { token: tk })).j.gems, xp0 = (await call('/api/me', { token: tk })).j.xp;
-    const x = await doExec(tk, L); assert.equal(x.j.ok, true); assert.equal(x.j.gained, L.xp / 4, 'o XP da lição (20) se divide em 4 partes de 5'); assert.equal(x.j.next, 'r'); assert.equal(x.j.done[L.id], undefined);
-    r = await doSp(tk, L, 'f'); assert.equal(r.status, 409); assert.equal(r.j.need, 'r', 'o conserte o erro espera o ler, que vem antes');
-    const rd = await doRead(tk, L); assert.equal(rd.j.ok, true); assert.equal(rd.j.gained, L.xp / 4); assert.equal(rd.j.next, 'd', 'depois de ler vem o desafio novo'); assert.equal(rd.j.done[L.id], undefined, 'a lição não conclui com 2 de 4');
-    // o desafio chega sem gabarito, sem palavras obrigatórias e sem o "por quê"
-    r = await call(`/api/lessons/${L.id}/sp/d`, { token: tk }); assert.equal(r.status, 200);
-    assert.equal(r.j.sp, 'd'); assert.equal(r.j.id, L.id); assert.equal(r.j.type, 'sql'); assert.equal(r.j.task, L.sp.d.task); assert.equal(r.j.seed, L.sp.d.seed); assert.match(r.j.starter, /^--/); assert.equal(r.j.done, false);
-    for (const k of ['expectedSql', 'expectedRows', 'need', 'why', 'a']) assert.equal(r.j[k], undefined, k + ' não pode ir para o navegador'); assert.equal(r.j.solution, L.sp.d.solution, 'a solução só aparece pelo botão Solução, como nas lições');
-    // errar não gasta nada, não dá XP e não revela o "por quê"
-    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'd', code: 'SELECT 1' } }); assert.equal(r.j.ok, false); assert.equal(r.j.gained, 0); assert.equal(r.j.why, undefined); assert.equal(r.j.tries, 1);
-    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'd', code: 'SELECT usuarios.nome FROM usuarios' } }); assert.equal(r.j.ok, false, 'faltam as palavras obrigatórias (JOIN e ON)'); assert.deepEqual([r.j.missing], ['join']);
-    // a lição de execução não vale como o desafio: o código da lição (outras tabelas) não passa no desafio
-    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'd', code: L.solution } }); assert.equal(r.j.ok, false, 'a solução da lição não resolve o desafio novo');
-    r = await call('/api/check', { token: tk, body: { id: L.id, a: 'd', code: L.sp.d.solution } }); assert.equal(r.j.ok, true, 'a conferência ao vivo usa o item do desafio'); assert.equal((await call('/api/me', { token: tk })).j.xp, xp0 + L.xp / 2, 'conferir não grava nada');
-    const d = await doSp(tk, L, 'd'); assert.equal(d.j.ok, true); assert.equal(d.j.gained, L.xp / 4); assert.equal(d.j.next, 'f'); assert.equal(d.j.why, L.sp.d.why, 'depois do acerto vem o "para que serve"'); assert.equal(d.j.done[L.id], undefined, 'falta o conserte o erro');
-    assert.equal(d.j.tries, 4, 'as tentativas do desafio se contam à parte');
-    // o conserte o erro começa com o código quebrado e o código quebrado NÃO passa
-    r = await call(`/api/lessons/${L.id}/sp/f`, { token: tk }); assert.equal(r.status, 200); assert.equal(r.j.starter, L.sp.f.starter); assert.equal(r.j.sp, 'f'); assert.equal(r.j.why, undefined); assert.equal(r.j.need, undefined);
-    r = await call('/api/submit', { token: tk, body: { id: L.id, a: 'f', code: L.sp.f.starter } }); assert.equal(r.j.ok, false, 'o código com erro continua errado'); assert.equal(r.j.gained, 0);
-    const f = await doSp(tk, L, 'f'); assert.equal(f.j.ok, true); assert.equal(f.j.gained, L.xp / 4); assert.equal(f.j.why, L.sp.f.why); assert.ok(f.j.done[L.id], 'com as 4 atividades a lição conclui'); assert.equal(f.j.next, undefined);
-    // XP total = o XP da lição; diamantes = 1 + 1 + 1 + 2 = 5 (fora o bônus da sequência)
-    const me = (await call('/api/me', { token: tk })).j; assert.equal(me.xp - xp0, L.xp, 'as 4 partes somam o XP da lição');
-    assert.deepEqual([x, rd, d, f].map(o => (o.j.gemsGot || 0) - (o.j.gemBonus || 0)), [1, 1, 1, 2], 'diamantes: 1 + 1 + 1 + 2 = 5, como os 2 + 3 de antes'); assert.equal(f.j.gems - g0, 5 + [x, rd, d, f].reduce((a, o) => a + (o.j.gemBonus || 0), 0));
-    const r1 = await row(); assert.equal(r1.dn, 'xrdf'); assert.equal((await doSp(tk, L, 'd')).j.gained, 0, 'refazer não rende XP de novo'); assert.equal((await call('/api/me', { token: tk })).j.xp, me.xp);
-    // pedidos inválidos
-    assert.equal((await call('/api/lessons/sql-1-01/sp/d', { token: tk })).status, 404, 'o Básico não tem desafio novo'); assert.equal((await call(`/api/lessons/${L.id}/sp/x`, { token: tk })).status, 404); assert.equal((await call(`/api/lessons/${L.id}/sp/__proto__`, { token: tk })).status, 404);
-    assert.equal((await call('/api/submit', { token: tk, body: { id: 'sql-1-01', a: 'd', code: 'SELECT 1' } })).status, 404, 'a: d numa lição sem desafio');
-    r = await call('/api/submit', { token: tk, body: { id: 'sql-2-02', a: '__proto__', code: lessons.find(y => y.id === 'sql-2-02').solution } }); assert.equal(r.j.ok, true, 'a inválido vira a atividade de executar'); assert.equal(r.j.gained, 5);
-  } finally { await setSettings({ unlockAll: { on: false } }); }
+// ---------------- círculos do SQL Intermediário: Desafio novo (d) e Conserte o erro (f), separados da lição ----------------
+// Nos testes a posição é fixa (FIXED_ACT_ORDER): cada círculo cai logo depois da lição de origem. A posição sorteada de verdade é testada no teste "ordem sorteada" e no de sorteio mais abaixo.
+test('círculos de desafio: a lição fica só com executar e ler; os 60 círculos abrem depois da lição, travam a lição seguinte, não vazam o gabarito e dão XP e diamantes uma vez', async () => {
+  await withSeed('sc1', PORT + 886,
+    async j => { const rg = await j('/api/register', { name: 'Paula Círculos', email: 'sc-fluxo@teste.com', password: 'segredo1', accept: true }); await j('/api/track', { track: 'sql' }, rg.j.token); return { tk: rg.j.token }; },
+    D => { const u = Object.values(D.users).find(x => x.email === 'sc-fluxo@teste.com'); seedLv2(u, 'sql', 0); },
+    async (j, { tk }) => {
+      const rows = async () => (await j('/api/lessons', null, tk)).j, by = async id => (await rows()).find(x => x.id === id), me = async () => (await j('/api/me', null, tk)).j, exs = async () => (await j('/api/extras', null, tk)).j, ex = async id => (await exs()).find(e => e.id === id);
+      const L = lessons.find(x => x.id === 'sql-2-01'), L2 = lessons.find(x => x.id === 'sql-2-02');
+      const x0 = await exs(); assert.equal(x0.length, 60); assert.equal(x0.filter(e => e.a === 'd').length, 30); assert.equal(x0.filter(e => e.a === 'f').length, 30);
+      const e1 = x0.find(e => e.id === 'sql-2-01:d'); assert.deepEqual(Object.keys(e1).sort(), ['a', 'after', 'done', 'gems', 'id', 'level', 'lock', 'lt', 'lv', 'sc', 'slot', 'src', 'title', 'track', 'type', 'xp'], 'só o necessário para desenhar o círculo');
+      assert.equal(e1.sc, true); assert.equal(e1.slot, 1, 'nos testes o círculo fica logo depois da lição'); assert.equal(e1.title, 'Desafio novo'); assert.equal(e1.lt, L.title); assert.equal(e1.xp, 5); assert.equal(e1.gems, 1); assert.equal(x0.find(e => e.id === 'sql-2-01:f').gems, 2); assert.equal(e1.done, false); assert.equal(e1.lock, 'seq');
+      const txt = JSON.stringify(x0); for (const k of [L.sp.d.solution, L.sp.f.solution, L.sp.d.task, L.sp.f.starter, 'expectedSql', 'expectedRows', '"need"', '"why"', '"hints"']) assert.ok(!txt.includes(k), 'a lista de círculos não pode trazer ' + k.slice(0, 30));
+      assert.equal((await j('/api/extras')).status, 401, 'sem login não vê nada');
+      // a lição só tem 2 atividades, nada de desafio nem conserte dentro dela
+      const r0 = await by(L.id); assert.equal(r0.ord, 'xr'); assert.equal(r0.rd, 1); assert.equal(r0.dn, undefined); assert.equal((await by('sql-2-30')).ord, 'xr');
+      const full = (await j('/api/lessons/' + L.id, null, tk)).j; assert.equal(full.sp, undefined); assert.ok(!JSON.stringify(full).includes(L.sp.d.solution), 'a solução do desafio não vai junto da lição');
+      // antes de concluir a lição de origem o círculo não abre: nem a tela, nem a conferência, nem o envio
+      let r = await j(`/api/lessons/${L.id}/sp/d`, null, tk); assert.equal(r.status, 409); assert.equal(r.j.lock, 'seq'); assert.match(r.j.error, /Conclua a lição que vem antes/);
+      r = await j('/api/check', { id: L.id, a: 'd', code: L.sp.d.solution }, tk); assert.equal(r.status, 409); assert.equal(r.j.lock, 'seq');
+      r = await j('/api/submit', { id: L.id, a: 'd', code: L.sp.d.solution }, tk); assert.equal(r.status, 409); assert.equal(r.j.lock, 'seq'); assert.equal((await me()).xp, 0);
+      // a lição: o XP inteiro dela (sem dividir com os círculos) e os 5 diamantes de sempre
+      const g0 = (await me()).gems; const ord = (await by(L.id)).ord.split('');
+      const a1 = ord[0] === 'x' ? await j('/api/submit', { id: L.id, code: L.solution }, tk) : await j('/api/read', { id: L.id, a: readAnswer(L) }, tk);
+      const a2 = ord[1] === 'x' ? await j('/api/submit', { id: L.id, code: L.solution }, tk) : await j('/api/read', { id: L.id, a: readAnswer(L) }, tk);
+      assert.equal(a1.j.ok, true); assert.equal(a2.j.ok, true); assert.ok(a2.j.done[L.id], 'executar e ler bastam para concluir a lição'); assert.equal(a1.j.gained + a2.j.gained, L.xp, 'o XP da lição não é dividido com os círculos'); assert.equal((a1.j.gems - g0) + (a2.j.gems - a1.j.gems) - (a1.j.gemBonus || 0) - (a2.j.gemBonus || 0), 5, 'diamantes da lição: 5');
+      assert.equal((await me()).xp, L.xp);
+      // a lição 2 só abre depois dos 2 círculos que ficam depois da lição 1 (e a mensagem diz o que fazer)
+      assert.equal((await by('sql-2-02')).lock, 'sc'); r = await j('/api/lessons/sql-2-02', null, tk); assert.equal(r.status, 409); assert.equal(r.j.lock, 'sc'); assert.match(r.j.error, /Desafio novo e Conserte o erro/);
+      r = await j('/api/submit', { id: 'sql-2-02', code: L2.solution }, tk); assert.equal(r.status, 409); assert.equal(r.j.lock, 'sc');
+      assert.equal((await ex('sql-2-01:d')).lock, null); assert.equal((await ex('sql-2-01:f')).lock, null); assert.equal((await ex('sql-2-02:d')).lock, 'seq', 'o círculo da lição 2 espera a lição 2');
+      // o desafio chega sem gabarito, sem palavras obrigatórias e sem o "por quê"
+      r = await j(`/api/lessons/${L.id}/sp/d`, null, tk); assert.equal(r.status, 200);
+      assert.equal(r.j.sp, 'd'); assert.equal(r.j.id, L.id); assert.equal(r.j.type, 'sql'); assert.equal(r.j.task, L.sp.d.task); assert.equal(r.j.seed, L.sp.d.seed); assert.match(r.j.starter, /^--/); assert.equal(r.j.done, false); assert.equal(r.j.xp, 5);
+      for (const k of ['expectedSql', 'expectedRows', 'need', 'why', 'a']) assert.equal(r.j[k], undefined, k + ' não pode ir para o navegador'); assert.equal(r.j.solution, L.sp.d.solution, 'a solução só aparece pelo botão Solução, como nas lições');
+      // errar não gasta nada, não dá XP e não revela o "por quê"
+      r = await j('/api/submit', { id: L.id, a: 'd', code: 'SELECT 1' }, tk); assert.equal(r.j.ok, false); assert.equal(r.j.gained, 0); assert.equal(r.j.why, undefined); assert.equal(r.j.tries, 1);
+      r = await j('/api/submit', { id: L.id, a: 'd', code: 'SELECT usuarios.nome FROM usuarios' }, tk); assert.equal(r.j.ok, false, 'faltam as palavras obrigatórias (JOIN e ON)'); assert.deepEqual([r.j.missing], ['join']);
+      r = await j('/api/submit', { id: L.id, a: 'd', code: L.solution }, tk); assert.equal(r.j.ok, false, 'a solução da lição não resolve o desafio novo');
+      const xp0 = (await me()).xp; r = await j('/api/check', { id: L.id, a: 'd', code: L.sp.d.solution }, tk); assert.equal(r.j.ok, true, 'a conferência ao vivo usa o item do desafio'); assert.equal((await me()).xp, xp0, 'conferir não grava nada');
+      const d = await j('/api/submit', { id: L.id, a: 'd', code: L.sp.d.solution }, tk); assert.equal(d.j.ok, true); assert.equal(d.j.gained, 5, 'XP só do círculo'); assert.equal(d.j.why, L.sp.d.why, 'depois do acerto vem o "para que serve"'); assert.equal(d.j.next, undefined); assert.equal(d.j.tries, 4, 'as tentativas do desafio se contam à parte');
+      assert.equal((d.j.gemsGot || 0) - (d.j.gemBonus || 0), 1, 'o desafio dá 1 diamante'); assert.equal((await ex('sql-2-01:d')).done, true); assert.equal((await by('sql-2-02')).lock, 'sc', 'falta o conserte o erro');
+      // o conserte o erro começa com o código quebrado e o código quebrado NÃO passa
+      r = await j(`/api/lessons/${L.id}/sp/f`, null, tk); assert.equal(r.status, 200); assert.equal(r.j.starter, L.sp.f.starter); assert.equal(r.j.sp, 'f'); assert.equal(r.j.why, undefined); assert.equal(r.j.need, undefined);
+      r = await j('/api/submit', { id: L.id, a: 'f', code: L.sp.f.starter }, tk); assert.equal(r.j.ok, false, 'o código com erro continua errado'); assert.equal(r.j.gained, 0);
+      const f = await j('/api/submit', { id: L.id, a: 'f', code: L.sp.f.solution }, tk); assert.equal(f.j.ok, true); assert.equal(f.j.gained, 5); assert.equal(f.j.why, L.sp.f.why); assert.equal((f.j.gemsGot || 0) - (f.j.gemBonus || 0), 2, 'o conserte o erro dá 2 diamantes');
+      assert.equal((await by('sql-2-02')).lock, null, 'com os 2 círculos feitos a lição 2 abre'); assert.equal((await j('/api/lessons/sql-2-02', null, tk)).status, 200);
+      // a lição de origem não mudou: continua concluída com 2 atividades; o círculo não mexe nela
+      const r1 = await by(L.id); assert.equal(r1.dn, 'xr'); assert.ok((await me()).done[L.id]); assert.equal((await me()).xp, L.xp + 10);
+      // refazer não rende XP nem diamantes de novo
+      const g1 = (await me()).gems; r = await j('/api/submit', { id: L.id, a: 'd', code: L.sp.d.solution }, tk); assert.equal(r.j.ok, true); assert.equal(r.j.gained, 0); assert.equal((await me()).xp, L.xp + 10); assert.equal((await me()).gems, g1);
+      // pedidos inválidos
+      assert.equal((await j('/api/lessons/sql-1-01/sp/d', null, tk)).status, 404, 'o Básico não tem desafio novo'); assert.equal((await j(`/api/lessons/${L.id}/sp/x`, null, tk)).status, 404); assert.equal((await j(`/api/lessons/${L.id}/sp/__proto__`, null, tk)).status, 404);
+      assert.equal((await j('/api/submit', { id: 'sql-1-01', a: 'd', code: 'SELECT 1' }, tk)).status, 404, 'a: d numa lição sem desafio');
+      r = await j('/api/submit', { id: 'sql-2-02', a: '__proto__', code: L2.solution }, tk); assert.equal(r.j.ok, true, 'a inválido vira a atividade de executar'); assert.equal(r.j.gained, L2.xp / 2);
+    });
 });
 
-test('atividades especiais: quem já tinha lições do SQL Intermediário concluídas continua concluído e não perde nada; as lições novas pedem as 4 atividades', async () => {
-  await withSeed('sp3', PORT + 888,
-    async j => { const rg = await j('/api/register', { name: 'Antiga SQL', email: 'antiga-sp@teste.com', password: 'segredo1', accept: true }); await j('/api/track', { track: 'sql' }, rg.j.token); return { tk: rg.j.token }; },
-    D => { const u = Object.values(D.users).find(x => x.email === 'antiga-sp@teste.com'); seedLv2(u, 'sql', 3); u.xp = 300; (u.ex ??= {})['sql-2-04'] = { date: '2026-10-01T10:00:00.000Z', code: 'x' }; u.xpd['sql-2-04:x'] = 1; u.xp += 10; },
-    async (j, { tk }, { restart }) => {
-      const sp = (L, a) => j('/api/submit', { id: L.id, a, code: L.sp[a].solution }, tk), rdA = L => j('/api/read', { id: L.id, a: readAnswer(L) }, tk);
-      const rows = async () => (await j('/api/lessons', null, tk)).j, by = async id => (await rows()).find(x => x.id === id), me = async () => (await j('/api/me', null, tk)).j;
-      let m = await me(); assert.deepEqual(['sql-2-01', 'sql-2-02', 'sql-2-03'].filter(id => m.done[id]).length, 3, 'as 3 lições concluídas continuam concluídas'); assert.equal(m.xp, 310, 'nenhum XP muda');
-      for (const id of ['sql-2-01', 'sql-2-02', 'sql-2-03']) { const r = await by(id); assert.equal(r.dn, 'xrdf', id + ': concluída = as 4 atividades contam como feitas'); assert.equal(r.lock, null); }
-      // a lição 4 estava no meio (só executar): agora faltam ler, o desafio novo e o conserte o erro; a 5 continua trancada
-      const r4 = await by('sql-2-04'); assert.equal(r4.dn, 'x'); assert.equal(r4.lock, null); assert.equal((await by('sql-2-05')).lock, 'seq');
-      // treinar o desafio de uma lição já concluída é livre (sem fila) e não rende XP de novo
-      const L1 = lessons.find(x => x.id === 'sql-2-01'); let r = await sp(L1, 'f'); assert.equal(r.j.ok, true); assert.equal(r.j.gained, 0); assert.equal((await me()).xp, 310);
-      // a lição 4: segue a fila (ler, desafio, conserte) e só então conclui e abre a 5
-      const L4 = lessons.find(x => x.id === 'sql-2-04'); r = await sp(L4, 'd'); assert.equal(r.status, 409); assert.equal(r.j.need, 'r');
-      assert.equal((await rdA(L4)).j.ok, true); assert.equal((await sp(L4, 'd')).j.ok, true); assert.equal((await by('sql-2-05')).lock, 'seq', 'com 3 de 4 a lição 5 continua trancada');
-      r = await sp(L4, 'f'); assert.equal(r.j.ok, true); assert.ok(r.j.done['sql-2-04']); assert.equal((await by('sql-2-05')).lock, null, 'com as 4 a lição 5 abre');
-      await restart(); m = await me(); assert.ok(m.done['sql-2-04']); assert.equal((await by('sql-2-04')).dn, 'xrdf', 'depois de reiniciar o servidor nada muda');
+test('círculos de desafio: travam a lição seguinte, o projeto, o círculo de explicar e o checkpoint daquele ponto; errar o checkpoint volta os círculos junto com as lições, sem XP em dobro', async () => {
+  await withSeed('sc2', PORT + 887,
+    async j => { const rg = await j('/api/register', { name: 'Paula Fila', email: 'sc-fila@teste.com', password: 'segredo1', accept: true }); await j('/api/track', { track: 'sql' }, rg.j.token); return { tk: rg.j.token }; },
+    D => { const u = Object.values(D.users).find(x => x.email === 'sc-fila@teste.com'); seedLv2(u, 'sql', 0); },
+    async (j, { tk }) => {
+      const me = async () => (await j('/api/me', null, tk)).j, row = async id => ((await j('/api/lessons', null, tk)).j).find(x => x.id === id), exs = async () => (await j('/api/extras', null, tk)).j;
+      const lock = async (rota, id) => ((await j(rota, null, tk)).j).find(x => x.id === id).lock;
+      const les = async n => { const L = lessons.find(x => x.id === 'sql-2-' + String(n).padStart(2, '0')), o = (await row(L.id)).ord; for (const a of o) { const r = a === 'x' ? await j('/api/submit', { id: L.id, code: L.solution }, tk) : await j('/api/read', { id: L.id, a: readAnswer(L) }, tk); assert.equal(r.j.ok, true, `lição ${n}: ${JSON.stringify(r.j).slice(0, 150)}`); } };
+      const circ = async (n, so) => { for (const e of (await exs()).filter(x => x.slot === n && !x.done)) { if (so && e.a !== so) continue; const L = lessons.find(x => x.id === e.src), r = await j('/api/submit', { id: L.id, a: e.a, code: L.sp[e.a].solution }, tk); assert.equal(r.j.ok, true, e.id); } };
+      const pj = async n => { const p = pjOf('sql', 2, n), r = await j('/api/submit', { id: p.id, code: p.solution }, tk); assert.equal(r.j.ok, true, p.id); };
+      for (let n = 1; n <= 4; n++) { await les(n); assert.equal((await row('sql-2-0' + (n + 1))).lock, 'sc', `lição ${n + 1} espera os círculos`); await circ(n, 'd'); assert.equal((await row('sql-2-0' + (n + 1))).lock, 'sc', 'com só um dos dois ainda espera'); await circ(n); assert.equal((await row('sql-2-0' + (n + 1))).lock, null); }
+      await les(5);
+      // depois da lição 5: os círculos vêm antes do projeto e da lição 6; depois dos círculos vem o projeto; depois do projeto a lição 6
+      assert.equal(await lock('/api/projects', 'pj-sql-2-5'), 'sc'); assert.equal((await row('sql-2-06')).lock, 'sc'); const r_ = await j('/api/lessons/pj-sql-2-5', null, tk); assert.equal(r_.status, 409); assert.equal(r_.j.lock, 'sc');
+      await circ(5); assert.equal(await lock('/api/projects', 'pj-sql-2-5'), null); assert.equal((await row('sql-2-06')).lock, 'pj', 'agora falta só o projeto'); await pj(5); assert.equal((await row('sql-2-06')).lock, null);
+      for (let n = 6; n <= 6; n++) await les(n);
+      // lição 6: o círculo de explicar fica depois dos círculos de desafio daquele ponto; a lição 7 espera os dois
+      assert.equal(await lock('/api/explains', 'ec-sql-2-6'), 'sc'); assert.equal((await row('sql-2-07')).lock, 'sc'); await circ(6);
+      assert.equal(await lock('/api/explains', 'ec-sql-2-6'), null); assert.equal((await row('sql-2-07')).lock, 'ec');
+      const e6 = lessons.explains.find(e => e.id === 'ec-sql-2-6'); assert.equal((await j('/api/explain', { id: e6.id, a: e6.expl.model }, tk)).j.ok, true); assert.equal((await row('sql-2-07')).lock, null);
+      // lições 7 a 10, com o círculo de explicar da 13... (só até o checkpoint da 10)
+      for (let n = 7; n <= 10; n++) { await les(n); if (n < 10) await circ(n); }
+      const cp = lessons.checkpoints.find(c => c.id === 'cp-sql-2-10'); assert.equal(await lock('/api/checkpoints', cp.id), 'sc', 'o checkpoint espera os círculos da lição 10'); assert.equal((await j('/api/lessons/' + cp.id, null, tk)).status, 409);
+      await circ(10); assert.equal(await lock('/api/checkpoints', cp.id), 'pj'); await pj(10); assert.equal(await lock('/api/checkpoints', cp.id), null);
+      assert.equal((await row('sql-2-11')).lock, 'cp');
+      // errou as 2 chances do checkpoint: volta 5 lições (6 a 10) e os círculos dessas lições voltam junto; os das lições 1 a 5 ficam feitos
+      const xp0 = (await me()).xp, feitos = (await exs()).filter(e => e.done).length; assert.equal(feitos, 20, '10 lições x 2 círculos');
+      let r = await j('/api/submit', { id: cp.id, code: 'SELECT 1' }, tk); assert.equal(r.j.ok, false); r = await j('/api/submit', { id: cp.id, code: 'SELECT 1' }, tk); assert.deepEqual(r.j.rewind, { from: 6, to: 10, back: 5 });
+      const apos = await exs(); assert.equal(apos.filter(e => e.done).length, 10, 'os 10 círculos das lições 6 a 10 voltaram a ficar pendentes'); assert.ok(apos.filter(e => e.after <= 5).every(e => e.done)); assert.ok(apos.filter(e => e.after >= 6 && e.after <= 10).every(e => !e.done));
+      assert.equal((await me()).xp, xp0, 'o XP já ganho fica'); assert.equal((await row('sql-2-06')).dn, undefined); assert.equal((await row('sql-2-07')).lock, 'seq');
+      // refazer a lição 6 e os círculos dela não rende XP em dobro
+      await les(6); const antes = (await me()).xp; await circ(6); assert.equal((await me()).xp, antes, 'sem XP em dobro nos círculos refeitos'); assert.equal((await row('sql-2-07')).lock, 'ec', 'o círculo de explicar da 6 também precisa ser refeito');
     });
+});
+
+test('círculos de desafio: quem estava com 4 atividades por lição (desafio e conserte dentro da lição) não fica preso, não perde nada e não ganha XP em dobro', async () => {
+  await withSeed('sc3', PORT + 888,
+    async j => { const rg = await j('/api/register', { name: 'Antiga SQL', email: 'antiga-sp@teste.com', password: 'segredo1', accept: true }); await j('/api/track', { track: 'sql' }, rg.j.token); return { tk: rg.j.token }; },
+    D => {
+      const u = Object.values(D.users).find(x => x.email === 'antiga-sp@teste.com'), date = '2026-10-01T10:00:00.000Z'; seedLv2(u, 'sql', 3); u.xp = 300; delete u.scm;       // conta antiga: as lições 1 a 3 concluídas com as 4 atividades
+      for (const id of ['sql-2-01', 'sql-2-02', 'sql-2-03']) { (u.des ??= {})[id] = { date, code: 'x' }; (u.fix ??= {})[id] = { date, code: 'x' }; for (const a of 'xrdf') u.xpd[id + ':' + a] = 1; }
+      // a lição 4 estava no meio: executar, ler e desafio feitos, só faltava o conserte o erro
+      (u.ex ??= {})['sql-2-04'] = { date, code: 'x' }; (u.ler ??= {})['sql-2-04'] = { date }; u.des['sql-2-04'] = { date, code: 'x' }; for (const a of 'xrd') u.xpd['sql-2-04:' + a] = 1; u.xp += 15;
+      // a lição 5 estava só no executar
+      u.ex['sql-2-05'] = { date, code: 'x' }; u.xpd['sql-2-05:x'] = 1; u.xp += 5;
+    },
+    async (j, { tk }, { restart, data }) => {
+      const me = async () => (await j('/api/me', null, tk)).j, row = async id => ((await j('/api/lessons', null, tk)).j).find(x => x.id === id), ex = async id => ((await j('/api/extras', null, tk)).j).find(e => e.id === id);
+      let m = await me(); assert.equal(m.xp, 320, 'a migração não mexe no XP');
+      for (const id of ['sql-2-01', 'sql-2-02', 'sql-2-03']) { assert.ok(m.done[id]); const r = await row(id); assert.equal(r.dn, 'xr'); assert.equal(r.lock, null); assert.equal((await ex(id + ':d')).done, true, 'o desafio que já tinha feito continua feito'); assert.equal((await ex(id + ':f')).done, true); }
+      assert.ok(m.done['sql-2-04'], 'a lição 4 só esperava o conserte o erro: agora está concluída (senão ficaria presa numa atividade que não existe mais)');
+      assert.equal((await ex('sql-2-04:d')).done, true); assert.equal((await ex('sql-2-04:f')).done, false, 'o conserte o erro da 4 virou um círculo que ainda falta');
+      assert.equal(m.done['sql-2-05'], undefined, 'a lição 5 só tinha executar: continua pendente (falta ler)'); assert.equal((await row('sql-2-05')).dn, 'x');
+      assert.equal((await row('sql-2-05')).lock, 'sc', 'a lição 5 espera o círculo que ficou depois da 4'); assert.equal((await j('/api/lessons/sql-2-05', null, tk)).status, 409);
+      // refazer o que já estava pago não rende XP de novo; o círculo novo rende uma vez
+      const L1 = lessons.find(x => x.id === 'sql-2-01'), L4 = lessons.find(x => x.id === 'sql-2-04');
+      let r = await j('/api/submit', { id: L1.id, a: 'f', code: L1.sp.f.solution }, tk); assert.equal(r.j.ok, true); assert.equal(r.j.gained, 0, 'o conserte da lição 1 já tinha sido pago na versão antiga'); assert.equal(r.j.xp, 320);
+      r = await j('/api/submit', { id: L4.id, a: 'f', code: L4.sp.f.solution }, tk); assert.equal(r.j.ok, true); assert.equal(r.j.gained, 5, 'o conserte da lição 4 ainda não tinha sido pago'); assert.equal(r.j.xp, 325);
+      assert.equal((await row('sql-2-05')).lock, null, 'com o círculo feito a lição 5 abre');
+      // a migração roda uma vez só: depois de reiniciar o servidor nada muda
+      await restart(); m = await me(); assert.equal(m.xp, 325); assert.ok(m.done['sql-2-04']); assert.equal((await row('sql-2-05')).dn, 'x');
+      const dbx = await data(), ux = Object.values(dbx.users).find(x => x.email === 'antiga-sp@teste.com'); assert.equal(ux.scm, 1);
+    });
+});
+
+test('círculos de desafio: com posições sorteadas de verdade, cada lição só abre quando os círculos que caem depois da lição anterior estão feitos', async () => {
+  await withSeed('sc4', PORT + 889,
+    async j => { const rg = await j('/api/register', { name: 'Paula Sorteio', email: 'sc-sorteio@teste.com', password: 'segredo1', accept: true }); await j('/api/track', { track: 'sql' }, rg.j.token); return { tk: rg.j.token }; },
+    D => { const u = Object.values(D.users).find(x => x.email === 'sc-sorteio@teste.com'); seedLv2(u, 'sql', 0); },
+    async (j, { tk }) => {
+      const row = async id => ((await j('/api/lessons', null, tk)).j).find(x => x.id === id), exs = async () => (await j('/api/extras', null, tk)).j, id2 = n => 'sql-2-' + String(n).padStart(2, '0');
+      const x0 = await exs(); assert.ok(x0.some(e => e.slot !== e.after), 'com a ordem sorteada alguns círculos caem mais adiante');
+      for (let n = 1; n <= 4; n++) {
+        const L = lessons.find(x => x.id === id2(n)); for (const a of (await row(L.id)).ord) { const r = a === 'x' ? await j('/api/submit', { id: L.id, code: L.solution }, tk) : await j('/api/read', { id: L.id, a: readAnswer(L) }, tk); assert.equal(r.j.ok, true, `lição ${n}`); }
+        const todos = await exs(), aqui = todos.filter(e => e.slot === n);
+        for (const e of todos) assert.equal(e.lock, e.slot <= n || e.done ? null : 'seq', `${e.id} (posição ${e.slot}) depois da lição ${n}`);       // abre quando a lição do ponto dele está feita
+        assert.equal((await row(id2(n + 1))).lock, aqui.length ? 'sc' : null, `lição ${n + 1}: ${aqui.length} círculo(s) na posição ${n}`);
+        for (let i = 0; i < aqui.length; i++) { const e = aqui[i], Ls = lessons.find(x => x.id === e.src), r = await j('/api/submit', { id: Ls.id, a: e.a, code: Ls.sp[e.a].solution }, tk); assert.equal(r.j.ok, true, e.id); assert.equal((await row(id2(n + 1))).lock, i === aqui.length - 1 ? null : 'sc'); }
+      }
+    }, { FIXED_ACT_ORDER: '' });
 });
 
 // ---------------- Power BI e DAX: lições de DAX (o aluno escreve medidas e colunas) e de quiz (várias perguntas numa tela) ----------------
