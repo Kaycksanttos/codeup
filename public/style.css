@@ -1516,3 +1516,5 @@ body.neo .hcl li{background:rgba(26,32,64,.07)}
 .muc.k-progresso .muk{background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
 .muc .shc{margin:2px 0 8px}
 @media (max-width:340px){.shc .shn b{font-size:36px}}
+/* círculo bloqueado no mapa: sem cadeado; mostra o próprio ícone (estrela, alvo, projeto...) apagado, e o cinza e o número da lição já dizem que ainda não abriu */
+.tl .ti.lk .rail span.nd>svg.i{opacity:.5}
