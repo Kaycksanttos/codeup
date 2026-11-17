@@ -161,7 +161,9 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Lições 1, 2, 6, 8, 12, 19, 24, 29 e 30 têm perguntas **escritas**; um texto sem sentido não passa e mostra o que falta.
 - [ ] Depois da lição 10 vem o projeto e o checkpoint; a prova final (depois da 30) tem 10 perguntas, duas escritas. Passando, o nível **Intermediário** é liberado.
 - [ ] **Intermediário:** lição 2 (CIDR): `/26` tem `64` endereços e `/28` comporta `14` aparelhos; lição 10 (IDS): 45 falsos em 300 alertas dão `15%`; lição 18 (IDOR): a tabela de pedidos tem `3` pedidos a negar; lição 23 (CVSS): a faixa crítica começa em `9,0`; lição 26 (Base64): `b2xh` decodifica para `ola`; lição 28 (forense): o IP 203.0.113.50 tem `5` pedidos 404; lição 29 (SIEM): só `1` IP dispara a regra de 5 falhas e um sucesso.
-- [ ] As lições 21 e 30 do Intermediário têm uma pergunta **escrita** (ética e escopo); as provas finais têm duas. Passando na prova final do Intermediário, o curso conclui (o Avançado ainda não existe).
+- [ ] As lições 21 e 30 do Intermediário têm uma pergunta **escrita** (ética e escopo); as provas finais têm duas. Passando na prova final do Intermediário, o **Avançado** é liberado.
+- [ ] **Avançado:** lição 4 (risco): SLE de R$ 200.000 × 25% = `50000` e ALE com 1 incidente a cada 2 anos = `25000`; lição 6 (Zero Trust): só `2` pedidos da tabela passam nas três condições; lição 10 (RTO): queda das 14:00 às 18:30 com RTO de 4 h passa `30` minutos; lição 11 (SOC): MTTD `25` e MTTR `75` minutos; lição 18 (rede): o intervalo entre as conexões é de `60` segundos; lição 20 (SOAR): `2700` minutos economizados; lição 28 (red team): 14 de 20 detectadas dão `70%`.
+- [ ] As lições 30 do Avançado e as provas finais têm perguntas **escritas** (ética, responsabilidade compartilhada na nuvem e detecção e resposta). Passando na prova final do Avançado, o curso de Hacker e Cibersegurança é concluído.
 
 **5e. Continuar conectado**
 - [ ] Entre com e-mail e senha, feche o app/aba por completo e abra de novo (também depois de algumas horas/dias): você continua dentro, sem pedir senha.

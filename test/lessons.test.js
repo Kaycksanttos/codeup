@@ -14,9 +14,9 @@ const reqOf = l => REQ[l.type] || REQ.other;
 
 const norm = (r, ordered) => { const v = (r ? r.values : []).map(x => JSON.stringify(x)); return ordered ? v : v.sort(); };
 
-test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Excel, Power BI e DAX, Análise de Dados e Storytelling e Hacker e Cibersegurança (níveis Básico e Intermediário), 30 lições por nível', () => {
+test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Excel, Power BI e DAX, Análise de Dados e Storytelling e Hacker e Cibersegurança (níveis Básico, Intermediário e Avançado), 30 lições por nível', () => {
   assert.deepEqual(TRACKS, ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber']);
-  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 2 });
+  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 3 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ls = lessons.filter(l => l.track === t && l.lv === lv);
     assert.equal(ls.length, 30, `${t} nível ${lv} deveria ter 30 lições`);
@@ -31,13 +31,13 @@ test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Ex
   assert.ok(lessons.filter(l => l.track === 'excel').every(l => l.type === 'excel' && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'powerbi').every(l => (l.type === 'dax' || l.type === 'quiz') && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'dados').every(l => l.type === 'quiz' && l.lv === 1 && l.level === 'Básico'), 'o curso de Análise de Dados é todo de quizzes');
-  assert.ok(lessons.filter(l => l.track === 'ciber').every(l => l.type === 'quiz' && l.lv <= 2 && l.level === ['Básico', 'Intermediário'][l.lv - 1]), 'o curso de Hacker e Cibersegurança é todo de quizzes');
+  assert.ok(lessons.filter(l => l.track === 'ciber').every(l => l.type === 'quiz' && l.lv <= 3 && l.level === ['Básico', 'Intermediário', 'Avançado'][l.lv - 1]), 'o curso de Hacker e Cibersegurança é todo de quizzes');
 });
 
 test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, JavaScript, HTML e CSS, Excel, Power BI, Análise de Dados e Cibersegurança', () => {
-  assert.equal(checkpoints.length, 26);
-  assert.equal(finals.length, 13);
-  assert.equal(tests.length, 39);
+  assert.equal(checkpoints.length, 28);
+  assert.equal(finals.length, 14);
+  assert.equal(tests.length, 42);
   assert.deepEqual(CHANCES, { cp: 2, fin: 3 });
   assert.deepEqual(BACK, { cp: 5, fin: 10 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
@@ -60,7 +60,7 @@ test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova f
 });
 
 test('projetos: 6 por nível (depois das lições 5, 10, 15, 20, 25 e 30), em todos os cursos, com 5 temas cada e sem prova nem chance', () => {
-  assert.equal(projects.length, 78, '18 de Python, 18 de SQL, 12 de Cibersegurança e 6 de JavaScript, de HTML e CSS, de Excel, de Power BI e de Análise de Dados');
+  assert.equal(projects.length, 84, '18 de Python, 18 de SQL, 18 de Cibersegurança e 6 de JavaScript, de HTML e CSS, de Excel, de Power BI e de Análise de Dados');
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ps = projects.filter(p => p.track === t && p.lv === lv);
     assert.deepEqual(ps.map(p => p.after), [5, 10, 15, 20, 25, 30], `${t} nível ${lv}`);
@@ -180,7 +180,7 @@ test('HTML e CSS: todas as atividades passam na conferência de conteúdo (tools
 
 test('Power BI e DAX, Análise de Dados e Cibersegurança: todas as atividades passam na conferência de conteúdo (tools/check-pbi.js)', () => {
   const r = checkPbi();
-  assert.equal(r.n, 156, '3 cursos de um nível + Cibersegurança de dois níveis: 4 × (30 lições + 2 checkpoints + 1 prova final + 6 projetos)');
+  assert.equal(r.n, 195, '3 cursos de um nível + Cibersegurança de três níveis: 5 × (30 lições + 2 checkpoints + 1 prova final + 6 projetos)');
   assert.deepEqual(r.bad, []);
   assert.deepEqual(r.warn, [], 'nenhum aviso de conteúdo');
 });

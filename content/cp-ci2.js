@@ -5,7 +5,7 @@ const { mc, multi, order, match, num, write, tab, info, caesar } = H;
 const { Q } = require('./hp')('ciber', 2);
 
 const strip = ({ explain, example, ...b }) => b;
-const cp = (k, title, task, base, inf, o = {}) => ({ ...strip(base), id: `cp-ci-2-${k * 10}`, cp: true, k, after: k * 10, n: k * 10, xp: 60, title, task, test: true, info: info(inf), ...o });
+const cp = (k, title, task, base, inf, o = {}) => ({ ...strip(base), id: `cp-ci-2-${k * 10}`, cp: true, k, after: k * 10, n: k * 10, xp: 80, title, task, test: true, info: info(inf), ...o });
 const fin = (title, task, base, inf, o = {}) => ({ ...strip(base), id: 'fin-ci-2', fin: true, k: 3, after: 30, n: 30, xp: 0, title, task, test: true, info: info(inf), ...o });
 
 const SERV = tab(['Endereço', 'Porta', 'Programa'], [['0.0.0.0', 443, 'nginx'], ['0.0.0.0', 22, 'sshd'], ['127.0.0.1', 3306, 'mysqld'], ['0.0.0.0', 23, 'telnetd'], ['127.0.0.1', 6379, 'redis']], { title: 'Serviços em escuta' });
