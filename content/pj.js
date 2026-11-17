@@ -3,8 +3,8 @@
 //
 // código (Python e SQL):  code(track, lv, seedPadrão)  ->  pj(título, tarefa, solução, [palavras obrigatórias], [o que é, para que serve, como se faz, retorno esperado], [3 dicas], {seed|prelude|peek})
 // Excel, Power BI e Dados usam os próprios ajudantes (pj-xl.js, pj-pbi.js, pj-da.js) mas devolvem o mesmo formato (veja `base`).
-const LEVELS = ['Básico', 'Intermediário', 'Avançado'];
-const XP = { python: [40, 55, 70], sql: [45, 60, 75], js: [40, 55, 70], html: [40, 55, 70], excel: [40, 55, 70], powerbi: [40, 55, 70], dados: [40, 55, 70], ciber: [40, 55, 70] };   // XP de cada projeto, por nível
+const LEVELS = ['Básico', 'Intermediário', 'Avançado', 'Automações'];
+const XP = { python: [40, 55, 70, 85], sql: [45, 60, 75], js: [40, 55, 70], html: [40, 55, 70], excel: [40, 55, 70], powerbi: [40, 55, 70], dados: [40, 55, 70], ciber: [40, 55, 70] };   // XP de cada projeto, por nível
 const PRE = { python: 'py', sql: 'sql', js: 'js', html: 'html', excel: 'xl', powerbi: 'pbi', dados: 'da', ciber: 'ci' };
 const KEYS = ['oque', 'serve', 'como', 'retorno'];
 

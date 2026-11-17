@@ -124,7 +124,7 @@ test('cadastro: validações, duplicidade e login', async () => {
 test('gabarito não vaza, ordem das lições e correção no servidor', async () => {
   const tk = await reg('bia@t.com');
   const list = (await call('/api/lessons', { token: tk })).j;
-  assert.equal(list.length, lessons.length); assert.equal(list.length, 420);
+  assert.equal(list.length, lessons.length); assert.equal(list.length, 450);
   const py1 = list.filter(l => l.track === 'python' && l.lv === 1).slice(0, 8).map(l => l.lock);
   assert.deepEqual(py1, [null, 'seq', 'seq', 'seq', 'seq', 'seq', 'seq', 'seq'], 'tudo gratuito; só a sequência das lições bloqueia');
   assert.equal((await call('/api/lessons/py-1-02', { token: tk })).status, 409, 'não pode pular lição');
@@ -279,7 +279,7 @@ test('prova final: só libera com as 30 lições; 3 chances; errou as 3 volta 10
 
 test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; errou as 2 volta 5 lições; XP só na 1ª vez', async () => {
   const tk = await reg('cp@teste.com'), C10 = lessons.checkpoints.find(c => c.id === 'cp-py-1-10'), C20 = lessons.checkpoints.find(c => c.id === 'cp-py-1-20'), L1 = lessonsOf('python', 1);
-  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 42, '28 checkpoints + 14 provas finais');
+  let list = (await call('/api/checkpoints', { token: tk })).j; assert.equal(list.length, 45, '30 checkpoints + 15 provas finais');
   assert.ok(list.every(c => !LEAK.some(k => k in c)), 'a lista de provas não entrega gabarito');
   const c1 = list.find(c => c.id === 'cp-py-1-10'); assert.equal(c1.after, 10); assert.equal(c1.chances, 2); assert.equal(c1.left, 2); assert.equal(c1.back, 5); assert.equal(c1.backFrom, 6); assert.equal(c1.lock, 'seq'); assert.equal(c1.fin, false);
   assert.deepEqual(list.filter(c => c.track === 'python' && c.lv === 1).map(c => c.after), [10, 20, 30]);
@@ -330,7 +330,7 @@ test('checkpoints: as lições 11 e 21 só abrem depois de passar; 2 chances; er
   r = (await doTest(tk, C20)).j; assert.equal(r.ok, true); assert.equal(r.gained, C20.xp); assert.deepEqual(onlyCp(r.cps), ['cp-py-1-10', 'cp-py-1-20']);
   assert.equal((await call('/api/lessons/py-1-21', { token: tk })).status, 200, 'checkpoint 2 feito: a lição 21 abre');
   assert.equal((await call('/api/lessons/cp-xx', { token: tk })).status, 404);
-  assert.equal((await call('/api/lessons', { token: tk })).j.length, 420);
+  assert.equal((await call('/api/lessons', { token: tk })).j.length, 450);
 });
 
 test('SQL: numa prova errada o aluno recebe o resultado esperado (nunca a solução) e a mesma regra de chances vale', async () => {
@@ -363,12 +363,12 @@ test('prova: código que dá erro (sintaxe, tabela inexistente) também gasta um
   assert.equal(r.ok, false); assert.equal(r.left, 1, 'erro de sintaxe no Python gasta a 1ª chance');
 });
 
-test('curso completo: os 3 níveis aprovados concluem o curso (sem certificado) e a conta pode ser excluída', async () => {
+test('curso completo: os 4 níveis aprovados (o de Python tem as Automações) concluem o curso (sem certificado) e a conta pode ser excluída', async () => {
   const tk = await premiumUser('cert@t.com', 'Carol');
-  for (const lv of [1, 2, 3]) {
+  for (const lv of [1, 2, 3, 4]) {
     await doLevelLessons(tk, 'python', lv);
     const r = (await doFinal(tk, 'python', lv)).j;
-    assert.equal(r.ok, true, 'nível ' + lv); assert.ok(r.passed['python-' + lv]); assert.equal(r.trackComplete, lv === 3 ? true : undefined);
+    assert.equal(r.ok, true, 'nível ' + lv); assert.ok(r.passed['python-' + lv]); assert.equal(r.trackComplete, lv === 4 ? true : undefined);
   }
   const me = (await call('/api/me', { token: tk })).j; assert.equal(me.certs, undefined, 'não existe mais certificado no perfil');
   assert.equal((await call('/api/certificate', { token: tk, body: { track: 'python', name: 'Carolina Silva' } })).status, 404, 'a rota do certificado foi removida');
@@ -670,7 +670,7 @@ test('admin: visão geral, lista com busca/filtro/ordem/página e detalhe do alu
   assert.equal((await A('users?page=9999')).j.page, (await A('users')).j.pages, 'página fora do limite volta para a última');
   assert.equal((await A('users?sort=__proto__&dir=asc')).status, 200, 'ordenação inválida não quebra');
   const x = (await A('users?q=xss-admin')).j.rows[0]; assert.equal(x.name, '<img src=x onerror=alert(1)>', 'o dado vem cru: a tela é quem escapa');
-  const d = (await A('users/' + x.id)).j; assert.equal(d.email, 'xss-admin@t.com'); assert.equal(d.byTrack.python.levels.length, 3); assert.equal(d.byTrack.python.levels[0].total, 30);
+  const d = (await A('users/' + x.id)).j; assert.equal(d.email, 'xss-admin@t.com'); assert.equal(d.byTrack.python.levels.length, 4); assert.equal(d.byTrack.python.levels[0].total, 30);
   assert.ok(!('pass' in d), 'detalhe sem senha'); assert.equal((await A('users/nao-existe')).status, 404); assert.equal((await A('users/__proto__')).status, 404);
   const ui = await (await fetch(U + '/admin.js')).text(); assert.match(ui, /const esc = /, 'a tela escapa texto dos usuários');
   assert.ok(!/\$\{\s*(u|r|c|x)\.(name|email|note)\s*\}/.test(ui), 'nenhum nome/e-mail/nota entra no HTML sem esc()');
@@ -703,11 +703,11 @@ test('admin: liberar curso tira os bloqueios daquele curso (inclusive a prova), 
   assert.equal((await A('users?status=unlocked&q=liberar')).j.total, 0);
 });
 
-test('admin: com o curso liberado dá para fazer as 3 provas e o curso conclui (não existe mais certificado no painel)', async () => {
+test('admin: com o curso liberado dá para fazer as 4 provas finais e o curso conclui (não existe mais certificado no painel)', async () => {
   const tk = await reg('certadm@t.com', 'Cris Concluida'), id = await uidOf('certadm@t.com');
   await act(id, { action: 'unlock', tracks: ['python'], on: true });
-  let r; for (const lv of [1, 2, 3]) { r = (await doFinal(tk, 'python', lv)).j; assert.equal(r.ok, true, 'nível ' + lv); }
-  assert.equal(r.trackComplete, true, 'as 3 provas finais concluem o curso');
+  let r; for (const lv of [1, 2, 3, 4]) { r = (await doFinal(tk, 'python', lv)).j; assert.equal(r.ok, true, 'nível ' + lv); }
+  assert.equal(r.trackComplete, true, 'as 4 provas finais concluem o curso');
   assert.equal((await A('certs?q=cris')).status, 404, 'a lista de certificados do painel foi removida');
   const ov = (await A('overview')).j; assert.equal(ov.totals.certs, undefined);
 });
@@ -913,7 +913,7 @@ test('admin: aprendizado, sistema e auditoria (registra quem fez o quê, sem gua
   const tk = await reg('trava@t.com', 'Tito Trava');
   await call('/api/submit', { token: tk, body: { id: 'py-1-01', code: 'print("errado")', out: 'x' } });
   const l = (await A('learning')).j; assert.ok(l.stuck.some(r => r.id === 'py-1-01' && r.stuck >= 1), 'lição com tentativa sem conclusão aparece como "travada"');
-  assert.equal(l.exams.length, 14); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
+  assert.equal(l.exams.length, 15); assert.ok(l.exams.every(e => e.passRate === null || (e.passRate >= 0 && e.passRate <= 100)));
   const sy = (await A('system')).j; assert.equal(sy.db, 'arquivo'); assert.equal(typeof sy.pyServer, 'boolean'); assert.equal(sy.keyFromEnv, true); assert.ok(sy.users >= 1 && sy.memMB > 0 && sy.uptime >= 0);
   assert.ok(!JSON.stringify(sy).includes('chave-admin'), 'a chave nunca aparece no painel');
   const au = (await A('audit?limit=300')).j.rows, acts = new Set(au.map(r => r.action));
@@ -1436,7 +1436,7 @@ test('Como funciona: 1ª parte do círculo de toda lição; o servidor só guard
   assert.equal((await doLesson(tk2, l1)).j.ok, true); const done2 = await rowOfL(tk2, l1); assert.equal(done2.cd, 1, 'lição concluída conta como Como funciona visto');
   assert.equal((await rowOfL(tk2, l2)).cd, undefined, 'a lição seguinte ainda não foi vista');
   // provas e projetos não têm essa parte
-  const ls = (await call('/api/lessons', { token: tk })).j; assert.ok(ls.every(x => x.cf === 1), 'as 420 lições têm a parte Como funciona'); assert.equal(ls.length, 420);
+  const ls = (await call('/api/lessons', { token: tk })).j; assert.ok(ls.every(x => x.cf === 1), 'as 450 lições têm a parte Como funciona'); assert.equal(ls.length, 450);
 });
 
 test('app: antes da teoria vem a parte "Como funciona" (para que serve + exemplo animado), em 3 etapas clicáveis', () => {
@@ -1551,7 +1551,7 @@ test('acabamento: abertura com a marca, falha de carregamento, sessão expirada,
   // Desafios: título igual ao da aba e regras em linhas com ícone
   assert.match(ui, /<h2 class=ttl>Desafios<\/h2>/); assert.match(ui, /class="panel rules2"/); assert.ok(!ui.includes('<h2 class=ttl>Provas e certificados</h2>'));
   // prática: barra de ajudas com ícone e texto em todos os botões (antes o "limpar" era só um ícone sem nome)
-  assert.match(ui, /class=acts role=toolbar/); for (const n of ['Dica', 'Solução', 'Teoria']) assert.ok(ui.includes(`<span>${n}</span>`), 'botão ' + n); assert.ok(ui.includes("<span>${l.sp == 'f' ? 'Original' : 'Limpar'}</span>"), 'botão Limpar (no conserte o erro volta ao código original)'); assert.ok(ui.includes("<span>${l.type == 'html' ? 'Página' : 'Dados'}</span>"), 'botão Dados (Página no HTML e CSS)');
+  assert.match(ui, /class=acts role=toolbar/); for (const n of ['Dica', 'Solução', 'Teoria']) assert.ok(ui.includes(`<span>${n}</span>`), 'botão ' + n); assert.ok(ui.includes("<span>${l.sp == 'f' ? 'Original' : 'Limpar'}</span>"), 'botão Limpar (no conserte o erro volta ao código original)'); assert.ok(ui.includes("<span>${l.type == 'html' ? 'Página' : labFs(l) ? 'Arquivos' : 'Dados'}</span>"), 'botão Dados (Página no HTML e CSS, Arquivos nas Automações)');
   assert.match(css, /\.acts\{display:grid;grid-auto-flow:column/);
   // o logo da Python (.tg) não pode ser sobrescrito pela grade de títulos do Perfil (.tgr): era isso que cortava o "py"
   assert.ok(!/(^|\n)\.tg\{display:grid/.test(css), '.tg do logo não vira grade'); assert.match(css, /\.tgr\{display:grid/); assert.match(ui, /<div class=tgr>/);
@@ -1984,9 +1984,9 @@ test('Excel: arquivos da planilha no navegador (motor, tela, logo) e carregados 
 test('ler o código: toda lição tem a sua atividade e a resposta certa é provada rodando o código (npm run check:ler)', async () => {
   const lerCheck = require('../tools/check-ler'), st = await lerCheck.main();
   assert.deepEqual(lerCheck.bad, [], 'atividades de ler com problema:\n' + lerCheck.bad.join('\n'));
-  assert.equal(st.items, 270); assert.ok(st.proved >= 200, 'quase todas precisam de prova por execução: ' + st.proved);
+  assert.equal(st.items, 300); assert.ok(st.proved >= 200, 'quase todas precisam de prova por execução: ' + st.proved);
   assert.equal(lessons.filter(l => !l.read).length, 0, 'toda lição (Python, SQL, JavaScript, Excel e Power BI) tem a 2ª atividade');
-  assert.equal(lessons.filter(l => l.type === 'python').length, 90); assert.equal(lessons.filter(l => l.type === 'sql').length, 90); assert.equal(lessons.filter(l => l.type === 'excel').length, 30); assert.equal(lessons.filter(l => l.type === 'js').length, 30);
+  assert.equal(lessons.filter(l => l.type === 'python').length, 120); assert.equal(lessons.filter(l => l.type === 'sql').length, 90); assert.equal(lessons.filter(l => l.type === 'excel').length, 30); assert.equal(lessons.filter(l => l.type === 'js').length, 30);
   assert.equal(lessons.filter(l => l.track === 'powerbi').length, 30, 'o Power BI e DAX tem 30 lições (dax ou quiz), conferidas em npm run check:pbi');
   assert.equal(lessons.filter(l => l.track === 'ciber').length, 90, 'o Hacker e Cibersegurança tem 90 lições de quiz (Básico, Intermediário e Avançado), conferidas em npm run check:pbi');
   const kinds = {}; for (const l of lessons) kinds[l.read.k] = (kinds[l.read.k] || 0) + 1; assert.ok(kinds.mc > 100 && kinds.type >= 10, 'mistura de escolher e digitar: ' + JSON.stringify(kinds));
@@ -2110,8 +2110,8 @@ test('explicar o código: os 120 itens de Python e SQL (Intermediário e Avança
   const com = lessons.filter(l => l.expl);
   assert.equal(com.length, 120, '60 de Python (níveis 2 e 3) + 60 de SQL (níveis 2 e 3)');
   for (const l of lessons) {
-    const deve = (l.type === 'python' || l.type === 'sql') && l.lv >= 2;
-    assert.equal(!!l.expl, deve, `${l.id}: ${deve ? 'precisa do item de explicar' : 'o Básico e o Excel não têm'}`);
+    const deve = (l.type === 'python' || l.type === 'sql') && l.lv >= 2 && l.lv <= 3;
+    assert.equal(!!l.expl, deve, `${l.id}: ${deve ? 'precisa do item de explicar' : 'o Básico, as Automações e o Excel não têm'}`);
   }
   for (const t of [...lessons.checkpoints, ...lessons.finals]) assert.ok(!t.expl, t.id + ': prova não tem atividade de explicar');
   for (const l of com) { assert.ok(l.expl.groups.length >= 2 && l.expl.groups.length <= 3, l.id); assert.ok(l.expl.groups.every(g => g.stems.length >= 3 && g.label.length >= 8), l.id + ': pistas'); }
@@ -2748,10 +2748,10 @@ test('app nas lojas: assetlinks.json do Android só existe configurado e válido
 
 test('guias públicos: texto de verdade para o Google (sem login, sem gabarito), sitemap e robots; anúncios desligados não aparecem', async () => {
   const guides = require('../guides').build(lessons, lessons.projects, lessons.LEVEL_NAMES);
-  assert.equal(guides.length, 84, '420 lições ÷ 5 = 84 guias');
-  assert.equal(new Set(guides.map(g => g.slug)).size, 84);
+  assert.equal(guides.length, 90, '450 lições ÷ 5 = 90 guias');
+  assert.equal(new Set(guides.map(g => g.slug)).size, 90);
   const hub = await fetch(U + '/guias'); assert.equal(hub.status, 200); assert.match(hub.headers.get('content-type'), /text\/html/);
-  const hubHtml = await hub.text(); assert.match(hubHtml, /<h1>Guias gratuitos/); assert.equal((hubHtml.match(/href="\/guias\/[a-z0-9-]+"/g) || []).length, 84, 'a lista aponta para os 84 guias');
+  const hubHtml = await hub.text(); assert.match(hubHtml, /<h1>Guias gratuitos/); assert.equal((hubHtml.match(/href="\/guias\/[a-z0-9-]+"/g) || []).length, 90, 'a lista aponta para os 90 guias');
   assert.ok(!/adsbygoogle/.test(hubHtml), 'a lista é navegação: nunca tem anúncio');
   const words = h => h.replace(/<style>[\s\S]*?<\/style>/g, '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
   const seen = new Set();
@@ -2769,7 +2769,7 @@ test('guias públicos: texto de verdade para o Google (sem login, sem gabarito),
     for (const t of lessons.tests.filter(t => t.track === g.track && t.lv === g.lv)) assert.ok(!hid(t.solution), `${g.slug}: vazou a solução da prova ${t.id}`);
   }
   assert.equal((await fetch(U + '/guias/nao-existe')).status, 404);
-  const sm = await (await fetch(U + '/sitemap.xml')).text(); assert.match(sm, /<urlset/); assert.equal((sm.match(/<loc>/g) || []).length, 84 + 4, 'início + lista + 84 guias + termos + privacidade');
+  const sm = await (await fetch(U + '/sitemap.xml')).text(); assert.match(sm, /<urlset/); assert.equal((sm.match(/<loc>/g) || []).length, 90 + 4, 'início + lista + 90 guias + termos + privacidade');
   const rb = await (await fetch(U + '/robots.txt')).text(); assert.match(rb, /Sitemap: http:\/\/localhost:\d+\/sitemap\.xml/); assert.match(rb, /Disallow: \/api\//);
   assert.match(await (await fetch(U + '/')).text(), /<noscript>[\s\S]*href="\/guias"/, 'a página inicial aponta para os guias mesmo sem JavaScript');
   const sw = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8'); assert.match(sw, /'\/guias'/); assert.match(sw, /startsWith\('\/guias\/'\)/, 'o service worker não mexe nas páginas dos guias');
@@ -2778,7 +2778,7 @@ test('guias públicos: texto de verdade para o Google (sem login, sem gabarito),
 
 test('projetos: um depois de cada 5 lições, obrigatórios, sem chances nem prova; dicas e solução à mão; XP e 10 diamantes só na 1ª vez; liberam as próximas lições', async () => {
   const tk = await reg('proj1@t.com', 'Priscila Projeto'), P5 = pjOf('python', 1, 5), P10 = pjOf('python', 1, 10), L = lessonsOf('python', 1);
-  const list = (await call('/api/projects', { token: tk })).j; assert.equal(list.length, 84);
+  const list = (await call('/api/projects', { token: tk })).j; assert.equal(list.length, 90);
   assert.ok(list.every(p => p.proj === true && p.id.startsWith('pj-') && [5, 10, 15, 20, 25, 30].includes(p.after) && p.xp > 0 && !LEAK.some(k => k in p)), 'a lista não entrega gabarito');
   assert.equal(list.find(p => p.id === P5.id).lock, 'seq', 'o projeto só abre depois da lição dele');
   assert.equal((await call('/api/lessons/' + P5.id, { token: tk })).status, 409); assert.equal((await doProj(tk, P5)).status, 409);

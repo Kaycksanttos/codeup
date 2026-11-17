@@ -7,9 +7,10 @@
 // Sem dica e sem ver a solução (a solução nunca vai para o navegador). Total: 2 cursos x 3 níveis x (2 checkpoints + 1 final) = 18 tarefas.
 // As regras (chances e quantas lições voltam) ficam em lessons.js. Para editar: mude aqui, rode `npm run build:content` e `npm test`.
 const { LOJA, RH, CLI, VM } = require('./seeds');
+const { boot, PEEK } = require('./lab');            // Automações (Python): o computador de treino, com os arquivos de cada prova
 
-const XP = { python: [60, 80, 100], sql: [70, 90, 110] };            // XP de cada checkpoint (a prova final dá o bônus de 50 x nível, no servidor)
-const LEVELS = ['Básico', 'Intermediário', 'Avançado'];
+const XP = { python: [60, 80, 100, 120], sql: [70, 90, 110] };            // XP de cada checkpoint (a prova final dá o bônus de 50 x nível, no servidor)
+const LEVELS = ['Básico', 'Intermediário', 'Avançado', 'Automações'];
 
 // cp(título, tarefa, solução, [palavras obrigatórias], [o que é, para que serve, como se faz, retorno esperado], {seed|prelude|peek})
 // fin(...) tem os mesmos parâmetros e é a prova final do nível (depois da lição 30)
@@ -208,6 +209,98 @@ const out = [];
         `Crie a coluna total, agrupe por categoria com groupby e agg (soma e contagem), ordene com sort_values, percorra com iterrows() e mostre com f-string. Para o mês, use groupby("mes") e idxmax().`,
         `Quatro linhas: as três categorias, da maior para a menor receita, e embaixo o melhor mês.`],
       { prelude: DF, peek: 'print(df)' })
+  );
+}
+
+// ---------------------------------------------------------------- Python automações (computador de treino: arquivos, relógio e internet de mentira; veja content/lab.js)
+{
+  const P = factory('python', 4, null);
+  const R = String.raw;
+  out.push(
+    P.cp('Checkpoint: resumo das vendas dos arquivos CSV',
+      'Na pasta entrada há arquivos CSV de vendas (produto,valor) e também um notas.txt, que deve ser ignorado. Use Path para pegar só os .csv, em ordem alfabética (glob e sorted). Leia cada um com csv.DictReader e some a coluna valor (converta com int). Crie a pasta saida e grave em saida/resumo.txt uma linha por arquivo no formato nome: total (o nome sem a extensão, use stem) e, na última linha, Total geral: com a soma de todos. Por fim, leia o resumo.txt e imprima o conteúdo.',
+      R`import csv
+from pathlib import Path
+linhas = []
+geral = 0
+for arq in sorted(Path('entrada').glob('*.csv')):
+    total = 0
+    with open(arq, newline='') as f:
+        for l in csv.DictReader(f):
+            total += int(l['valor'])
+    linhas.append(f'{arq.stem}: {total}')
+    geral += total
+linhas.append(f'Total geral: {geral}')
+Path('saida').mkdir(exist_ok=True)
+Path('saida/resumo.txt').write_text('\n'.join(linhas) + '\n')
+print(Path('saida/resumo.txt').read_text())`,
+      ['Path(', 'glob(', 'DictReader', 'mkdir(', 'write'],
+      [`Um programa que automatiza uma tarefa de escritório: lê vários arquivos CSV, soma os valores e grava um relatório. Reúne as lições 1 a 10: ler e escrever arquivos, Path, listar com glob, criar pastas e CSV.`,
+        `É o robô que substitui o trabalho manual de abrir cada planilha, somar na calculadora e digitar o resultado. Rodou uma vez, deu o relatório; rodou de novo amanhã, dá o relatório novo.`,
+        `Use sorted(Path('entrada').glob('*.csv')) para pegar os arquivos. Dentro do for, abra cada um e some com csv.DictReader. Guarde as linhas numa lista, crie a pasta com Path('saida').mkdir(exist_ok=True) e grave com write_text. Depois leia com read_text e imprima.`,
+        `Três linhas: o total de vendas_fev, o total de vendas_jan e, embaixo, Total geral: (a soma dos dois).`],
+      { prelude: boot({ files: { 'entrada/vendas_jan.csv': 'produto,valor\nmouse,80\nteclado,150\nmouse,80\n', 'entrada/vendas_fev.csv': 'produto,valor\nmonitor,900\ncabo,20\n', 'entrada/notas.txt': 'lembrar de conferir os totais\n' } }), peek: PEEK }),
+    P.cp('Checkpoint: faxina de arquivos velhos',
+      'O arquivo config.json diz qual pasta limpar (pasta), a partir de quantos dias um arquivo é considerado velho (dias) e o nome do zip de saída (zip). Leia a configuração com json.load. Percorra os arquivos da pasta em ordem alfabética e calcule a idade de cada um em dias inteiros: int((time.time() - arq.stat().st_mtime) / 86400). Se a idade for MAIOR que o limite, imprima velho: nome (N dias), coloque o arquivo dentro do zip (use arcname=arq.name) e apague o arquivo da pasta. No final imprima Zip tem: com a lista de nomes do zip (namelist) e Sobraram: com a lista dos nomes que ficaram na pasta, em ordem alfabética.',
+      R`import json, time, zipfile
+from pathlib import Path
+with open('config.json') as f:
+    cfg = json.load(f)
+pasta = Path(cfg['pasta'])
+with zipfile.ZipFile(cfg['zip'], 'w') as z:
+    for arq in sorted(pasta.iterdir()):
+        idade = int((time.time() - arq.stat().st_mtime) / 86400)
+        if idade > cfg['dias']:
+            print(f'velho: {arq.name} ({idade} dias)')
+            z.write(arq, arcname=arq.name)
+            arq.unlink()
+with zipfile.ZipFile(cfg['zip']) as z:
+    print('Zip tem:', z.namelist())
+print('Sobraram:', sorted(p.name for p in pasta.iterdir()))`,
+      ['json.load', 'zipfile', 'st_mtime', 'unlink(', 'namelist('],
+      [`Um programa de limpeza que lê uma configuração (JSON), descobre quais arquivos estão velhos, guarda esses arquivos num zip e apaga os originais. Usa o que você viu nas lições 11 a 20: JSON, Path, idade do arquivo, datas, zip e apagar arquivos.`,
+        `Limpezas e backups automáticos poupam espaço no disco e tempo da equipe. E como o limite de dias fica num arquivo de configuração, dá para mudar o comportamento sem mexer no código.`,
+        `Leia o config.json com json.load. Dentro de um with zipfile.ZipFile(cfg['zip'], 'w'), percorra sorted(pasta.iterdir()), calcule a idade e, se passar do limite, imprima, grave com z.write(arq, arcname=arq.name) e apague com arq.unlink(). Depois abra o zip para ler (namelist) e liste o que sobrou.`,
+        `Três linhas velho: (antigo.txt, foto.jpg e relatorio.pdf), depois Zip tem: com os três nomes e Sobraram: com limite.txt e nota.txt. O limite.txt tem exatamente 30 dias, e 30 não é maior que 30.`],
+      { prelude: boot({ files: { 'config.json': '{"pasta": "downloads", "dias": 30, "zip": "velhos.zip"}\n', 'downloads/foto.jpg': 'fotofotofoto', 'downloads/nota.txt': 'comprar pao', 'downloads/antigo.txt': 'texto antigo', 'downloads/relatorio.pdf': 'relatorio de fevereiro', 'downloads/limite.txt': 'no limite' }, dias: { 'downloads/foto.jpg': 45, 'downloads/nota.txt': 3, 'downloads/antigo.txt': 90, 'downloads/relatorio.pdf': 31, 'downloads/limite.txt': 30 } }), peek: PEEK }),
+    P.fin('Prova final: o robô de relatório de vendas',
+      'Monte o robô completo. 1) Configure o logging com basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout). 2) Baixe os pedidos da API https://api.exemplo.com/pedidos com requests.get(url, params={"pagina": n}), começando na página 1 e seguindo o campo proxima até ele ser None; cada resposta (.json()) tem itens (lista de pedidos com cliente e valor) e proxima. A cada página, registre com logging.info Pagina N: X pedidos. 3) Some o valor por cliente. 4) Grave em relatorio.txt uma linha por cliente, em ordem alfabética, no formato cliente: total e, na última, Total: com a soma de tudo. 5) Envie o relatório por e-mail: EmailMessage de robo@exemplo.com para gerente@exemplo.com, assunto Relatorio de vendas e o texto do arquivo como corpo; conecte em smtplib.SMTP("smtp.exemplo.com", 587), faça starttls() e login com o e-mail e a senha da variável de ambiente SENHA_ROBO. 6) Registre com logging.info Email enviado. 7) Por fim imprima o assunto e o corpo da última mensagem de smtplib.caixa.',
+      R`import logging, os, sys, smtplib, requests
+from email.message import EmailMessage
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s', stream=sys.stdout)
+url = 'https://api.exemplo.com/pedidos'
+totais = {}
+pagina = 1
+while pagina:
+    dados = requests.get(url, params={'pagina': pagina}).json()
+    logging.info(f'Pagina {pagina}: {len(dados["itens"])} pedidos')
+    for p in dados['itens']:
+        totais[p['cliente']] = totais.get(p['cliente'], 0) + p['valor']
+    pagina = dados['proxima']
+linhas = [f'{c}: {totais[c]}' for c in sorted(totais)]
+linhas.append(f'Total: {sum(totais.values())}')
+texto = '\n'.join(linhas) + '\n'
+with open('relatorio.txt', 'w') as f:
+    f.write(texto)
+msg = EmailMessage()
+msg['From'] = 'robo@exemplo.com'
+msg['To'] = 'gerente@exemplo.com'
+msg['Subject'] = 'Relatorio de vendas'
+msg.set_content(texto)
+with smtplib.SMTP('smtp.exemplo.com', 587) as s:
+    s.starttls()
+    s.login('robo@exemplo.com', os.environ['SENHA_ROBO'])
+    s.send_message(msg)
+logging.info('Email enviado')
+ultimo = smtplib.caixa[-1]
+print(ultimo['Subject'])
+print(ultimo.get_content())`,
+      ['logging.basicConfig', 'requests.get(', 'smtplib.SMTP', 'starttls(', 'login(', 'send_message(', 'EmailMessage'],
+      [`É a PROVA FINAL do nível Automações: um robô completo que busca dados na internet (API), soma, grava um relatório, envia por e-mail e deixa um diário do que fez. Junta tudo o que você aprendeu nas lições 1 a 30.`,
+        `É assim que se automatiza uma rotina inteira: coletar, calcular, registrar e avisar, sem ninguém apertar botão. Passando aqui, você conclui o nível Automações e já consegue montar robôs de verdade (no seu computador, é só trocar o servidor de treino pelo real).`,
+        `Siga a ordem dos passos: logging.basicConfig; um while pagina: com requests.get(url, params={"pagina": pagina}).json(); um dicionário com get() para somar por cliente; write no relatorio.txt; EmailMessage com From, To, Subject e set_content; SMTP com starttls, login e send_message; e no fim imprima smtplib.caixa[-1].`,
+        `Primeiro as 3 linhas do diário (INFO: Pagina 1..., Pagina 2..., Email enviado) e, depois, o assunto e o relatório do e-mail (um cliente por linha, mais o Total).`],
+      { prelude: boot({ rotas: R`{'https://api.exemplo.com/pedidos?pagina=1': {'itens': [{'id': 1, 'cliente': 'caio', 'valor': 250}, {'id': 2, 'cliente': 'ana', 'valor': 100}], 'proxima': 2}, 'https://api.exemplo.com/pedidos?pagina=2': {'itens': [{'id': 3, 'cliente': 'ana', 'valor': 50}, {'id': 4, 'cliente': 'davi', 'valor': 300}], 'proxima': None}}`, env: { SENHA_ROBO: 'senha123' }, contas: { 'robo@exemplo.com': 'senha123' } }), peek: PEEK })
   );
 }
 

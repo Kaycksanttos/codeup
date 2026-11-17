@@ -40,9 +40,9 @@ async function sqlPart() {
 function pyPart() {
   const file = path.join(root, 'content', 'tente-py.js');
   if (!fs.existsSync(file)) { console.log('Python: content/tente-py.js ainda não existe'); return; }
-  const T = require(file);
+  const T = { ...require(file), ...require('../content/tente-py4') };
   let n = 0;
-  for (const f of ['py1', 'py2', 'py3']) for (const x of require('../content/' + f).lessons) {
+  for (const f of ['py1', 'py2', 'py3', 'py4']) for (const x of require('../content/' + f).lessons) {
     if (!x.example) continue;
     const t = T[x.id];
     if (!t) { fail(x.id, 'sem sugestão em tente-py.js'); continue; }

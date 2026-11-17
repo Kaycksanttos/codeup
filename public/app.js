@@ -134,7 +134,7 @@ const winStage = (h, text, base = 'win', big = false) => {
   return stage(h, text, 'good', '', base == 'cp' ? 'cp' : 'win');
 };
 const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${['python', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber'].includes(t) ? t : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo do curso (Python, SQL, Excel, Power BI ou Análise de Dados)
-const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
+const bars = n => `<span class="lb${n > 3 ? ' l4' : ''}">${[1, 2, 3, 4].slice(0, Math.max(3, n)).map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
 // destaque de sintaxe simples (só para exemplos e soluções exibidos)
 const PY_KW = 'def return if elif else for while in import from as class try except finally raise with yield lambda and or not is pass break continue nonlocal global None True False'.split(' ');
@@ -598,7 +598,7 @@ const ACT_BY = { html: { x: ['Montar a página', 'montar a página', 'Hora de es
 const actNm = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[0] || ACT_NM[a], actSh = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[1] || ACT_SH[a];
 const actTag = (l, a) => { const m = rowOf(l.id); return m && (m.rd || m.cf) ? `Atividade ${actPos(m, a)} de ${actOrd(m).length} · ${actNm(l, a)}` : actNm(l, a); };
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
-const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling', ciber: 'Hacker e Cibersegurança' };
+const LV = ['Básico', 'Intermediário', 'Avançado', 'Automações'], TN = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling', ciber: 'Hacker e Cibersegurança' };
 const COURSES = ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber'];                                   // ordem dos cursos na tela Cursos
 const courseOn = t => !S.cfg || !S.cfg.courses || S.cfg.courses[t] !== false;   // o dono pode desativar cursos no painel (Ajustes → Cursos)
 const ACTIVE = () => COURSES.filter(courseOn);
@@ -662,7 +662,7 @@ const pickTrack = studyTrack;
 
 // ---------- tela Cursos: lista de cursos com busca e categorias ----------
 const CRS = {
-  python: { d: 'Da lógica de programação à análise de dados com Pandas.', c: 'Programação' },
+  python: { d: 'Da lógica de programação à análise de dados com Pandas, e do básico às automações de arquivos, e-mails e internet.', c: 'Programação' },
   sql: { d: 'Do primeiro SELECT às funções de janela e CTEs.', c: 'Dados' },
   js: { d: 'Variáveis, decisões, laços, funções, arrays e objetos: a linguagem que dá vida aos sites.', c: 'Programação' },
   html: { d: 'Monte páginas com HTML e dê estilo com CSS: textos, imagens, cores, caixas e layouts.', c: 'Programação' },
@@ -685,7 +685,7 @@ function courseRow(t) {
   return `<div class="cr ${t}${cur ? ' cur' : ''}" data-c="${c.c}" data-q="${esc(cnorm(TN[t] + ' ' + c.d + ' ' + c.c))}" onclick="studyTrack('${t}')" onkeydown="if(event.key=='Enter')studyTrack('${t}')" role=button tabindex=0 aria-label="${TN[t]}: ${p}% concluído">
     <span class=crisl>${island()}${tg(t, 84)}</span>
     <div class=crb><div class=crt1><b>${TN[t]}${cur ? ' <span class=badge>Atual</span>' : ''}</b><span class=crx>${ic('crown', 15)} ${nf(xpGot(t))}/${nf(xpTotal(t))} XP</span></div><small class=crd>${c.d}</small>
-      <div class=crtg><span><i class=dg style="--d:#34d399"></i>${k > 1 ? 'Básico ao Avançado' : 'Básico'}</span><span><i class=dg style="--d:${CATC[c.c] || '#38bdf8'}"></i>${c.c}</span><span>${ic('layers', 13)} ${n} lições</span></div>
+      <div class=crtg><span><i class=dg style="--d:#34d399"></i>${k > 3 ? 'Básico às Automações' : k > 1 ? 'Básico ao Avançado' : 'Básico'}</span><span><i class=dg style="--d:${CATC[c.c] || '#38bdf8'}"></i>${c.c}</span><span>${ic('layers', 13)} ${n} lições</span></div>
       <div class=crf><div class=crbar><i style="width:${p}%"></i></div><b class=crp>${p}%</b><span class=crgo>${ic('arrow', 20)}</span></div></div></div>`;
 }
 const CATC = { Programação: '#a78bfa', Dados: '#38bdf8', Produtividade: '#fb923c', Segurança: '#fb7185', Outros: '#f472b6' };
@@ -749,7 +749,7 @@ function render() {
     const trk = `<div class="card cont tkc"${nx ? ` onclick="${nx.cp ? `openStep('${nx.cp.id}')` : `openL('${nx.id}')`}"` : ''}>${tg(T, 58)}<div class=bd><b>${TN[T]}</b><small>Nível ${lv} · ${LV[lv - 1]}</small><div class=tkb><i style="width:${Math.round(nd / 30 * 100)}%"></i></div></div><div class=tkn><b>${nd}</b>/30</div>${nx ? `<span class=go>${ic('arrow', 20)}</span>` : ''}</div>`;
     h = `${head}${an}${vb}
     ${document.body.classList.contains('wild') ? trk : cont || `<div class=panel>${prog}</div>`}
-    <div class=tabs>${[1, 2, 3].map(x => x > lvs(T).length ? `<button class=soon onclick="toast('${LV[x - 1]} de ${TN[T]} chega em breve.')">${ic('lock', 15)}<span>${LV[x - 1]}</span><small>em breve</small></button>` : `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
+    <div class=tabs>${Array.from({ length: Math.max(3, lvs(T).length) }, (_, i) => i + 1).map(x => x > lvs(T).length ? `<button class=soon onclick="toast('${LV[x - 1]} de ${TN[T]} chega em breve.')">${ic('lock', 15)}<span>${LV[x - 1]}</span><small>em breve</small></button>` : `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
     <div class="unit slim"><span class=uflag>${ic('flag', 18)}</span><div><small>NÍVEL ${lv}</small><b>${LV[lv - 1]}</b></div><div class=uc>${nd}/30</div></div>
     ${!open ? `<div class="note">${ic('lock', 18)}<div><b>Nível bloqueado</b><br>Passe na prova final de ${LV[lv - 2]} (30 lições + a prova) para entrar aqui.</div></div>` : ''}
     <div class=tl style="--n:${NR};--row:${MAP.row}px;--top:${MAP.top}px">${scene}${pathSvg}${rows.map(rowHtml).join('')}
@@ -1449,6 +1449,7 @@ const exResult = l => {
 const labOn = l => !!l && !!l.example && (l.type == 'sql' || l.type == 'python' || l.type == 'js' || l.type == 'html') && !isTest(l);
 const labOrig = l => l.type == 'sql' ? niceSql(l.example, 'sql') : String(l.example);
 const labDf = l => l.type == 'python' && /\bdf\s*=/.test(l.prelude || '');
+const labFs = l => l.type == 'python' && /_lab_boot\(/.test(l.prelude || '');   // Automações: o computador de treino (public/lab.py) com os arquivos da lição
 const labTbl = (cols, vals, total) => { const rest = total - vals.length; return table({ columns: cols, values: vals }) + `<p class=exm>${rest > 0 ? `… e mais ${rest} ${rest == 1 ? 'linha' : 'linhas'} (${total} no total)` : `${total} ${total == 1 ? 'linha' : 'linhas'}`}</p>`; };
 const labFirst = l => {
   const o = l.exampleOut;
@@ -1460,9 +1461,10 @@ function labHtml(l) {
   const sql = l.type == 'sql', t = l.tente, f = labFirst(l), txt = labOrig(l), parts = sql && typeof sqlParts == 'function' ? sqlParts(txt).slice(0, 7) : [];
   const names = labDf(l) ? ['df', ...(/\bmetas\s*=/.test(l.prelude) ? ['metas'] : [])].map(n => `<code>${n}</code>`).join(' e ') : '';
   return `<div class=lab id=lab><div class=labh><span>${ic('play', 15)}Exemplo ao vivo</span><small>Mude o código e rode</small></div>
+  ${labFs(l) ? `<p class=labn>${ic('db', 15)}<span>Isto roda num <b>computador de treino</b>: os arquivos da lição já estão lá e nada toca o seu computador de verdade. Toque em <b>Ver os arquivos</b> para olhar.</span></p>` : ''}
   ${names ? `<p class=labn>${ic('db', 15)}<span>${names.includes(' e ') ? 'As tabelas' : 'A tabela'} ${names} já ${names.includes(' e ') ? 'estão carregadas' : 'está carregada'}. Toque em <b>Ver os dados</b> para olhar.</span></p>` : ''}
   ${edBox(l, txt)}
-  <div class=labb><button class="btn pri" id=labRun onclick=labRun()>${ic('play', 16)}Rodar</button><button class="btn ghost" id=labReset onclick=labReset() disabled>${ic('back', 16)}Original</button>${sql || labDf(l) || (l.type == 'js' && l.peek) ? `<button class="btn ghost" onclick=labPeek()>${ic('eye', 16)}Ver os dados</button>` : ''}</div>
+  <div class=labb><button class="btn pri" id=labRun onclick=labRun()>${ic('play', 16)}Rodar</button><button class="btn ghost" id=labReset onclick=labReset() disabled>${ic('back', 16)}Original</button>${sql || labDf(l) || labFs(l) || (l.type == 'js' && l.peek) ? `<button class="btn ghost" onclick=labPeek()>${ic('eye', 16)}${labFs(l) ? 'Ver os arquivos' : 'Ver os dados'}</button>` : ''}</div>
   ${t ? `<div class=labt><b>${ic('bulb', 16)}Experimente</b><p>${inlTxt(t.q)}</p><button class="btn ghost" id=labTry onclick=labTry()>Ver a mudança</button></div>` : ''}
   <div class=exr><div class=exh>${ic('out', 16)}<small id=labTit>${esc(f.t)}</small></div><p class=labhint id=labHint hidden>Você mudou o código. Toque em <b>Rodar</b> para atualizar o resultado.</p><div id=out class=out>${f.h}</div></div>
   <div class=labw id=labWhy hidden></div>
@@ -1534,7 +1536,7 @@ async function labPeek() {
       try { db.run(l.seed); o.innerHTML = db.execRaw("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(n => `<div class=tname>${ic('db', 14)} ${esc(n)}</div>` + table(db.exec(`SELECT * FROM ${n}`)[0])).join(''); } finally { db.close(); }
     } else if (l.peek) { o.textContent = 'Executando…'; o.innerHTML = (await (l.type == 'js' ? runJs(l, l.peek) : runPy(l, l.peek))).html; }
     else return;
-    if (t) t.textContent = 'Os dados desta lição';
+    if (t) t.textContent = labFs(l) ? 'Os arquivos desta lição' : 'Os dados desta lição';
   } catch (e) { showErr(e); }
 }
 // ============================================================ PARTE 1 DA LIÇÃO: COMO FUNCIONA
@@ -2014,7 +2016,7 @@ function practice() {   // etapa 2: prática. Nada é executado nem mostrado enq
   ${tblFor(l, '', 'Toque em <b>Dados</b> para ver as linhas de cada tabela.')}
   ${T ? `<div class=chnote id=chn>${ok ? 'Você já passou nesta prova: pode treinar sem perder nada.' : chanceMsg(left, l)}</div>` : ''}
   ${DX ? daxViewsNote(l) : ''}${X ? xlBox(l) : Q ? qzBox(l) : edBox(l, l.starter)}
-  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="${l.type == 'html' ? 'Ver a página' : 'Ver dados'}">${ic('eye', 20)}<span>${l.type == 'html' ? 'Página' : 'Dados'}</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick="${l.sp ? `openX('${l.id}')` : 'lesson()'}">${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="${l.sp == 'f' ? 'Voltar ao código original' : 'Limpar o código'}">${ic('eraser', 20)}<span>${l.sp == 'f' ? 'Original' : 'Limpar'}</span></button></div>
+  <div class=acts role=toolbar aria-label="Ajudas">${T ? '' : `<button class="btn ghost" onclick=hint()>${ic('bulb', 20)}<span>Dica</span></button>`}${X ? `<button class="btn ghost" id=bfx onclick=xlToggleF() aria-label="Mostrar as fórmulas">${ic('eye', 20)}<span>Fórmulas</span></button>` : Q ? '' : `<button class="btn ghost" onclick=peek() aria-label="${l.type == 'html' ? 'Ver a página' : labFs(l) ? 'Ver arquivos' : 'Ver dados'}">${ic('eye', 20)}<span>${l.type == 'html' ? 'Página' : labFs(l) ? 'Arquivos' : 'Dados'}</span></button>`}${T ? '' : `${Q ? '' : `<button class="btn ghost" onclick=sol()>${ic('key', 20)}<span>Solução</span></button>`}<button class="btn ghost" onclick="${l.sp ? `openX('${l.id}')` : 'lesson()'}">${ic('file', 20)}<span>Teoria</span></button>`}<button class="btn ghost" onclick=limpar() aria-label="${l.sp == 'f' ? 'Voltar ao código original' : 'Limpar o código'}">${ic('eraser', 20)}<span>${l.sp == 'f' ? 'Original' : 'Limpar'}</span></button></div>
   ${outBox(X ? OUT0X : Q ? OUT0Q : DX ? OUT0D : l.type == 'html' ? OUT0H : OUT0)}
   <div id=fb class="fb idle" aria-live=polite></div></div>
   <div class=dbar><button class="btn ok block" id=bdone onclick=concluir()>${DONE_BTN}</button></div>`;
@@ -2199,13 +2201,13 @@ let py;
 onmessage = async e => { const m = e.data;
   try {
     if (m.t == 'init') { py = await loadPyodide(); postMessage({ t: 'ready' }); }
-    else if (m.t == 'load') { await py.loadPackagesFromImports(m.src); postMessage({ t: 'loaded' }); }
+    else if (m.t == 'load') { await py.loadPackagesFromImports(m.src.replace(/^[ \\t]*(?:import|from)[ \\t]+(?:requests|urllib\\.request|urllib\\.error|smtplib)\\b.*$/gm, '')); postMessage({ t: 'loaded' }); }
     else if (m.t == 'run') {
       const out = []; py.setStdout({ batched: s => out.push(s) }); py.setStderr({ batched: s => out.push(s) });
       const g = py.globals.get('dict')();
       try { if (m.pre) await py.runPythonAsync(m.pre, { globals: g }); await py.runPythonAsync(m.code, { globals: g }); postMessage({ t: 'done', out: out.join('\\n') }); }
       catch (err) { postMessage({ t: 'err', msg: String(err.message || err), out: out.join('\\n') }); }
-      finally { g.destroy(); }
+      finally { g.destroy(); try { py.runPython("import sys\\ngetattr(sys, '_codeup_undo', lambda: None)()"); } catch { } }
     }
   } catch (err) { postMessage({ t: 'fatal', msg: String(err.message || err) }); }
 };`;
@@ -2247,11 +2249,18 @@ function runJs(l, code) {
     w.postMessage({ pre: l.prelude || '', code });
   });
 }
+// o servidor manda "#lab" no lugar do texto de public/lab.py (o computador de treino das lições de Automações); aqui ele volta, baixado uma vez só
+let labSrc = null;
+async function labExpand(pre) {
+  if (!pre.startsWith('#lab\n')) return pre;
+  if (!labSrc) { const r = await fetch('/lab.py'); if (!r.ok) throw new Error('OFFLINE'); labSrc = (await r.text()).replace(/\r/g, '').replace(/\s*$/, '\n'); }
+  return labSrc + pre.slice(5);
+}
 let pq = Promise.resolve();
 function runPy(l, code, stale) {   // uma execução por vez no mesmo worker
   const job = pq.catch(() => { }).then(async () => {
     if (stale && stale()) throw new Error('STALE');
-    const o = $('#out'), pre = l.prelude || '', say = t => { if (o && !(stale && S.pyReady)) o.textContent = t; };
+    const o = $('#out'), pre = await labExpand(l.prelude || ''), say = t => { if (o && !(stale && S.pyReady)) o.textContent = t; };
     if (!S.pyReady) { say('Carregando Python (só na 1ª vez, pode levar alguns segundos)…'); await pyCall({ t: 'init' }, 90000); S.pyReady = true; }
     if (/import\s/.test(pre + code)) { if (!stale) say('Preparando bibliotecas…'); await pyCall({ t: 'load', src: pre + '\n' + code }, 180000); }
     if (stale && stale()) throw new Error('STALE');

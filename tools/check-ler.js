@@ -46,7 +46,7 @@ async function main() {
     stat.proved++;
     try {
       if (l.type === 'python' || l.type === 'js') {
-        const x = l.type === 'js' ? jsRun(r.code) : pyRun(r.code);
+        const x = l.type === 'js' ? jsRun(r.code) : pyRun((r.pre ? require('../content/lab').boot({}) : '') + r.code);   // pre: roda no computador de treino (Automações)
         if (r.v === 'out') { if (x.status !== 0) say(l, 'o código deu erro: ' + x.err.trim().split('\n').pop()); else if (norm(x.out) !== norm(want)) say(l, `a saída real é ${JSON.stringify(x.out)} e a resposta certa diz ${JSON.stringify(want)}`); }
         else if (r.v.startsWith('err:')) { const n = r.v.slice(4); if (x.status === 0) say(l, `o código deveria dar ${n}, mas rodou sem erro`); else if (!new RegExp(l.type === 'js' ? '^' + n + ':' : '^' + n + ':?', 'm').test(x.err)) say(l, `o erro real é outro: ${x.err.trim().split('\n').pop()}`); }
         else say(l, `validador "${r.v}" não existe para Python`);

@@ -751,3 +751,99 @@ Na tabela `Vendas`, crie seis colunas calculadas:
 - `Tamanho`: `Uma` se a `Qtd` for 1; `Poucas` se for até 3; senão `Muitas`
 - `Ano e Mes`: a data no formato `2024-03`
 - `Etiqueta`: as 3 primeiras letras do `Canal` em maiúsculas, ` - ` e o nome do produto (por exemplo: `LOJ - Pastel`)
+
+## pj-py-4-5
+Você vai montar uma agenda de contatos que vive num arquivo. O arquivo `contatos.txt` guarda um contato por linha, no formato `nome;telefone`.
+
+Crie a função `nomes()`: ela lê o arquivo linha por linha (use `strip()` e ignore linhas vazias) e devolve a lista só com os nomes, ou seja, o pedaço antes do ponto e vírgula (`split`).
+
+Depois imprima 4 linhas, nesta ordem:
+1. `Contatos:` e a quantidade de contatos
+2. a lista de nomes em ordem alfabética (`sorted`)
+3. acrescente no final do arquivo a linha `Duda;96666-4444` (modo `"a"`) e imprima `Agora:` e a nova quantidade
+4. com `Path`, o nome do arquivo sem extensão (`stem`) e a extensão (`suffix`), separados por espaço
+
+## pj-py-4-10
+A pasta `downloads` está bagunçada e o robô vai arrumar.
+
+Mova cada arquivo para uma subpasta, de acordo com a extensão (`suffix`):
+- `.jpg` e `.png` vão para `imagens`
+- `.pdf` e `.txt` vão para `documentos`
+- `.csv` vai para `planilhas`
+
+Percorra os arquivos em ordem alfabética (feche a lista com `sorted` antes de mover), crie cada subpasta com `mkdir(exist_ok=True)` dentro de `downloads` e mova com `shutil.move`.
+
+Depois grave `organizacao.csv` (com `csv.writer`): o cabeçalho `arquivo,pasta` e uma linha para cada arquivo movido.
+
+Imprima, nesta ordem:
+1. `Organizados:` e a quantidade de arquivos
+2. a lista ordenada do que sobrou em `downloads` (só as 3 subpastas)
+3. uma linha `arquivo -> pasta` para cada linha do `organizacao.csv` (leia com `csv.DictReader`)
+
+## pj-py-4-15
+Você vai analisar o log de um servidor. O arquivo `servidor.log` tem um evento por linha, no formato `2025-03-14 08:01:10 INFO login usuario=ana` (data, hora, nível e mensagem).
+
+Para cada linha:
+- separe data, hora, nível e mensagem com uma expressão regular com grupos (`re.compile`, `match` e `groups()`)
+- conte quantas linhas existem de cada nível (dicionário com `get`)
+- se a mensagem tiver `usuario=nome`, guarde o nome num conjunto (`re.search`), para não repetir
+
+Imprima, nesta ordem:
+1. uma linha por nível, em ordem alfabética, com o nível alinhado à esquerda em 8 colunas e a quantidade alinhada à direita em 3 (`:<8` e `:>3`)
+2. `Usuarios:` e a lista ordenada de usuários
+3. grave a contagem em `resumo.json` (`json.dump` com `sort_keys=True`), leia o arquivo de volta com `json.load` e imprima o dicionário
+
+## pj-py-4-20
+A pasta `documentos` precisa de backup na pasta `backup`, sem copiar o que já está lá e sem guardar lixo.
+
+Faça, nesta ordem:
+1. **Duplicados:** percorra `documentos` em ordem alfabética e calcule o hash de cada arquivo (`hashlib.sha256` sobre `read_bytes()`). Se o hash já apareceu, o arquivo é duplicado. Imprima `Duplicados:` e a lista dos nomes duplicados.
+2. **Copiar só o que mudou:** para cada arquivo que NÃO é duplicado, copie com `shutil.copy` para `backup` só se ele ainda não existe lá ou se o conteúdo (hash) é diferente. Imprima `copiado: nome` ou `igual: nome`.
+3. **Limpeza:** percorra `backup` em ordem alfabética e apague (`unlink`) os arquivos com mais de 30 dias (`idade = (time.time() - st_mtime) / 86400`). Imprima `apagado: nome`.
+4. **Zip:** crie um zip chamado `backup_AAAA-MM-DD.zip`, com a data de hoje (`datetime.now().strftime("%Y-%m-%d")`), com tudo o que sobrou em `backup` (use `arcname`). Imprima `Zip:`, o nome do zip e a lista `namelist()`.
+
+## pj-py-4-25
+Você vai montar um robô de cobrança. O arquivo `clientes.csv` tem `nome`, `email` e `valor`. A função `checar_servidor()` já existe: ela falha com `ConnectionError` nas duas primeiras chamadas e, na terceira, devolve `True`.
+
+1. Configure o logging com `basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)`.
+2. Chame `checar_servidor()` em até 4 tentativas. A cada falha, registre `logging.warning` com `tentativa N falhou` (o N começa em 1) e espere 1 segundo (`time.sleep`). Quando funcionar, registre `logging.info` com `servidor ok` e pare.
+3. Leia `clientes.csv` com `DictReader`. Para cada cliente, monte o texto com `string.Template` (`Ola, $nome! Seu boleto de $valor reais vence amanha.`), crie um `EmailMessage` de `robo@exemplo.com` para o e-mail do cliente, com assunto `Seu boleto`, e envie por `smtplib.SMTP("smtp.exemplo.com", 587)`, com `starttls()` e `login` usando a senha da variável de ambiente `SENHA_SMTP`. A cada envio, registre `logging.info` com `enviado para` e o e-mail.
+4. No final, imprima `N e-mails na caixa` (o N é `len(smtplib.caixa)`) e, na linha de baixo, o texto da última mensagem (`get_content()`).
+
+## pj-py-4-30
+Monte um coletor de preços com linha de comando e agenda. A página `https://loja.exemplo.com/produtos` tem uma lista de produtos: cada nome está num `span` de class `nome` e cada preço num `span` de class `preco`.
+
+1. Crie a classe `Precos`, que herda de `HTMLParser` e guarda `nomes` e `precos` (os preços como `float`).
+2. Crie `coletar(limite)`: baixa a página com `requests.get`, usa a classe e devolve a lista de pares `(nome, preco)` só dos produtos com preço menor ou igual ao limite.
+3. Crie `main(argv=None)` com `argparse`: a opção `--limite` (`float`, padrão 1000). Dentro de `main`, crie um `sched.scheduler` e a função `rodar(nome)`, que imprime `Xs nome: N produtos` (X = segundos desde o início, N = quantos `coletar` devolveu) e, abaixo, uma linha `  nome: preco` (com dois espaços na frente) para cada produto. Depois ela consulta `https://loja.exemplo.com/promocoes` com `raise_for_status()` e, se der `HTTPError`, imprime dois espaços e `promocoes fora do ar:` com o código (`e.response.status_code`).
+4. Agende `rodar("manha")` para daqui a 0 segundo e `rodar("tarde")` para daqui a 60 segundos, execute a agenda e imprima `Total: N segundos`.
+5. Dentro de `if __name__ == "__main__":`, chame `main(["--limite", "200"])`.
+
+## cp-py-4-10
+Na pasta `entrada` há arquivos CSV de vendas (colunas `produto` e `valor`) e também um `notas.txt`, que deve ser ignorado.
+
+1. Use `Path` para pegar só os `.csv`, em ordem alfabética (`glob` e `sorted`).
+2. Leia cada um com `csv.DictReader` e some a coluna `valor` (converta com `int`).
+3. Crie a pasta `saida` e grave em `saida/resumo.txt` uma linha por arquivo, no formato `nome: total` (o nome sem a extensão, use `stem`) e, na última linha, `Total geral:` com a soma de todos.
+4. Leia o `resumo.txt` e imprima o conteúdo.
+
+## cp-py-4-20
+O arquivo `config.json` diz qual pasta limpar (`pasta`), a partir de quantos dias um arquivo é considerado velho (`dias`) e o nome do zip de saída (`zip`).
+
+1. Leia a configuração com `json.load`.
+2. Percorra os arquivos da pasta em ordem alfabética e calcule a idade de cada um em dias inteiros: `int((time.time() - arq.stat().st_mtime) / 86400)`.
+3. Se a idade for **maior** que o limite, imprima `velho: nome (N dias)`, coloque o arquivo dentro do zip (use `arcname=arq.name`) e apague o arquivo da pasta.
+4. No final, imprima `Zip tem:` com a lista de nomes do zip (`namelist()`) e `Sobraram:` com a lista dos nomes que ficaram na pasta, em ordem alfabética.
+
+Dica: um arquivo com exatamente 30 dias não é velho, porque 30 não é maior que 30.
+
+## fin-py-4
+Monte o robô completo de relatório de vendas, na ordem:
+
+1. Configure o logging com `basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)`.
+2. Baixe os pedidos da API `https://api.exemplo.com/pedidos` com `requests.get(url, params={"pagina": n})`, começando na página 1 e seguindo o campo `proxima` até ele ser `None`. Cada resposta (`.json()`) tem `itens` (lista de pedidos com `cliente` e `valor`) e `proxima`. A cada página, registre com `logging.info`: `Pagina N: X pedidos`.
+3. Some o valor por cliente.
+4. Grave em `relatorio.txt` uma linha por cliente, em ordem alfabética, no formato `cliente: total` e, na última linha, `Total:` com a soma de tudo.
+5. Envie o relatório por e-mail: um `EmailMessage` de `robo@exemplo.com` para `gerente@exemplo.com`, com assunto `Relatorio de vendas` e o texto do arquivo como corpo. Conecte em `smtplib.SMTP("smtp.exemplo.com", 587)`, faça `starttls()` e `login` com o e-mail e a senha da variável de ambiente `SENHA_ROBO`.
+6. Registre com `logging.info`: `Email enviado`.
+7. Por fim, imprima o assunto e o corpo da última mensagem de `smtplib.caixa`.

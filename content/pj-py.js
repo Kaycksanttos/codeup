@@ -2,6 +2,7 @@
 // pj(título, tarefa, solução, [palavras obrigatórias], [o que é, para que serve, como se faz, retorno esperado], [3 dicas], {prelude, peek})
 // A saída do programa do aluno é comparada com a da solução (content/expected.json, gerado por `npm run build:content`).
 const { code } = require('./pj');
+const { boot, PEEK } = require('./lab');            // Automações: o computador de treino com os arquivos de cada projeto
 
 const DF = `import pandas as pd, io
 df = pd.read_csv(io.StringIO("""produto,categoria,qtd,preco,mes
@@ -261,6 +262,248 @@ const out = [];
         'Resuma com resumo = df.groupby("categoria")["total"].agg(["sum", "count"]). Use resumo.reset_index().merge(metas, on="categoria") para trazer a meta de cada categoria e filtre r["sum"] >= r["meta"].',
         'df["mes"].value_counts()["mar"] dá quantas vendas houve em mar. A pivot_table(index="categoria", columns="mes", values="total", aggfunc="sum", fill_value=0) vira uma tabela cruzada; .loc["Moveis", "mar"] pega uma célula.'],
       { prelude: DF + 'metas = pd.DataFrame({"categoria": ["Eletronicos", "Moveis", "Papelaria"], "meta": [8000, 3000, 500]})\n', peek: 'print(df.to_string())\nprint(metas.to_string())' })
+  );
+}
+
+// ---------------------------------------------------------------- Automações (lições 1 a 30; tudo roda no computador de treino, veja content/lab.js)
+{
+  const P = code('python', 4);
+  const R = String.raw;
+  out.push(
+    P('agenda de contatos em arquivo',
+      'O arquivo contatos.txt guarda um contato por linha, no formato nome;telefone. Faça um programa com a função nomes() que lê o arquivo linha por linha (use strip() e ignore linhas vazias) e devolve a lista só com os nomes (o pedaço antes do ponto e vírgula). Imprima 4 linhas: (1) Contatos: e a quantidade; (2) a lista de nomes em ordem alfabética (sorted); (3) depois de acrescentar no final do arquivo a linha Duda;96666-4444, imprima Agora: e a nova quantidade; (4) com Path, o nome do arquivo sem extensão (stem) e a extensão (suffix), separados por espaço.',
+      R`from pathlib import Path
+def nomes():
+    lista = []
+    with open('contatos.txt') as f:
+        for linha in f:
+            linha = linha.strip()
+            if linha:
+                lista.append(linha.split(';')[0])
+    return lista
+print(f'Contatos: {len(nomes())}')
+print(sorted(nomes()))
+with open('contatos.txt', 'a') as f:
+    f.write('Duda;96666-4444\n')
+print(f'Agora: {len(nomes())}')
+p = Path('contatos.txt')
+print(p.stem, p.suffix)`,
+      ['open(', 'strip(', 'split(', 'sorted(', 'write(', 'Path('],
+      [`Uma agenda de contatos guardada em arquivo. Ela junta as lições 1 a 5: ler um arquivo, percorrer linha por linha, escrever, acrescentar no final e usar Path.`,
+        `Guardar dados num arquivo é o primeiro passo de qualquer automação: o programa termina, mas os dados continuam lá para a próxima vez.`,
+        `Crie a função nomes() com with open('contatos.txt') e um for linha in f. Use linha.strip() e linha.split(';')[0]. Para acrescentar, abra com o modo 'a' e use write() com \\n no fim. No final, Path('contatos.txt') tem .stem e .suffix.`,
+        `Quatro linhas: Contatos: 3, a lista com Ana, Bia e Caio, Agora: 4 e contatos .txt.`],
+      ['Dentro de with open(...) as f, o for linha in f: entrega uma linha por volta. Use linha.strip() para tirar a quebra de linha e pule as linhas vazias com um if.',
+        'linha.split(";") devolve uma lista com o nome na posição 0. Guarde os nomes numa lista e devolva no fim. Para a segunda linha, use sorted(nomes()).',
+        "Para acrescentar, abra com open('contatos.txt', 'a') e escreva 'Duda;96666-4444\\n'. Depois chame nomes() de novo. Para a última linha: p = Path('contatos.txt') e print(p.stem, p.suffix)."],
+      { prelude: boot({ files: { 'contatos.txt': 'Caio;99111-2222\nAna;98888-1111\nBia;97777-3333\n' } }), peek: PEEK }),
+
+    P('organizador de downloads',
+      'A pasta downloads está bagunçada. Crie as subpastas e mova cada arquivo para a certa, pela extensão (suffix): .jpg e .png vão para imagens; .pdf e .txt vão para documentos; .csv vai para planilhas. Percorra os arquivos em ordem alfabética (guarde a lista com sorted antes de mover), crie cada subpasta com mkdir(exist_ok=True) dentro de downloads e mova com shutil.move. Depois grave organizacao.csv (csv.writer) com o cabeçalho arquivo,pasta e uma linha por arquivo movido. Imprima: (1) Organizados: e a quantidade; (2) a lista ordenada do que sobrou em downloads (só as 3 subpastas); (3) uma linha arquivo -> pasta para cada linha do organizacao.csv (leia com csv.DictReader).',
+      R`import csv, shutil
+from pathlib import Path
+destinos = {'.jpg': 'imagens', '.png': 'imagens', '.pdf': 'documentos', '.txt': 'documentos', '.csv': 'planilhas'}
+base = Path('downloads')
+linhas = []
+for arq in sorted(p for p in base.iterdir() if p.is_file()):
+    pasta = destinos[arq.suffix]
+    (base / pasta).mkdir(exist_ok=True)
+    shutil.move(str(arq), str(base / pasta / arq.name))
+    linhas.append([arq.name, pasta])
+with open('organizacao.csv', 'w', newline='') as f:
+    w = csv.writer(f)
+    w.writerow(['arquivo', 'pasta'])
+    w.writerows(linhas)
+print('Organizados:', len(linhas))
+print(sorted(p.name for p in base.iterdir()))
+with open('organizacao.csv', newline='') as f:
+    for l in csv.DictReader(f):
+        print(l['arquivo'], '->', l['pasta'])`,
+      ['suffix', 'mkdir(', 'shutil.move(', 'csv.writer(', 'DictReader'],
+      [`Um robô que arruma uma pasta bagunçada e deixa um registro do que fez. Ele junta as lições 6 a 10: listar e filtrar arquivos, criar e mover, subpastas, renomear e CSV.`,
+        `Todo mundo tem uma pasta de downloads cheia. Um robô assim arruma tudo em segundos, e o CSV de registro mostra para onde cada arquivo foi (ótimo para desfazer se precisar).`,
+        `Faça um dicionário que liga cada extensão a uma pasta. No for, pegue arq.suffix, crie a pasta com (base / pasta).mkdir(exist_ok=True) e mova com shutil.move(str(arq), str(base / pasta / arq.name)). Guarde [nome, pasta] numa lista e grave com csv.writer.`,
+        `Sete linhas: Organizados: 5, a lista das 3 pastas e uma linha arquivo -> pasta para cada um dos 5 arquivos.`],
+      ['Monte destinos = {".jpg": "imagens", ...}. Use sorted(...) para fechar a lista de arquivos ANTES de mover (assim as subpastas novas não entram na volta do for).',
+        'Dentro do for: pasta = destinos[arq.suffix]; (base / pasta).mkdir(exist_ok=True); shutil.move(str(arq), str(base / pasta / arq.name)). Guarde linhas.append([arq.name, pasta]).',
+        'Com csv.writer: w.writerow(["arquivo", "pasta"]) e w.writerows(linhas) (abra o arquivo com newline=""). Para ler de volta, csv.DictReader e l["arquivo"], l["pasta"].'],
+      { prelude: boot({ files: { 'downloads/ferias.jpg': 'img1', 'downloads/contrato.pdf': 'pdf1', 'downloads/ata.txt': 'ata da reuniao', 'downloads/logo.png': 'img2', 'downloads/dados.csv': 'a,b\n1,2\n' } }), peek: PEEK }),
+
+    P('analisador de log do servidor',
+      'O arquivo servidor.log tem uma linha por evento, no formato 2025-03-14 08:01:10 INFO login usuario=ana (data, hora, nível e mensagem). Use uma expressão regular com grupos (re.compile e match) para separar data, hora, nível e mensagem de cada linha. Conte quantas linhas existem de cada nível (dicionário com get) e guarde os nomes de usuário que aparecem na mensagem como usuario=nome (re.search; use um conjunto para não repetir). Imprima: (1) uma linha por nível, em ordem alfabética, com o nível alinhado à esquerda em 8 colunas e a quantidade alinhada à direita em 3 (:<8 e :>3); (2) Usuarios: e a lista ordenada. Depois grave a contagem em resumo.json (json.dump com sort_keys=True), leia o arquivo de volta com json.load e imprima o dicionário.',
+      R`import json, re
+padrao = re.compile(r'(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) (\w+) (.*)')
+contagem = {}
+usuarios = set()
+with open('servidor.log') as f:
+    for linha in f:
+        m = padrao.match(linha.strip())
+        if not m:
+            continue
+        data, hora, nivel, msg = m.groups()
+        contagem[nivel] = contagem.get(nivel, 0) + 1
+        u = re.search(r'usuario=(\w+)', msg)
+        if u:
+            usuarios.add(u.group(1))
+for nivel in sorted(contagem):
+    print(f'{nivel:<8}{contagem[nivel]:>3}')
+print('Usuarios:', sorted(usuarios))
+with open('resumo.json', 'w') as f:
+    json.dump(contagem, f, indent=2, sort_keys=True)
+with open('resumo.json') as f:
+    print(json.load(f))`,
+      ['groups(', 'json.dump(', 'json.load(', 'sorted('],
+      [`Um analisador de log: ele lê um arquivo de eventos, separa cada linha com regex, conta por nível e guarda o resumo em JSON. Junta as lições 11 a 15: JSON, agrupar e somar, relatório formatado e regex com grupos.`,
+        `Servidores geram milhares de linhas de log por dia. Um robô que conta os erros e lista quem entrou responde em segundos o que ninguém consegue ler a olho.`,
+        `Crie o padrão com re.compile(r'(\\d{4}-\\d{2}-\\d{2}) (\\d{2}:\\d{2}:\\d{2}) (\\w+) (.*)') e use m.groups() para abrir os 4 pedaços. Conte com contagem[nivel] = contagem.get(nivel, 0) + 1. Alinhe com f'{nivel:<8}{n:>3}'. Grave com json.dump e leia com json.load.`,
+        `Cinco linhas: AVISO 1, ERRO 2 e INFO 4 (alinhados), Usuarios: ['ana', 'caio'] e o dicionário {'AVISO': 1, 'ERRO': 2, 'INFO': 4}.`],
+      ['O padrão tem 4 grupos: data, hora, nível (\\w+) e o resto da linha (.*). m = padrao.match(linha.strip()) e depois data, hora, nivel, msg = m.groups().',
+        'Para contar: contagem[nivel] = contagem.get(nivel, 0) + 1. Para o usuário: re.search(r"usuario=(\\w+)", msg) e, se achou, u.group(1) vai para um set.',
+        'Imprima com for nivel in sorted(contagem): print(f"{nivel:<8}{contagem[nivel]:>3}"). Grave com json.dump(contagem, f, indent=2, sort_keys=True) e leia com json.load(f).'],
+      { prelude: boot({ files: { 'servidor.log': '2025-03-14 08:01:10 INFO login usuario=ana\n2025-03-14 08:05:42 ERRO disco cheio\n2025-03-14 08:07:00 INFO login usuario=caio\n2025-03-14 08:15:31 AVISO memoria alta\n2025-03-14 08:20:12 ERRO sem rede\n2025-03-14 08:30:00 INFO login usuario=ana\n2025-03-14 08:45:09 INFO logout usuario=caio\n' } }), peek: PEEK }),
+
+    P('backup com limpeza e zip',
+      'A pasta documentos precisa de backup na pasta backup. (1) Ache os arquivos duplicados de documentos: percorra em ordem alfabética, calcule o hash de cada arquivo (hashlib.sha256 sobre read_bytes) e, se o hash já foi visto, o arquivo é duplicado. Imprima Duplicados: e a lista dos nomes duplicados. (2) Para cada arquivo NÃO duplicado, copie com shutil.copy para backup só se ele ainda não existir lá ou se o conteúdo (hash) for diferente; imprima copiado: nome ou igual: nome. (3) Percorra a pasta backup em ordem alfabética e apague (unlink) os arquivos com mais de 30 dias (idade = (time.time() - st_mtime) / 86400), imprimindo apagado: nome. (4) Crie um zip chamado backup_AAAA-MM-DD.zip, com a data de hoje (datetime.now().strftime("%Y-%m-%d")), com tudo o que sobrou em backup (arcname=nome) e imprima Zip: com o nome do zip e a lista namelist().',
+      R`import hashlib, shutil, time, zipfile
+from datetime import datetime
+from pathlib import Path
+def hash_de(p):
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+origem, backup = Path('documentos'), Path('backup')
+vistos, duplicados, unicos = set(), [], []
+for arq in sorted(origem.iterdir()):
+    h = hash_de(arq)
+    if h in vistos:
+        duplicados.append(arq.name)
+    else:
+        vistos.add(h)
+        unicos.append(arq)
+print('Duplicados:', duplicados)
+for arq in unicos:
+    destino = backup / arq.name
+    if destino.exists() and hash_de(destino) == hash_de(arq):
+        print('igual:', arq.name)
+    else:
+        shutil.copy(arq, destino)
+        print('copiado:', arq.name)
+for arq in sorted(backup.iterdir()):
+    idade = (time.time() - arq.stat().st_mtime) / 86400
+    if idade > 30:
+        arq.unlink()
+        print('apagado:', arq.name)
+nome_zip = f'backup_{datetime.now().strftime("%Y-%m-%d")}.zip'
+with zipfile.ZipFile(nome_zip, 'w') as z:
+    for arq in sorted(backup.iterdir()):
+        z.write(arq, arcname=arq.name)
+with zipfile.ZipFile(nome_zip) as z:
+    print('Zip:', nome_zip, z.namelist())`,
+      ['hashlib.', 'shutil.copy', 'unlink(', 'st_mtime', 'strftime(', 'zipfile.ZipFile('],
+      [`Um robô de backup completo: acha duplicados, copia só o que mudou, apaga o que está velho demais e compacta tudo num zip com a data no nome. Junta as lições 16 a 20: datas, arquivos velhos, duplicados, zip e backup incremental.`,
+        `Backup bem feito não copia tudo toda vez (gasta tempo e espaço) e não guarda lixo para sempre. É exatamente a rotina que empresas deixam rodando toda madrugada.`,
+        `Crie uma função hash_de(p) com hashlib.sha256(p.read_bytes()).hexdigest(). Guarde os hashes vistos num set. Para copiar só o que mudou, compare hash_de(destino) com hash_de(arq). A idade vem de time.time() menos st_mtime, dividido por 86400. O nome do zip usa datetime.now().strftime("%Y-%m-%d").`,
+        `Seis linhas: Duplicados: ['b.txt'], igual: a.txt, copiado: c.txt, copiado: d.txt, apagado: velho.txt e Zip: backup_2025-03-14.zip com os três nomes (a.txt, c.txt e d.txt).`],
+      ['Percorra sorted(origem.iterdir()). Se hash_de(arq) já está em vistos, o nome vai para a lista de duplicados; senão, entra em vistos e o arquivo vai para a lista de únicos.',
+        'Para cada único: destino = backup / arq.name. Se destino.exists() e hash_de(destino) == hash_de(arq), imprima igual; senão, shutil.copy(arq, destino) e imprima copiado. Depois, em sorted(backup.iterdir()), apague quem tem idade maior que 30.',
+        'nome_zip = f"backup_{datetime.now().strftime(\'%Y-%m-%d\')}.zip". Com zipfile.ZipFile(nome_zip, "w") grave cada arquivo com z.write(arq, arcname=arq.name). Para listar, abra de novo (modo leitura) e use z.namelist().'],
+      { prelude: boot({ files: { 'documentos/a.txt': 'contrato assinado', 'documentos/b.txt': 'contrato assinado', 'documentos/c.txt': 'versao nova do plano', 'documentos/d.txt': 'rascunho', 'backup/a.txt': 'contrato assinado', 'backup/c.txt': 'versao antiga do plano', 'backup/velho.txt': 'arquivo de 2024' }, dias: { 'documentos/a.txt': 2, 'documentos/b.txt': 2, 'documentos/c.txt': 1, 'documentos/d.txt': 5, 'backup/a.txt': 2, 'backup/c.txt': 40, 'backup/velho.txt': 100 } }), peek: PEEK }),
+
+    P('robô de boletos com diário e retentativas',
+      'O arquivo clientes.csv tem nome, email e valor. A função checar_servidor() já existe: ela falha com ConnectionError nas duas primeiras chamadas e na terceira devolve True. (1) Configure o logging com basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout). (2) Chame checar_servidor() em até 4 tentativas: a cada falha, registre logging.warning com tentativa N falhou (N começa em 1) e espere 1 segundo (time.sleep); quando funcionar, registre logging.info com servidor ok e pare. (3) Leia clientes.csv com DictReader e, para cada cliente, monte o texto com string.Template (Ola, $nome! Seu boleto de $valor reais vence amanha.), crie um EmailMessage de robo@exemplo.com para o e-mail do cliente com assunto Seu boleto e envie por smtplib.SMTP("smtp.exemplo.com", 587), com starttls() e login usando a senha da variável de ambiente SENHA_SMTP. A cada envio, registre logging.info com enviado para e o e-mail. (4) No final, imprima N e-mails na caixa (N é len(smtplib.caixa)) e, na linha de baixo, o texto da última mensagem (get_content()).',
+      R`import csv, logging, os, smtplib, sys, time
+from email.message import EmailMessage
+from string import Template
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s', stream=sys.stdout)
+for n in range(1, 5):
+    try:
+        checar_servidor()
+        logging.info('servidor ok')
+        break
+    except ConnectionError:
+        logging.warning(f'tentativa {n} falhou')
+        time.sleep(1)
+modelo = Template('Ola, $nome! Seu boleto de $valor reais vence amanha.')
+with open('clientes.csv', newline='') as f:
+    clientes = list(csv.DictReader(f))
+with smtplib.SMTP('smtp.exemplo.com', 587) as s:
+    s.starttls()
+    s.login('robo@exemplo.com', os.environ['SENHA_SMTP'])
+    for c in clientes:
+        msg = EmailMessage()
+        msg['From'] = 'robo@exemplo.com'
+        msg['To'] = c['email']
+        msg['Subject'] = 'Seu boleto'
+        msg.set_content(modelo.substitute(nome=c['nome'], valor=c['valor']))
+        s.send_message(msg)
+        logging.info(f'enviado para {c["email"]}')
+print(len(smtplib.caixa), 'e-mails na caixa')
+print(smtplib.caixa[-1].get_content())`,
+      ['logging.', 'sleep(', 'Template(', 'starttls(', 'login(', 'send_message('],
+      [`Um robô de cobrança que avisa os clientes por e-mail, deixa um diário do que fez e tenta de novo quando o servidor falha. Junta as lições 21 a 25: modelo de mensagem, e-mail, envio, logging e tentar de novo.`,
+        `Robôs de verdade precisam de três coisas: um texto bem montado, um registro (log) para você saber o que aconteceu de madrugada e paciência para tentar de novo quando a rede falha.`,
+        `Faça um for n in range(1, 5) com try/except ConnectionError em volta de checar_servidor(): no except, logging.warning e time.sleep(1); no sucesso, logging.info e break. Depois, com o SMTP aberto, um for por cliente: Template.substitute, EmailMessage, send_message e logging.info.`,
+        `Primeiro o diário (WARNING: tentativa 1 falhou, WARNING: tentativa 2 falhou, INFO: servidor ok e um INFO: enviado para por cliente), depois 2 e-mails na caixa e o texto da mensagem do Caio.`],
+      ['Configure o logging primeiro. Depois for n in range(1, 5): try: checar_servidor(); logging.info("servidor ok"); break; except ConnectionError: logging.warning(f"tentativa {n} falhou"); time.sleep(1).',
+        'Leia os clientes com list(csv.DictReader(f)). O modelo é Template("Ola, $nome! Seu boleto de $valor reais vence amanha.") e o texto vem de modelo.substitute(nome=c["nome"], valor=c["valor"]).',
+        'Abra o SMTP com with smtplib.SMTP("smtp.exemplo.com", 587) as s, chame s.starttls() e s.login("robo@exemplo.com", os.environ["SENHA_SMTP"]). Dentro do for dos clientes, monte o EmailMessage e use s.send_message(msg). No final, smtplib.caixa[-1].get_content().'],
+      { prelude: boot({ files: { 'clientes.csv': 'nome,email,valor\nAna,ana@exemplo.com,120\nCaio,caio@exemplo.com,250\n' }, env: { SENHA_SMTP: 'senha123' }, contas: { 'robo@exemplo.com': 'senha123' }, depois: "_tent = {'n': 0}\ndef checar_servidor():\n    _tent['n'] += 1\n    if _tent['n'] < 3:\n        raise ConnectionError('servidor ocupado')\n    return True\n" }), peek: PEEK }),
+
+    P('coletor de preços agendado',
+      'Monte um coletor de preços com linha de comando e agenda. (1) Crie a classe Precos (herda de HTMLParser) que lê a página https://loja.exemplo.com/produtos: cada nome está num span de class nome e cada preço num span de class preco (guarde nomes e precos, os preços como float). (2) Crie a função coletar(limite) que baixa a página com requests.get, usa a classe e devolve a lista de pares (nome, preco) só dos produtos com preço menor ou igual ao limite. (3) Crie main(argv=None) com argparse: a opção --limite (float, padrão 1000). Dentro de main, crie um sched.scheduler e uma função rodar(nome) que imprime Xs nome: N produtos (X = segundos desde o início, N = quantos coletar devolveu) e, abaixo, uma linha com dois espaços, o nome e o preço (  Mouse: 80.5) de cada produto; depois consulta https://loja.exemplo.com/promocoes com raise_for_status() e, se der HTTPError, imprime dois espaços e promocoes fora do ar: e o código (e.response.status_code). (4) Agende rodar("manha") para 0 segundo e rodar("tarde") para 60 segundos, execute a agenda e imprima Total: N segundos. Dentro de if __name__ == "__main__": chame main(["--limite", "200"]).',
+      R`import argparse, requests, sched, time
+from html.parser import HTMLParser
+class Precos(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.campo = None
+        self.nomes = []
+        self.precos = []
+    def handle_starttag(self, tag, attrs):
+        if tag == 'span':
+            self.campo = dict(attrs).get('class')
+    def handle_data(self, data):
+        if self.campo == 'nome':
+            self.nomes.append(data)
+        elif self.campo == 'preco':
+            self.precos.append(float(data))
+        self.campo = None
+def coletar(limite):
+    p = Precos()
+    p.feed(requests.get('https://loja.exemplo.com/produtos').text)
+    return [(n, v) for n, v in zip(p.nomes, p.precos) if v <= limite]
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--limite', type=float, default=1000)
+    args = ap.parse_args(argv)
+    inicio = time.time()
+    agenda = sched.scheduler(time.time, time.sleep)
+    def rodar(nome):
+        achados = coletar(args.limite)
+        print(f'{int(time.time() - inicio)}s {nome}: {len(achados)} produtos')
+        for n, v in achados:
+            print(f'  {n}: {v}')
+        try:
+            requests.get('https://loja.exemplo.com/promocoes').raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print('  promocoes fora do ar:', e.response.status_code)
+    agenda.enter(0, 1, rodar, ('manha',))
+    agenda.enter(60, 1, rodar, ('tarde',))
+    agenda.run()
+    print('Total:', int(time.time() - inicio), 'segundos')
+if __name__ == '__main__':
+    main(['--limite', '200'])`,
+      ['HTMLParser', 'argparse', 'raise_for_status(', 'sched.scheduler(', 'enter(', '__main__'],
+      [`O projeto final do nível Automações: um coletor de preços que lê uma página web, aceita opções de linha de comando e roda sozinho em horários marcados. Junta as lições 26 a 30: internet, erros de API, HTML, argparse e agendamento.`,
+        `Acompanhar preços, estoque ou notícias é uma das automações mais comuns. Com opções de linha de comando e uma agenda, o mesmo programa serve para qualquer pessoa e roda sem ninguém por perto.`,
+        `Escreva a classe Precos como na lição do HTML (handle_starttag guarda a class do span e handle_data guarda o texto). Em main, crie o ArgumentParser, o sched.scheduler(time.time, time.sleep) e a função rodar com try/except requests.exceptions.HTTPError. Agende com enter(0, 1, rodar, ("manha",)) e enter(60, 1, rodar, ("tarde",)).`,
+        `Nove linhas: o relatório da manhã (2 produtos: Mouse e Teclado, e o aviso das promoções fora do ar com o código 500), o relatório da tarde (60s) e, no fim, Total: 60 segundos.`],
+      ['Em coletar(limite): p = Precos(); p.feed(requests.get(url).text) e devolva [(n, v) for n, v in zip(p.nomes, p.precos) if v <= limite]. O Monitor (900) fica de fora por causa do limite 200.',
+        'Em main(argv=None): ap = argparse.ArgumentParser(); ap.add_argument("--limite", type=float, default=1000); args = ap.parse_args(argv). Guarde inicio = time.time() e crie agenda = sched.scheduler(time.time, time.sleep).',
+        'A função rodar(nome) vive dentro de main (assim enxerga args e inicio). Dentro dela use try: requests.get(...).raise_for_status() e except requests.exceptions.HTTPError as e: print("  promocoes fora do ar:", e.response.status_code). Depois agenda.enter(...) duas vezes e agenda.run().'],
+      { prelude: boot({ rotas: R`{'https://loja.exemplo.com/produtos': '''<ul>
+<li class="item"><span class="nome">Mouse</span> <span class="preco">80.50</span></li>
+<li class="item"><span class="nome">Teclado</span> <span class="preco">150.00</span></li>
+<li class="item"><span class="nome">Monitor</span> <span class="preco">900.00</span></li>
+</ul>''', 'https://loja.exemplo.com/promocoes': (500, 'erro interno')}` }), peek: PEEK })
   );
 }
 

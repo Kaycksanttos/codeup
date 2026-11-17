@@ -7,7 +7,7 @@ const NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CS
 const TRACK_SLUG = { python: 'python', sql: 'sql', js: 'javascript', html: 'html-e-css', excel: 'excel', powerbi: 'power-bi-e-dax', dados: 'analise-de-dados-e-storytelling', ciber: 'hacker-e-ciberseguranca' };
 const LEVEL_SLUG = ['basico', 'intermediario', 'avancado'];
 const INTRO = {
-  python: 'Python é uma das linguagens de programação mais usadas para automatizar tarefas, analisar dados e criar sistemas. Aqui você aprende do zero, com frases simples e exemplos curtos.',
+  python: 'Python é uma das linguagens de programação mais usadas para automatizar tarefas, analisar dados e criar sistemas. Aqui você aprende do zero, com frases simples e exemplos curtos, e depois automatiza arquivos, e-mails e consultas na internet.',
   sql: 'SQL é a linguagem que conversa com bancos de dados: com poucas palavras você pergunta ao banco o que quer saber e ele responde com uma tabela. É a base do trabalho de quem analisa dados.',
   js: 'JavaScript é a linguagem que faz os sites ganharem vida e também roda em servidores e aplicativos. Aqui você aprende do zero: variáveis, decisões, repetições, funções, arrays e objetos, com exemplos curtos que você roda na hora.',
   html: 'HTML monta a estrutura de uma página (títulos, textos, imagens, links) e CSS cuida da aparência (cores, tamanhos, espaços, posição). Juntos, são a base de todo site.',

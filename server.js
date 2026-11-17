@@ -208,8 +208,10 @@ const PJ_AT = new Map(projects.map(p => [`${p.track}-${p.lv}-${p.after}`, p])); 
 const EC_AT = new Map(explains.map(e => [`${e.track}-${e.lv}-${e.after}`, e]));
 const ecDone = (u, track, lv, n) => { const e = EC_AT.get(`${track}-${lv}-${n}`); return !e || !!(u.ecdone || {})[e.id]; };
 const pjDone = (u, track, lv, n) => { const p = PJ_AT.get(`${track}-${lv}-${n}`); return !p || !!(u.cpdone || {})[p.id]; };   // o projeto feito fica guardado junto com os checkpoints (cpdone)
-const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, checks, sp, ...rest }) => rest;   // o gabarito nunca vai para o navegador (em HTML e CSS a lista de verificações fica no servidor; o aluno recebe só `req`, as descrições)
-const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, checks, sp, ...rest }) => rest;   // nas provas (checkpoint e final) também não vai solução nem dica
+const LABSRC = require('./content/lab').LAB;       // as lições de Automações (Python) começam com o texto de public/lab.py; o navegador já baixa esse arquivo uma vez, então aqui vai só a marca "#lab"
+const shrink = r => (typeof r.prelude === 'string' && r.prelude.startsWith(LABSRC)) ? { ...r, prelude: '#lab\n' + r.prelude.slice(LABSRC.length) } : r;
+const strip = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, read, expl, checks, sp, ...rest }) => shrink(rest);   // o gabarito nunca vai para o navegador (em HTML e CSS a lista de verificações fica no servidor; o aluno recebe só `req`, as descrições)
+const stripExam = ({ expectedSql, expectedOut, expectedRows, need, forbid, answer, altSet, keep, noAlt, ordered, names, quiz, solution, hints, explain, example, exampleOut, mat, read, expl, checks, sp, ...rest }) => shrink(rest);   // nas provas (checkpoint e final) também não vai solução nem dica
 const ensure = u => { u.track ??= null; u.passed ??= {}; u.exams ??= {}; u.xpd ??= {}; u.fails ??= {}; u.done ??= {}; u.ex ??= {}; u.ler ??= {}; u.exp ??= {}; u.des ??= {}; u.fix ??= {}; u.cf ??= {}; u.cpdone ??= {}; u.ecdone ??= {}; u.cptry ??= {}; u.attempts ??= {}; if (!u.ecm) migrateEc(u); if (!u.scm) migrateSc(u); return u; };
 
 // ---------- regras do curso: curso -> nível -> lições (em ordem) ----------

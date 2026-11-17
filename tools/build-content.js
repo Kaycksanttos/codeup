@@ -10,7 +10,7 @@ const PJS = require('../content/projects');        // projetos (um depois de cad
 const jsrunner = require('../jsrunner');
 const exists = f => fs.existsSync(path.join(__dirname, '..', 'content', f + '.js'));
 // Python e JavaScript: roda cada solução (e o exemplo de cada lição) e grava o que ela imprime
-for (const f of ['py1', 'py2', 'py3', 'js1', 'js2', 'js3']) {
+for (const f of ['py1', 'py2', 'py3', 'py4', 'js1', 'js2', 'js3']) {
   if (!exists(f)) continue;
   const js = f.startsWith('js'), track = js ? 'js' : 'python', lv = +f.slice(2);
   const runIt = (pre, code) => {

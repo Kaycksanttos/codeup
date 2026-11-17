@@ -18,10 +18,10 @@ try { expected = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'exp
 let expectedSql = {};   // linhas esperadas de cada atividade SQL (reserva para quando o servidor não roda o sql.js)
 try { expectedSql = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'expected-sql.json'), 'utf8')); } catch { }
 
-const FILES = { python: ['py1', 'py2', 'py3'], sql: ['sql1', 'sql2', 'sql3'], js: ['js1'], html: ['html1'], excel: ['xl1'], powerbi: ['pbi1'], dados: ['da1'], ciber: ['ci1', 'ci2', 'ci3'] };
+const FILES = { python: ['py1', 'py2', 'py3', 'py4'], sql: ['sql1', 'sql2', 'sql3'], js: ['js1'], html: ['html1'], excel: ['xl1'], powerbi: ['pbi1'], dados: ['da1'], ciber: ['ci1', 'ci2', 'ci3'] };
 const TRACKS = ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber'];
-const LEVELS_OF = { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 3 };      // quantos níveis cada curso tem hoje (o Excel, o Power BI e a Análise de Dados começam só com o Básico; os outros níveis entram depois)
-const LEVEL_NAMES = ['Básico', 'Intermediário', 'Avançado'];
+const LEVELS_OF = { python: 4, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 3 };      // quantos níveis cada curso tem hoje (o Excel, o Power BI e a Análise de Dados começam só com o Básico; os outros níveis entram depois)
+const LEVEL_NAMES = ['Básico', 'Intermediário', 'Avançado', 'Automações'];
 const CHANCES = { cp: 2, fin: 3 };       // chances em cada tipo de prova
 const BACK = { cp: 5, fin: 10 };         // quantas lições voltam quando as chances acabam
 
@@ -42,7 +42,7 @@ let EXPY = {}; try { EXPY = JSON.parse(fs.readFileSync(path.join(__dirname, 'con
 const EXAFTER = require('./content/example-after');
 lessons.forEach(x => { if (EXPY[x.id] != null) x.exampleOut = { out: EXPY[x.id] }; if (EXAFTER[x.id]) x.exampleAfter = EXAFTER[x.id][0]; });
 // "Experimente": uma mudança sugerida para o exemplo (content/tente-sql.js e tente-py.js). A teoria mostra o exemplo editável e o botão que aplica a sugestão.
-const TENTE = { ...require('./content/tente-sql'), ...require('./content/tente-py') };
+const TENTE = { ...require('./content/tente-sql'), ...require('./content/tente-py'), ...require('./content/tente-py4') };
 lessons.forEach(x => { if (TENTE[x.id]) x.tente = TENTE[x.id]; });
 // "Como funciona" (1ª parte de cada lição): content/como-*.js diz o que cada pedaço do exemplo faz; aqui já calculamos onde cada pedaço está no código que a tela mostra
 // (o SQL aparece organizado em linhas pelo fmtSql). A tela só precisa acender os trechos [a, b) na ordem.

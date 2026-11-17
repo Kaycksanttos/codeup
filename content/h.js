@@ -1,7 +1,7 @@
 // Ajudantes para escrever atividades de forma curta.
 // L(titulo, explicacao, exemplo, tarefa, solucao, [palavras obrigatorias], dica, {seed|prelude|peek|starter})
-const LEVELS = ['Básico', 'Intermediário', 'Avançado'];
-const XP = { python: [10, 15, 20], sql: [15, 20, 25], js: [10, 15, 20] };
+const LEVELS = ['Básico', 'Intermediário', 'Avançado', 'Automações'];
+const XP = { python: [10, 15, 20, 25], sql: [15, 20, 25], js: [10, 15, 20] };
 const PRE = { python: 'py', sql: 'sql', js: 'js' };
 const STARTER = { python: '# escreva seu código aqui\n', sql: '-- escreva sua consulta aqui\n', js: '// escreva seu código aqui\n' };
 

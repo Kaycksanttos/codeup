@@ -14,9 +14,9 @@ const reqOf = l => REQ[l.type] || REQ.other;
 
 const norm = (r, ordered) => { const v = (r ? r.values : []).map(x => JSON.stringify(x)); return ordered ? v : v.sort(); };
 
-test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Excel, Power BI e DAX, Análise de Dados e Storytelling e Hacker e Cibersegurança (níveis Básico, Intermediário e Avançado), 30 lições por nível', () => {
+test('estrutura dos cursos: Python (4 níveis: o último é o de Automações) e SQL (3 níveis), JavaScript, HTML e CSS, Excel, Power BI e DAX, Análise de Dados e Storytelling e Hacker e Cibersegurança (níveis Básico, Intermediário e Avançado), 30 lições por nível', () => {
   assert.deepEqual(TRACKS, ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber']);
-  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 3 });
+  assert.deepEqual(LEVELS_OF, { python: 4, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 3 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ls = lessons.filter(l => l.track === t && l.lv === lv);
     assert.equal(ls.length, 30, `${t} nível ${lv} deveria ter 30 lições`);
@@ -35,9 +35,9 @@ test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Ex
 });
 
 test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, JavaScript, HTML e CSS, Excel, Power BI, Análise de Dados e Cibersegurança', () => {
-  assert.equal(checkpoints.length, 28);
-  assert.equal(finals.length, 14);
-  assert.equal(tests.length, 42);
+  assert.equal(checkpoints.length, 30);
+  assert.equal(finals.length, 15);
+  assert.equal(tests.length, 45);
   assert.deepEqual(CHANCES, { cp: 2, fin: 3 });
   assert.deepEqual(BACK, { cp: 5, fin: 10 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
@@ -60,7 +60,7 @@ test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova f
 });
 
 test('projetos: 6 por nível (depois das lições 5, 10, 15, 20, 25 e 30), em todos os cursos, com 5 temas cada e sem prova nem chance', () => {
-  assert.equal(projects.length, 84, '18 de Python, 18 de SQL, 18 de Cibersegurança e 6 de JavaScript, de HTML e CSS, de Excel, de Power BI e de Análise de Dados');
+  assert.equal(projects.length, 90, '24 de Python, 18 de SQL, 18 de Cibersegurança e 6 de JavaScript, de HTML e CSS, de Excel, de Power BI e de Análise de Dados');
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ps = projects.filter(p => p.track === t && p.lv === lv);
     assert.deepEqual(ps.map(p => p.after), [5, 10, 15, 20, 25, 30], `${t} nível ${lv}`);
@@ -158,7 +158,7 @@ for (const l of [...lessons, ...tests, ...projects]) {
 const pysandbox = require('../pysandbox');
 test('sandbox Python: todas as soluções passam e os ataques são barrados', { skip: !pysandbox.available() && 'sem python3' }, async () => {
   const py = [...lessons, ...tests, ...projects].filter(x => x.type === 'python');
-  assert.equal(py.length, 117, '90 lições + 9 provas + 18 projetos');
+  assert.equal(py.length, 156, '120 lições + 12 provas + 24 projetos');
   for (const x of py) { const r = await pysandbox.run(x.prelude || '', x.solution); assert.ok(r.ok && r.out.trim() === x.expectedOut, `${x.id} divergiu no sandbox: ${r.err}`); }
   const atk = ['print(open("/etc/passwd").read())', 'open("x","w").write("a")', 'import socket', 'import subprocess', 'import os\nos.system("id")', '__import__("ctypes")', 'import os\nos.listdir("/")', 'while True: pass'];
   for (const c of atk) { const r = await pysandbox.run('', c); assert.equal(r.ok, false, 'deveria falhar: ' + c); }
@@ -234,12 +234,13 @@ test('dados das lições, provas e projetos: sem acento (tabelas, textos, result
   const deep = (where, v) => { if (v == null) return; if (typeof v === 'string') chk(where, v); else if (typeof v === 'object') for (const [k, x] of Object.entries(v)) deep(where + '.' + k, x); };
   // fórmula do Excel: o nome da função pode ter acento (é o nome oficial), mas o texto entre aspas não
   const formula = (where, f) => { if (typeof f !== 'string') return; if (f[0] !== '=') return chk(where, f); chk(where, f.replace(/[A-ZÀ-Ý.]+(?=\()/g, '')); };
+  const LAB = require('../content/lab').LAB, semLab = p => typeof p === 'string' && p.startsWith(LAB) ? p.slice(LAB.length) : p;   // o computador de treino (public/lab.py) tem mensagens e comentários com acento; os dados de cada lição (depois dele) não
   const semComentario = (s, re) => String(s).split('\n').map(l => l.replace(re, '')).join('\n');
   for (const [k, v] of Object.entries(seeds)) if (!k.startsWith('T_')) chk('seeds.' + k, v);
   for (const l of [...lessons, ...tests, ...projects]) {
     if (l.track === 'dados' || l.track === 'ciber') continue;   // Análise de Dados e Cibersegurança: exemplos de conceito, em português normal
     const id = l.id;
-    chk(id + '.expectedOut', l.expectedOut); chk(id + '.prelude', l.prelude);
+    chk(id + '.expectedOut', l.expectedOut); chk(id + '.prelude', semLab(l.prelude));
     if (l.exampleOut) deep(id + '.exampleOut', { cols: l.exampleOut.cols, rows: l.exampleOut.rows });
     deep(id + '.expectedRows', l.expectedRows);
     if (l.track === 'python' || l.track === 'sql' || l.track === 'js') {
@@ -287,7 +288,7 @@ test('exemplo ao vivo (SQL): cada lição tem uma sugestão "Experimente" que ro
 
 test('exemplo ao vivo (Python): exemplos completos que imprimem algo, com a saída pronta, e sugestões que rodam e mudam a saída', () => {
   const ex = lessons.filter(l => l.type === 'python' && l.example);
-  assert.equal(ex.length, 90, 'as 90 lições de Python têm exemplo');
+  assert.equal(ex.length, 120, 'as 120 lições de Python têm exemplo');
   const run = (l, code) => { const r = spawnSync('python3', ['-c', (l.prelude ? l.prelude + '\n' : '') + code], { encoding: 'utf8', timeout: 60000 }); assert.equal(r.status, 0, `${l.id}: ${r.stderr.trim().split('\n').pop()}`); return r.stdout; };
   for (const l of ex) {
     const t = l.tente; assert.ok(t && t.q && t.code && t.why, `${l.id}: falta a sugestão Experimente (q, code e why)`);
@@ -295,9 +296,9 @@ test('exemplo ao vivo (Python): exemplos completos que imprimem algo, com a saí
     const a = run(l, l.example), b = run(l, t.code);
     assert.ok(a.trim(), `${l.id}: o exemplo não imprime nada`);
     assert.ok(b.trim() && b !== a, `${l.id}: a sugestão precisa imprimir uma saída diferente do exemplo`);
-    assert.ok(l.exampleOut && l.exampleOut.out === a.replace(/\n$/, ''), `${l.id}: a saída pronta do exemplo está desatualizada (rode npm run build:content)`);
-    // só as lições de pandas usam dados escondidos (df); os outros exemplos precisam funcionar sozinhos
-    if (!/\bdf\s*=/.test(l.prelude || '')) { const r = spawnSync('python3', ['-c', l.example], { encoding: 'utf8', timeout: 30000 }); assert.equal(r.status, 0, `${l.id}: o exemplo depende de dados escondidos`); }
+    assert.ok(l.exampleOut && l.exampleOut.out === a.replace(/\s+$/, ''), `${l.id}: a saída pronta do exemplo está desatualizada (rode npm run build:content)`);
+    // só as lições de pandas (df) e as de Automações (o computador de treino) usam dados escondidos; os outros exemplos precisam funcionar sozinhos
+    if (!/\bdf\s*=/.test(l.prelude || '') && !/_lab_boot\(/.test(l.prelude || '')) { const r = spawnSync('python3', ['-c', l.example], { encoding: 'utf8', timeout: 30000 }); assert.equal(r.status, 0, `${l.id}: o exemplo depende de dados escondidos`); }
   }
 });
 
@@ -323,7 +324,7 @@ test('enunciados: todo projeto e prova que não é quiz tem o enunciado em passo
 test('como funciona: toda lição com exemplo (SQL, Python, Excel e DAX) traz as partes explicadas, e cada parte acende um trecho certo do código', () => {
   const { fmtSql } = require('../public/fmt'), COMO = require('../content/como');
   const com = lessons.filter(l => ['sql', 'python', 'excel', 'dax'].includes(l.type) && l.example);
-  assert.equal(com.length, 225, 'esperava 225 lições com exemplo para explicar');
+  assert.equal(com.length, 255, 'esperava 255 lições com exemplo para explicar');
   for (const l of com) {
     assert.ok(Array.isArray(l.como) && l.como.length >= 1, `${l.id}: faltam as partes de "Como funciona"`);
     const code = l.type === 'sql' ? fmtSql(l.example) : String(l.example); let fim = 0;
@@ -340,7 +341,7 @@ test('como funciona: toda lição com exemplo (SQL, Python, Excel e DAX) traz as
 
 test('quando usar e como usar: toda lição com exemplo (SQL, Python, Excel e DAX) tem o "use quando", o molde para preencher e, se houver, o cuidado', () => {
   const { n, erros } = require('../tools/check-usar')();
-  assert.equal(n, 225, 'esperava 225 lições com exemplo');
+  assert.equal(n, 255, 'esperava 255 lições com exemplo');
   assert.deepEqual(erros, []);
   for (const l of lessons.filter(x => ['sql', 'python', 'excel', 'dax'].includes(x.type) && x.example)) assert.ok(l.usar && l.usar.q && l.usar.m, `${l.id}: o servidor precisa mandar l.usar`);
   assert.equal(lessons.filter(x => x.type === 'quiz').every(x => !x.usar), true, 'lição de quiz não tem molde');
