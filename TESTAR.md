@@ -159,7 +159,9 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] As 30 lições do Básico são quizzes. Lição 2 (hackers e lei) e lição 7 (phishing): leia o domínio do link e confira que só o texto antes da primeira barra conta.
 - [ ] Lição 15 (cifra de César): `CASA` com chave 3 dá `FDVD`; lição 22 (permissões): `rw-` é `6`; lição 23 (logs): contar as falhas do IP 203.0.113.9 dá `5`.
 - [ ] Lições 1, 2, 6, 8, 12, 19, 24, 29 e 30 têm perguntas **escritas**; um texto sem sentido não passa e mostra o que falta.
-- [ ] Depois da lição 10 vem o projeto e o checkpoint; a prova final (depois da 30) tem 10 perguntas, duas escritas. Passando, o nível Básico conclui o curso.
+- [ ] Depois da lição 10 vem o projeto e o checkpoint; a prova final (depois da 30) tem 10 perguntas, duas escritas. Passando, o nível **Intermediário** é liberado.
+- [ ] **Intermediário:** lição 2 (CIDR): `/26` tem `64` endereços e `/28` comporta `14` aparelhos; lição 10 (IDS): 45 falsos em 300 alertas dão `15%`; lição 18 (IDOR): a tabela de pedidos tem `3` pedidos a negar; lição 23 (CVSS): a faixa crítica começa em `9,0`; lição 26 (Base64): `b2xh` decodifica para `ola`; lição 28 (forense): o IP 203.0.113.50 tem `5` pedidos 404; lição 29 (SIEM): só `1` IP dispara a regra de 5 falhas e um sucesso.
+- [ ] As lições 21 e 30 do Intermediário têm uma pergunta **escrita** (ética e escopo); as provas finais têm duas. Passando na prova final do Intermediário, o curso conclui (o Avançado ainda não existe).
 
 **5e. Continuar conectado**
 - [ ] Entre com e-mail e senha, feche o app/aba por completo e abra de novo (também depois de algumas horas/dias): você continua dentro, sem pedir senha.

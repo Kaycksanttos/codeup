@@ -18,9 +18,9 @@ try { expected = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'exp
 let expectedSql = {};   // linhas esperadas de cada atividade SQL (reserva para quando o servidor não roda o sql.js)
 try { expectedSql = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'expected-sql.json'), 'utf8')); } catch { }
 
-const FILES = { python: ['py1', 'py2', 'py3'], sql: ['sql1', 'sql2', 'sql3'], js: ['js1'], html: ['html1'], excel: ['xl1'], powerbi: ['pbi1'], dados: ['da1'], ciber: ['ci1'] };
+const FILES = { python: ['py1', 'py2', 'py3'], sql: ['sql1', 'sql2', 'sql3'], js: ['js1'], html: ['html1'], excel: ['xl1'], powerbi: ['pbi1'], dados: ['da1'], ciber: ['ci1', 'ci2'] };
 const TRACKS = ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber'];
-const LEVELS_OF = { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 1 };      // quantos níveis cada curso tem hoje (o Excel, o Power BI e a Análise de Dados começam só com o Básico; os outros níveis entram depois)
+const LEVELS_OF = { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 2 };      // quantos níveis cada curso tem hoje (o Excel, o Power BI e a Análise de Dados começam só com o Básico; os outros níveis entram depois)
 const LEVEL_NAMES = ['Básico', 'Intermediário', 'Avançado'];
 const CHANCES = { cp: 2, fin: 3 };       // chances em cada tipo de prova
 const BACK = { cp: 5, fin: 10 };         // quantas lições voltam quando as chances acabam
@@ -115,7 +115,7 @@ for (const x of lessons) {
 }
 
 // provas de checkpoint e prova final: ficam fora de `lessons` para não mudar a contagem das 30 lições do nível
-const tests = [...require('./content/checkpoints'), ...require('./content/cp-js'), ...require('./content/cp-html'), ...require('./content/cp-xl'), ...require('./content/cp-pbi'), ...require('./content/cp-da'), ...require('./content/cp-ci')].map(fill);
+const tests = [...require('./content/checkpoints'), ...require('./content/cp-js'), ...require('./content/cp-html'), ...require('./content/cp-xl'), ...require('./content/cp-pbi'), ...require('./content/cp-da'), ...require('./content/cp-ci'), ...require('./content/cp-ci2')].map(fill);
 for (const t of tests) {
   const kind = t.fin ? 'fin' : 'cp';
   t.chances = CHANCES[kind]; t.back = BACK[kind]; t.backFrom = t.after - t.back + 1;
