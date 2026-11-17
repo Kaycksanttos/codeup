@@ -9,7 +9,7 @@
 //   Q(título, explicação, exemplo, tarefa, [perguntas], { hint?, lang? ('dax' | 'm' | 'text'), mat? ({ table | chart | diagram }) })
 const LEVELS = ['Básico', 'Intermediário', 'Avançado'];
 const XP = [15, 20, 25];
-const PFX = { powerbi: 'pbi', dados: 'da' };
+const PFX = { powerbi: 'pbi', dados: 'da', ciber: 'ci' };
 const START = { measure: '-- escreva a sua medida aqui\n', column: '-- escreva a coluna calculada aqui\n', table: '-- escreva a tabela aqui\n' };
 
 // o texto da resposta oficial, como o aluno a escreveria

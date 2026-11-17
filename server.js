@@ -6,7 +6,7 @@ const lessons = require('./lessons');
 const EXPLAIN = require('./explain');
 const R = require('./public/rewards.js');   // títulos e molduras por XP (o mesmo arquivo roda no navegador)
 const { checkpoints, finals, tests, projects, explains, extras, EC_GEMS: R_EC_GEMS, TRACKS, LEVEL_NAMES, LEVELS_OF } = lessons;
-const TRACK_NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
+const TRACK_NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling', ciber: 'Hacker e Cibersegurança' };
 const xlcheck = require('./xlcheck');   // correção das atividades de Excel (compara os resultados das fórmulas)
 const htmlcheck = require('./htmlcheck');   // HTML e CSS: lê o HTML do aluno e calcula o CSS como o navegador, depois confere a lista de verificações da lição
 const daxcheck = require('./daxcheck'), quizcheck = require('./quizcheck');   // Power BI e DAX: medidas DAX (compara os resultados nos visuais) e quizzes (escolher, ordenar, ligar, número, montar visual, escrever)

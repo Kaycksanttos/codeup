@@ -3,8 +3,8 @@
 // conteúdo de verdade para ler — o AdSense só aceita anúncios em páginas com conteúdo do dono do site, NUNCA em telas de navegação do app.
 // Tudo vem das próprias lições (explicação, exemplo e as 4 partes "o que é / para que serve / como usar / o que aparece").
 // Gabaritos, soluções, dicas e perguntas de leitura NÃO entram aqui: continuam só dentro do app.
-const NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
-const TRACK_SLUG = { python: 'python', sql: 'sql', js: 'javascript', html: 'html-e-css', excel: 'excel', powerbi: 'power-bi-e-dax', dados: 'analise-de-dados-e-storytelling' };
+const NAMES = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling', ciber: 'Hacker e Cibersegurança' };
+const TRACK_SLUG = { python: 'python', sql: 'sql', js: 'javascript', html: 'html-e-css', excel: 'excel', powerbi: 'power-bi-e-dax', dados: 'analise-de-dados-e-storytelling', ciber: 'hacker-e-ciberseguranca' };
 const LEVEL_SLUG = ['basico', 'intermediario', 'avancado'];
 const INTRO = {
   python: 'Python é uma das linguagens de programação mais usadas para automatizar tarefas, analisar dados e criar sistemas. Aqui você aprende do zero, com frases simples e exemplos curtos.',
@@ -13,7 +13,8 @@ const INTRO = {
   html: 'HTML monta a estrutura de uma página (títulos, textos, imagens, links) e CSS cuida da aparência (cores, tamanhos, espaços, posição). Juntos, são a base de todo site.',
   excel: 'O Excel é a ferramenta de planilhas mais usada nas empresas. Dominar fórmulas e funções poupa horas de trabalho manual e evita erros nas contas.',
   powerbi: 'O Power BI transforma tabelas cheias de números em painéis visuais, e o DAX é a linguagem das fórmulas que calculam os indicadores desses painéis.',
-  dados: 'Analisar dados é fazer boas perguntas, olhar os números com cuidado e contar a história que eles mostram, de um jeito que qualquer pessoa entenda e use para decidir.'
+  dados: 'Analisar dados é fazer boas perguntas, olhar os números com cuidado e contar a história que eles mostram, de um jeito que qualquer pessoa entenda e use para decidir.',
+  ciber: 'Cibersegurança é a arte de proteger pessoas, contas e sistemas contra ataques. Aqui você aprende como os atacantes pensam para saber se defender: senhas, golpes, redes, criptografia e testes de segurança feitos com autorização.'
 };
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

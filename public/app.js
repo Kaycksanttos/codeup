@@ -133,7 +133,7 @@ const winStage = (h, text, base = 'win', big = false) => {
   if (/epic/.test(base)) return stage(h, text, 'good epic', '#fbbf24', 'big');
   return stage(h, text, 'good', '', base == 'cp' ? 'cp' : 'win');
 };
-const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${['python', 'js', 'html', 'excel', 'powerbi', 'dados'].includes(t) ? t : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo do curso (Python, SQL, Excel, Power BI ou Análise de Dados)
+const tg = (t, s = 40) => `<img class=lgo src="/img/logo-${['python', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber'].includes(t) ? t : 'sql'}.webp" width=${s} height=${s} alt="" style="--s:${s}px">`;   // logo do curso (Python, SQL, Excel, Power BI ou Análise de Dados)
 const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 
 // destaque de sintaxe simples (só para exemplos e soluções exibidos)
@@ -350,7 +350,7 @@ function setSfx(v) { const on = window.CodeUpSfx ? CodeUpSfx.set(v) : false; if 
 
 function toast(m, err) { document.querySelectorAll('.toast').forEach(x => x.remove()); const d = document.createElement('div'); d.className = 'toast' + (err ? ' err' : ''); d.innerHTML = ic(err ? 'info' : 'check', 18) + '<span></span>'; d.lastChild.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 4500); }
 const fail = e => { if (!e.silent) toast(e.error || e.message || 'Algo deu errado.', true); };
-const theme = t => { document.body.classList.remove('t-python', 't-sql', 't-js', 't-html', 't-excel', 't-powerbi', 't-dados'); if (t) document.body.classList.add('t-' + t); };
+const theme = t => { document.body.classList.remove('t-python', 't-sql', 't-js', 't-html', 't-excel', 't-powerbi', 't-dados', 't-ciber'); if (t) document.body.classList.add('t-' + t); };
 
 async function api(p, o = {}) {
   let r;
@@ -598,8 +598,8 @@ const ACT_BY = { html: { x: ['Montar a página', 'montar a página', 'Hora de es
 const actNm = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[0] || ACT_NM[a], actSh = (l, a) => ((ACT_BY[l && l.type] || {})[a] || [])[1] || ACT_SH[a];
 const actTag = (l, a) => { const m = rowOf(l.id); return m && (m.rd || m.cf) ? `Atividade ${actPos(m, a)} de ${actOrd(m).length} · ${actNm(l, a)}` : actNm(l, a); };
 const fm = (m, f) => S.me && S.me.sex === 'f' ? f : m;                    // palavra no masculino ou no feminino, conforme o que a pessoa informou
-const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling' };
-const COURSES = ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados'];                                   // ordem dos cursos na tela Cursos
+const LV = ['Básico', 'Intermediário', 'Avançado'], TN = { python: 'Python', sql: 'SQL', js: 'JavaScript', html: 'HTML e CSS', excel: 'Excel', powerbi: 'Power BI e DAX', dados: 'Análise de Dados e Storytelling', ciber: 'Hacker e Cibersegurança' };
+const COURSES = ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber'];                                   // ordem dos cursos na tela Cursos
 const courseOn = t => !S.cfg || !S.cfg.courses || S.cfg.courses[t] !== false;   // o dono pode desativar cursos no painel (Ajustes → Cursos)
 const ACTIVE = () => COURSES.filter(courseOn);
 const lvs = t => { const n = Math.max(1, ...(S.ls || []).filter(l => l.track == t).map(l => l.lv)); return Array.from({ length: n }, (_, i) => i + 1); };   // níveis que o curso tem hoje (o Excel começa só com o Básico)
@@ -668,11 +668,12 @@ const CRS = {
   html: { d: 'Monte páginas com HTML e dê estilo com CSS: textos, imagens, cores, caixas e layouts.', c: 'Programação' },
   excel: { d: 'Fórmulas, SOMA, SE e PROCV na prática, com uma planilha de verdade.', c: 'Produtividade' },
   powerbi: { d: 'Modelo de dados, visuais e fórmulas DAX: medidas, CALCULATE e relatórios que contam histórias.', c: 'Dados' },
-  dados: { d: 'Do olhar para os números a contar a história com eles: gráficos, insights e apresentação.', c: 'Dados' }
+  dados: { d: 'Do olhar para os números a contar a história com eles: gráficos, insights e apresentação.', c: 'Dados' },
+  ciber: { d: 'Pense como um hacker para se defender: senhas, golpes, redes, criptografia e testes de segurança com autorização.', c: 'Segurança' }
 };
 const SOON = [];                 // cursos "em breve": { n, d, c, i } (hoje todos os cursos já têm lições; um curso novo fica aqui até as lições chegarem e então entra em COURSES)
-const CATI = { Todos: 'grid', Programação: 'code', Dados: 'db', Produtividade: 'chart', Outros: 'smile' };
-const CATS = () => ['Todos', ...['Programação', 'Dados', 'Produtividade', 'Outros'].filter(c => [...ACTIVE().map(t => CRS[t].c), ...SOON.map(x => x.c)].includes(c))];   // só aparecem categorias que têm curso
+const CATI = { Todos: 'grid', Programação: 'code', Dados: 'db', Produtividade: 'chart', Segurança: 'shield', Outros: 'smile' };
+const CATS = () => ['Todos', ...['Programação', 'Dados', 'Segurança', 'Produtividade', 'Outros'].filter(c => [...ACTIVE().map(t => CRS[t].c), ...SOON.map(x => x.c)].includes(c))];   // só aparecem categorias que têm curso
 const cnorm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const xpTotal = t => S.ls.filter(l => l.track == t).reduce((a, l) => a + l.xp, 0) + (S.cps || []).filter(c => c.track == t && !c.fin).reduce((a, c) => a + c.xp, 0) + (S.projs || []).filter(p => p.track == t).reduce((a, p) => a + p.xp, 0) + (S.ecs || []).filter(e => e.track == t).reduce((a, e) => a + e.xp, 0) + (S.scs || []).filter(e => e.track == t).reduce((a, e) => a + e.xp, 0) + lvs(t).reduce((a, lv) => a + 50 * lv, 0);
 const xpGot = t => S.ls.filter(l => l.track == t && done(l)).reduce((a, l) => a + l.xp, 0) + (S.cps || []).filter(c => c.track == t && !c.fin && (S.me.cps || []).includes(c.id)).reduce((a, c) => a + c.xp, 0) + (S.projs || []).filter(p => p.track == t && (S.me.cps || []).includes(p.id)).reduce((a, p) => a + p.xp, 0) + (S.ecs || []).filter(e => e.track == t && ecOk(e)).reduce((a, e) => a + e.xp, 0) + (S.scs || []).filter(e => e.track == t && e.done).reduce((a, e) => a + e.xp, 0) + lvs(t).filter(lv => passedLv(t, lv)).reduce((a, lv) => a + 50 * lv, 0);
@@ -687,7 +688,7 @@ function courseRow(t) {
       <div class=crtg><span><i class=dg style="--d:#34d399"></i>${k > 1 ? 'Básico ao Avançado' : 'Básico'}</span><span><i class=dg style="--d:${CATC[c.c] || '#38bdf8'}"></i>${c.c}</span><span>${ic('layers', 13)} ${n} lições</span></div>
       <div class=crf><div class=crbar><i style="width:${p}%"></i></div><b class=crp>${p}%</b><span class=crgo>${ic('arrow', 20)}</span></div></div></div>`;
 }
-const CATC = { Programação: '#a78bfa', Dados: '#38bdf8', Produtividade: '#fb923c', Outros: '#f472b6' };
+const CATC = { Programação: '#a78bfa', Dados: '#38bdf8', Produtividade: '#fb923c', Segurança: '#fb7185', Outros: '#f472b6' };
 const soonRow = x => `<div class="cr soon" data-c="${x.c}" data-q="${esc(cnorm(x.n + ' ' + x.d + ' ' + x.c))}" aria-disabled=true>
   <span class=crisl>${island()}<span class=cis>${ic(x.i, 44)}</span></span><div class=crb><div class=crt1><b>${x.n}</b><span class=sbadge>Em breve</span></div><small class=crd>${x.d}</small>
   <div class=crtg><span><i class=dg style="--d:${CATC[x.c] || '#38bdf8'}"></i>${x.c}</span></div></div></div>`;

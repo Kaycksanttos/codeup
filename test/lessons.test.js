@@ -7,16 +7,16 @@ const initSqlJs = async () => BQ.install(await initSqlJsRaw());   // o SQL das l
 const lessons = require('../lessons'), { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
 const xlcheck = require('../xlcheck'), checkExcel = require('../tools/check-xl'), checkPbi = require('../tools/check-pbi');
 const daxcheck = require('../daxcheck'), quizcheck = require('../quizcheck'), htmlcheck = require('../htmlcheck'), checkHtml = require('../tools/check-html');
-const PFX = { python: 'py', sql: 'sql', js: 'js', html: 'html', excel: 'xl', powerbi: 'pbi', dados: 'da' };
+const PFX = { python: 'py', sql: 'sql', js: 'js', html: 'html', excel: 'xl', powerbi: 'pbi', dados: 'da', ciber: 'ci' };
 // campos obrigatórios de cada tipo de atividade (provas e lições)
 const REQ = { html: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'checks', 'req', 'starter', 'edit'], excel: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'sheet', 'answer', 'targets'], dax: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter', 'model', 'answer'], quiz: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'quiz'], other: ['id', 'type', 'track', 'level', 'lv', 'xp', 'title', 'task', 'solution', 'need', 'starter'] };
 const reqOf = l => REQ[l.type] || REQ.other;
 
 const norm = (r, ordered) => { const v = (r ? r.values : []).map(x => JSON.stringify(x)); return ordered ? v : v.sort(); };
 
-test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Excel, Power BI e DAX e Análise de Dados e Storytelling (nível Básico), 30 lições por nível', () => {
-  assert.deepEqual(TRACKS, ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados']);
-  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1 });
+test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Excel, Power BI e DAX, Análise de Dados e Storytelling e Hacker e Cibersegurança (nível Básico), 30 lições por nível', () => {
+  assert.deepEqual(TRACKS, ['python', 'sql', 'js', 'html', 'excel', 'powerbi', 'dados', 'ciber']);
+  assert.deepEqual(LEVELS_OF, { python: 3, sql: 3, js: 1, html: 1, excel: 1, powerbi: 1, dados: 1, ciber: 1 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ls = lessons.filter(l => l.track === t && l.lv === lv);
     assert.equal(ls.length, 30, `${t} nível ${lv} deveria ter 30 lições`);
@@ -31,12 +31,13 @@ test('estrutura dos cursos: Python e SQL (3 níveis), JavaScript, HTML e CSS, Ex
   assert.ok(lessons.filter(l => l.track === 'excel').every(l => l.type === 'excel' && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'powerbi').every(l => (l.type === 'dax' || l.type === 'quiz') && l.lv === 1 && l.level === 'Básico'));
   assert.ok(lessons.filter(l => l.track === 'dados').every(l => l.type === 'quiz' && l.lv === 1 && l.level === 'Básico'), 'o curso de Análise de Dados é todo de quizzes');
+  assert.ok(lessons.filter(l => l.track === 'ciber').every(l => l.type === 'quiz' && l.lv === 1 && l.level === 'Básico'), 'o curso de Hacker e Cibersegurança é todo de quizzes');
 });
 
-test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, JavaScript, HTML e CSS, Excel, Power BI e Análise de Dados', () => {
-  assert.equal(checkpoints.length, 22);
-  assert.equal(finals.length, 11);
-  assert.equal(tests.length, 33);
+test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova final (depois da 30), em Python, SQL, JavaScript, HTML e CSS, Excel, Power BI, Análise de Dados e Cibersegurança', () => {
+  assert.equal(checkpoints.length, 24);
+  assert.equal(finals.length, 12);
+  assert.equal(tests.length, 36);
   assert.deepEqual(CHANCES, { cp: 2, fin: 3 });
   assert.deepEqual(BACK, { cp: 5, fin: 10 });
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
@@ -59,7 +60,7 @@ test('provas: 2 checkpoints por nível (depois das lições 10 e 20) e 1 prova f
 });
 
 test('projetos: 6 por nível (depois das lições 5, 10, 15, 20, 25 e 30), em todos os cursos, com 5 temas cada e sem prova nem chance', () => {
-  assert.equal(projects.length, 66, '18 de Python, 18 de SQL e 6 de JavaScript, de HTML e CSS, de Excel, de Power BI e de Análise de Dados');
+  assert.equal(projects.length, 72, '18 de Python, 18 de SQL e 6 de JavaScript, de HTML e CSS, de Excel, de Power BI, de Análise de Dados e de Cibersegurança');
   for (const t of TRACKS) for (let lv = 1; lv <= LEVELS_OF[t]; lv++) {
     const ps = projects.filter(p => p.track === t && p.lv === lv);
     assert.deepEqual(ps.map(p => p.after), [5, 10, 15, 20, 25, 30], `${t} nível ${lv}`);
@@ -177,9 +178,9 @@ test('HTML e CSS: todas as atividades passam na conferência de conteúdo (tools
   assert.deepEqual(r.warn, [], 'nenhum aviso de conteúdo');
 });
 
-test('Power BI e DAX e Análise de Dados: todas as atividades passam na conferência de conteúdo (tools/check-pbi.js)', () => {
+test('Power BI e DAX, Análise de Dados e Cibersegurança: todas as atividades passam na conferência de conteúdo (tools/check-pbi.js)', () => {
   const r = checkPbi();
-  assert.equal(r.n, 78, '2 cursos × (30 lições + 2 checkpoints + 1 prova final + 6 projetos)');
+  assert.equal(r.n, 117, '3 cursos × (30 lições + 2 checkpoints + 1 prova final + 6 projetos)');
   assert.deepEqual(r.bad, []);
   assert.deepEqual(r.warn, [], 'nenhum aviso de conteúdo');
 });
@@ -236,7 +237,7 @@ test('dados das lições, provas e projetos: sem acento (tabelas, textos, result
   const semComentario = (s, re) => String(s).split('\n').map(l => l.replace(re, '')).join('\n');
   for (const [k, v] of Object.entries(seeds)) if (!k.startsWith('T_')) chk('seeds.' + k, v);
   for (const l of [...lessons, ...tests, ...projects]) {
-    if (l.track === 'dados') continue;   // Análise de Dados: exemplos de conceito, em português normal
+    if (l.track === 'dados' || l.track === 'ciber') continue;   // Análise de Dados e Cibersegurança: exemplos de conceito, em português normal
     const id = l.id;
     chk(id + '.expectedOut', l.expectedOut); chk(id + '.prelude', l.prelude);
     if (l.exampleOut) deep(id + '.exampleOut', { cols: l.exampleOut.cols, rows: l.exampleOut.rows });

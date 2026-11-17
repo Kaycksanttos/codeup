@@ -154,6 +154,13 @@ Para o app normal, continue usando `npm start` (porta 3000). Os dois podem ficar
 - [ ] Lição 28: monte um cartão, uma tabela e uma segmentação escolhendo os campos; o visual aparece antes de tocar em Concluído.
 - [ ] Checkpoints (depois da 10 e da 20) e prova final (12 perguntas, 3 delas escritas): 2 e 3 chances; sem Dica, Solução nem Teoria; passando a prova final o curso fica concluído.
 
+**5e. Curso de Hacker e Cibersegurança**
+- [ ] Na aba **Cursos**, há a categoria **Segurança** e o curso **Hacker e Cibersegurança** (logo de escudo vermelho com terminal e cadeado); ao abri-lo, o app inteiro fica em tom de vermelho/rosa.
+- [ ] As 30 lições do Básico são quizzes. Lição 2 (hackers e lei) e lição 7 (phishing): leia o domínio do link e confira que só o texto antes da primeira barra conta.
+- [ ] Lição 15 (cifra de César): `CASA` com chave 3 dá `FDVD`; lição 22 (permissões): `rw-` é `6`; lição 23 (logs): contar as falhas do IP 203.0.113.9 dá `5`.
+- [ ] Lições 1, 2, 6, 8, 12, 19, 24, 29 e 30 têm perguntas **escritas**; um texto sem sentido não passa e mostra o que falta.
+- [ ] Depois da lição 10 vem o projeto e o checkpoint; a prova final (depois da 30) tem 10 perguntas, duas escritas. Passando, o nível Básico conclui o curso.
+
 **5e. Continuar conectado**
 - [ ] Entre com e-mail e senha, feche o app/aba por completo e abra de novo (também depois de algumas horas/dias): você continua dentro, sem pedir senha.
 - [ ] No iPhone (Safari ou ícone na tela inicial): depois de uns 8 dias sem abrir o app, continua conectado.
