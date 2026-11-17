@@ -151,5 +151,7 @@ const needHas = (flat, term) => {
   const core = t.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp((/^\s/.test(t) ? `(?<!${NEED_W})` : '') + core + (/\s$/.test(t) ? `(?!${NEED_W})` : ''), 'u').test(flat);
 };
-const needMissing = (l, code) => { const flat = needFlat(code); return (l.need || []).find(t => !needHas(flat, t)); };
+// SQL no estilo BigQuery: `projeto.dataset.tabela`, dataset.tabela e `tabela` valem como "tabela" (e as crases somem), então "from produtos" aceita todos os jeitos de escrever a tabela.
+const sqlTables = s => String(s == null ? '' : s).replace(/\b(from|join|into|update|table|view)(\s+)(?:`([^`]+)`|([A-Za-z_][\w-]*(?:\.[A-Za-z_]\w*){1,2}))/gi, (m, kw, sp, a, b) => kw + sp + (a || b).split('.').pop()).replace(/`/g, '');
+const needMissing = (l, code) => { const flat = needFlat(l.type === 'sql' ? sqlTables(code) : code); return (l.need || []).find(t => !needHas(flat, t)); };
 Object.assign(module.exports, { needFlat, needHas, needMissing });

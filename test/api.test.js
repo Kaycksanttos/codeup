@@ -535,7 +535,7 @@ test('SQL: se o servidor não consegue rodar o sql.js, avisa (503) em vez de mar
     r = await post('/api/submit', { id: 'sql-1-01', code: 'SELECT * FROM produtos' }, tk); assert.equal(r.status, 503); assert.equal(r.j.engine, true);
     let me = await (await fetch(base + '/api/me', { headers: { 'x-token': tk } })).json(); assert.equal(me.xp, 0);
     // com o resultado enviado pelo navegador (como no Python sem Linux), a resposta certa é aceita e a errada não
-    const SQLJS = require('sql.js'), SQL = await SQLJS(), L = lessons.find(x => x.id === 'sql-1-01'), db = new SQL.Database(); db.run(L.seed);
+    const SQLJS = require('sql.js'), SQL = require('../public/bq.js').install(await SQLJS()), L = lessons.find(x => x.id === 'sql-1-01'), db = new SQL.Database(); db.run(L.seed);
     const rows = c => { const e = db.exec(c); return JSON.stringify(e[e.length - 1].values); };
     r = await post('/api/submit', { id: 'sql-1-01', code: 'SELECT nome FROM produtos', out: rows('SELECT nome FROM produtos') }, tk); assert.equal(r.status, 200); assert.equal(r.j.ok, false, 'resultado diferente do esperado');
     r = await post('/api/submit', { id: 'sql-1-01', code: 'SELECT * FROM produtos', out: rows('SELECT * FROM produtos') }, tk); assert.equal(r.status, 200); assert.equal(r.j.ok, true); assert.equal(r.j.ex['sql-1-01'] !== undefined, true, 'a atividade 1 fica registrada');

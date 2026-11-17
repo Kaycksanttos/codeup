@@ -82,14 +82,14 @@ module.exports = {
     `Coloque o SELECT com GROUP BY entre parênteses, dê um apelido (AS t) e filtre do lado de fora: SELECT produto_id, total FROM (...) AS t WHERE total > 10.`,
     `2 colunas (produto_id e total) e 4 linhas: os produtos que venderam mais de 10 unidades.`],
   'sql-2-17': [
-    `UNION quer dizer "união": junta o resultado de dois SELECT, um embaixo do outro, e tira as linhas repetidas. Os dois SELECT precisam ter o mesmo número de colunas. (UNION ALL deixa as repetidas.)`,
+    `UNION DISTINCT quer dizer "união sem repetir": junta o resultado de dois SELECT, um embaixo do outro, e tira as linhas repetidas. Os dois SELECT precisam ter o mesmo número de colunas. No BigQuery você sempre escreve DISTINCT ou ALL depois do UNION (UNION ALL deixa as repetidas).`,
     `Serve para juntar numa lista só coisas que vêm de filtros ou de lugares diferentes, como a lista de amigos da escola e a lista de amigos do prédio.`,
-    `Escreva um SELECT completo, depois a palavra UNION e outro SELECT completo, cada um com o seu WHERE.`,
+    `Escreva um SELECT completo, depois UNION DISTINCT e outro SELECT completo, cada um com o seu WHERE.`,
     `1 coluna com os nomes das duas categorias juntas: 6 linhas (3 de Moveis e 3 de Papelaria).`],
   'sql-2-18': [
-    `EXCEPT quer dizer "exceto": devolve o que está no primeiro SELECT, mas NÃO aparece no segundo. É como tirar de uma lista tudo o que também está na outra.`,
+    `EXCEPT DISTINCT quer dizer "exceto": devolve o que está no primeiro SELECT, mas NÃO aparece no segundo. É como tirar de uma lista tudo o que também está na outra.`,
     `Serve para achar diferenças entre duas listas, como os produtos cadastrados que nunca foram vendidos.`,
-    `Escreva SELECT id FROM produtos EXCEPT SELECT produto_id FROM vendas. Os dois SELECT precisam ter o mesmo número de colunas.`,
+    `Escreva SELECT id FROM produtos EXCEPT DISTINCT SELECT produto_id FROM vendas. Os dois SELECT precisam ter o mesmo número de colunas.`,
     `1 linha com o id do produto que não tem nenhuma venda: 9.`],
   'sql-2-19': [
     `CASE WHEN é o "se... então... senão..." do SQL. Ele cria uma coluna nova escolhendo um valor de acordo com regras que você escreve.`,
@@ -112,19 +112,19 @@ module.exports = {
     `Ligue as partes com || e ponha o texto fixo entre aspas simples: nome || ' (' || cargo || ')'. Repare que os espaços e os parênteses também são texto.`,
     `1 coluna (etiqueta) e 12 linhas, no formato Nome (Cargo), por exemplo: Carlos (Diretor de TI).`],
   'sql-2-23': [
-    `strftime é uma função que recorta pedaços de uma data. Com '%Y-%m' ela devolve só o ano e o mês (como 2026-10); '%m' dá só o mês e '%Y' só o ano.`,
+    `FORMAT_DATE escreve a data no formato que você pedir: com '%Y-%m' ela devolve só o ano e o mês (como 2026-10). Já o EXTRACT tira um pedaço da data como número: EXTRACT(MONTH FROM data) dá o mês (10).`,
     `Serve para agrupar por período: vendas por mês, cadastros por ano.`,
-    `Escreva strftime('%Y-%m', data) AS mes, some a quantidade com SUM(qtd) e agrupe com GROUP BY mes.`,
+    `Escreva FORMAT_DATE('%Y-%m', data) AS mes, some a quantidade com SUM(qtd) e agrupe com GROUP BY mes.`,
     `2 colunas (mes e total) e 2 linhas: 2026-09 (70) e 2026-10 (137).`],
   'sql-2-24': [
     `Aqui você junta tudo: datas, JOIN, conta de receita e GROUP BY, para acompanhar quanto dinheiro entrou em cada mês.`,
     `Serve para ver se a loja está crescendo ou caindo ao longo do tempo.`,
-    `Junte vendas e produtos, calcule SUM(p.preco * v.qtd) AS receita, agrupe pelo mês com strftime('%Y-%m', v.data) e ordene com ORDER BY mes.`,
+    `Junte vendas e produtos, calcule SUM(p.preco * v.qtd) AS receita, agrupe pelo mês com FORMAT_DATE('%Y-%m', v.data) e ordene com ORDER BY mes.`,
     `2 colunas (mes e receita) e 2 linhas, em ordem de mês: 2026-09 (11120) e 2026-10 (11190).`],
   'sql-2-25': [
-    `julianday transforma uma data em um número (os dias contados desde uma data muito antiga). Se você subtrai dois desses números, descobre quantos dias existem entre as duas datas. Aqui usamos uma data fixa para o resultado nunca mudar.`,
+    `DATE_DIFF conta quantas unidades de tempo (dias, meses ou anos) existem entre duas datas. DATE_DIFF(data_final, data_inicial, DAY) dá a diferença em dias. Aqui usamos uma data fixa para o resultado nunca mudar (para usar o dia de hoje, existe o CURRENT_DATE()).`,
     `Serve para medir tempo: há quantos dias o cliente se cadastrou, quantos dias faltam para um prazo.`,
-    `Escreva CAST(julianday('2026-10-18') - julianday(cadastro) AS INTEGER) AS dias. O CAST joga fora a parte quebrada (depois da vírgula) e deixa só dias inteiros.`,
+    `Escreva DATE_DIFF(DATE '2026-10-18', cadastro, DAY) AS dias. A data mais nova vem primeiro para o resultado dar positivo; o DAY pede a conta em dias inteiros.`,
     `2 colunas (nome e dias) e 8 linhas, do cliente mais antigo (Ana Souza, 349 dias) ao mais novo.`],
   'sql-2-26': [
     `INSERT INTO quer dizer "insira em". Ele coloca uma linha nova dentro de uma tabela, como escrever mais um nome no fim de uma lista. Depois, um SELECT mostra como a lista ficou.`,

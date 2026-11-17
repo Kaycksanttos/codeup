@@ -39,7 +39,7 @@ console.log('gabaritos Python e JavaScript gerados:', Object.keys(out).length);
 
 (async () => {
   let initSqlJs; try { initSqlJs = require('../vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
-  const SQL = await initSqlJs();
+  const SQL = require('../public/bq.js').install(await initSqlJs());
   const defSeeds = {};
   for (const f of ['sql1', 'sql2', 'sql3']) {
     const m = require('../content/' + f);

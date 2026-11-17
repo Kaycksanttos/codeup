@@ -10,7 +10,7 @@ const fail = (id, msg) => { console.error(`✗ ${id}: ${msg}`); bad++; };
 
 async function sqlPart() {
   let initSqlJs; try { initSqlJs = require('../vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
-  const SQL = await initSqlJs();
+  const SQL = require('../public/bq.js').install(await initSqlJs());
   const T = require('../content/tente-sql');
   const AFTER = require('../content/example-after');
   let n = 0;

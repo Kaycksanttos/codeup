@@ -139,8 +139,8 @@ const bars = n => `<span class=lb>${[1, 2, 3].map(i => `<i class="${i <= n ? 'on
 // destaque de sintaxe simples (só para exemplos e soluções exibidos)
 const PY_KW = 'def return if elif else for while in import from as class try except finally raise with yield lambda and or not is pass break continue nonlocal global None True False'.split(' ');
 const PY_FN = 'print len range sum max min sorted list dict set tuple int float str bool type enumerate zip map filter any all abs round reversed isinstance super iter next'.split(' ');
-const SQ_KW = 'select from where and or not in between like order by group having limit distinct as join left right inner outer on union all except intersect case when then else end insert into values update set delete create table view index with over partition rows preceding current row asc desc is null exists offset unbounded following'.split(' ');
-const SQ_FN = 'count sum avg min max round upper lower length coalesce row_number rank dense_rank lag lead ntile first_value strftime julianday substr cast date integer text real'.split(' ');
+const SQ_KW = 'select from where and or not in between like order by group having limit distinct as join left right inner outer on union all except intersect case when then else end insert into values update set delete create table view index with over partition rows preceding current row asc desc is null exists offset unbounded following qualify replace interval true false'.split(' ');
+const SQ_FN = 'count sum avg min max round upper lower length coalesce row_number rank dense_rank lag lead ntile first_value substr cast date int64 float64 string bool format_date parse_date date_diff date_add date_sub date_trunc last_day extract current_date safe_divide safe_cast countif string_agg ifnull if concat starts_with ends_with regexp_contains lpad rpad initcap floor ceil mod div'.split(' ');
 function hlXl(code) {   // fórmulas do Excel: funções, células/intervalos, textos e números
   const re = /("(?:[^"]|"")*")|(\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?)|([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9._]*)(?=\()|(\d+(?:,\d+)?%?)/g;
   let out = '', last = 0, m; code = String(code ?? '');
@@ -1530,7 +1530,7 @@ async function labPeek() {
   try {
     if (l.type == 'sql') {
       await loadSql(); const db = new S.SQL.Database();
-      try { db.run(l.seed); o.innerHTML = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(n => `<div class=tname>${ic('db', 14)} ${esc(n)}</div>` + table(db.exec(`SELECT * FROM ${n}`)[0])).join(''); } finally { db.close(); }
+      try { db.run(l.seed); o.innerHTML = db.execRaw("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(n => `<div class=tname>${ic('db', 14)} ${esc(n)}</div>` + table(db.exec(`SELECT * FROM ${n}`)[0])).join(''); } finally { db.close(); }
     } else if (l.peek) { o.textContent = 'Executando…'; o.innerHTML = (await (l.type == 'js' ? runJs(l, l.peek) : runPy(l, l.peek))).html; }
     else return;
     if (t) t.textContent = 'Os dados desta lição';
@@ -2184,7 +2184,7 @@ async function loadSql() {
     }
     if (!base) throw new Error('OFFLINE');
   } else base = BASES[0];
-  S.SQL = await initSqlJs({ locateFile: f => base + f });
+  S.SQL = await initSqlJs({ locateFile: f => base + f }); BQ.install(S.SQL);      // o aluno escreve BigQuery; public/bq.js traduz para o SQLite
 }
 async function runSql(l, code) {
   await loadSql(); const db = new S.SQL.Database(); db.run(l.seed); const res = db.exec(code), last = res[res.length - 1];
@@ -2268,7 +2268,7 @@ async function peek() {
   try {
     if (l.type == 'sql') {
       await loadSql(); const db = new S.SQL.Database(); db.run(l.seed);
-      o.innerHTML = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(t => `<div class=tname>${ic('db', 14)} ${esc(t)}</div>` + table(db.exec(`SELECT * FROM ${t}`)[0])).join('');
+      o.innerHTML = db.execRaw("SELECT name FROM sqlite_master WHERE type='table'")[0].values.flat().map(t => `<div class=tname>${ic('db', 14)} ${esc(t)}</div>` + table(db.exec(`SELECT * FROM ${t}`)[0])).join('');
     } else if (l.peek) { o.innerHTML = (await (l.type == 'js' ? runJs(l, l.peek) : runPy(l, l.peek))).html; }
     else o.textContent = 'Esta atividade não tem dados para mostrar.';
   } catch (e) { showErr(e); }

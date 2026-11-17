@@ -2,7 +2,8 @@
 // SQL: roda a solução e o gabarito (sql.js). Python: roda a solução com o python3 do computador. Excel: calcula as fórmulas com o motor da planilha e confere com a correção.
 const test = require('node:test'), assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
-const initSqlJs = require('sql.js');
+const initSqlJsRaw = require('sql.js'), BQ = require('../public/bq.js');
+const initSqlJs = async () => BQ.install(await initSqlJsRaw());   // o SQL das lições é BigQuery (public/bq.js)
 const lessons = require('../lessons'), { checkpoints, finals, tests, projects, TRACKS, LEVELS_OF, CHANCES, BACK, KEYS } = lessons;
 const xlcheck = require('../xlcheck'), checkExcel = require('../tools/check-xl'), checkPbi = require('../tools/check-pbi');
 const daxcheck = require('../daxcheck'), quizcheck = require('../quizcheck'), htmlcheck = require('../htmlcheck'), checkHtml = require('../tools/check-html');
@@ -196,8 +197,8 @@ test('SQL: o cartão da tabela mostra o nome e as colunas certos em todos os ban
   assert.ok(seeds.size >= 3, 'há vários bancos de treino de SQL');
   for (const s of seeds) {
     const db = new SQL.Database(); db.run(s);
-    const names = (db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0] || { values: [] }).values.flat();
-    const real = Object.fromEntries(names.map(t => [t, db.exec(`PRAGMA table_info(${t})`)[0].values.map(r => r[1])]));
+    const names = (db.execRaw("SELECT name FROM sqlite_master WHERE type='table'")[0] || { values: [] }).values.flat();
+    const real = Object.fromEntries(names.map(t => [t, db.execRaw(`PRAGMA table_info(${t})`)[0].values.map(r => r[1])]));
     db.close();
     assert.deepEqual(Object.fromEntries(seedSchema(s).map(t => [t.name, t.cols])), real);
   }

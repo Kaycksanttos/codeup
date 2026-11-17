@@ -26,13 +26,13 @@
   const txt = n => n.k === 'g' ? '(' + flat(n.items) + ')' : n.v;
   function flat(ns) { let o = ''; ns.forEach((n, i) => { o += (i ? gap(ns[i - 1], n) : '') + txt(n); }); return o; }
 
-  const SINGLE = new Set(['SELECT', 'FROM', 'WHERE', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'WITH', 'VALUES', 'UPDATE', 'SET']);
+  const SINGLE = new Set(['SELECT', 'FROM', 'WHERE', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'WITH', 'VALUES', 'UPDATE', 'SET', 'QUALIFY']);
   function headAt(ns, i) {                                            // quantas palavras formam o início de uma parte do comando (0 = não é)
     const w = k => ns[i + k] && ns[i + k].k === 'w' ? ns[i + k].v.toUpperCase() : '';
     const a = w(0), b = w(1);
     if (!a) return 0;
     if ((a === 'GROUP' || a === 'ORDER') && b === 'BY') return 2;
-    if ((a === 'INSERT' && b === 'INTO') || (a === 'DELETE' && b === 'FROM') || (a === 'UNION' && b === 'ALL')) return 2;
+    if ((a === 'INSERT' && b === 'INTO') || (a === 'DELETE' && b === 'FROM') || (['UNION', 'INTERSECT', 'EXCEPT'].includes(a) && (b === 'ALL' || b === 'DISTINCT'))) return 2;
     if (a === 'CREATE' && (b === 'TABLE' || b === 'VIEW' || b === 'INDEX')) return 2;
     if (a === 'DROP' && b === 'TABLE') return 2;
     if (SINGLE.has(a)) return 1;

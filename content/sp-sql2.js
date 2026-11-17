@@ -254,29 +254,29 @@ WHERE total > 800`,
     "O erro era que o `SUM(valor)` da subconsulta não tinha apelido, então a tabelinha não tinha nenhuma coluna chamada `total` para o SELECT e o WHERE de fora usarem. Dentro de uma subconsulta no FROM, tudo o que será usado lá fora precisa de um nome: dê `AS total` aos cálculos.", CLI)
 };
 SP['sql-2-17'] = {
-  d: D("Liste num só resultado o nome dos funcionários do departamento 2 (depto_id = 2) e o nome de quem ganha mais de 8000. Quem se encaixa nas duas regras deve aparecer uma vez só (use UNION entre dois SELECT).",
-    "SELECT nome FROM funcionarios WHERE depto_id = 2 UNION SELECT nome FROM funcionarios WHERE salario > 8000", ['union'],
-    "Escreva um SELECT para cada regra e ligue os dois com UNION. O UNION já tira os nomes repetidos.",
-    "O `UNION` junta o resultado de dois SELECT em uma lista só e remove as linhas repetidas. Serve quando você tem duas regras diferentes para escolher pessoas (ou produtos, clientes...) e quer uma lista única, sem repetir quem cai nas duas. (O `UNION ALL` mantém as repetidas.)", RH),
+  d: D("Liste num só resultado o nome dos funcionários do departamento 2 (depto_id = 2) e o nome de quem ganha mais de 8000. Quem se encaixa nas duas regras deve aparecer uma vez só (use UNION DISTINCT entre dois SELECT).",
+    "SELECT nome FROM funcionarios WHERE depto_id = 2 UNION DISTINCT SELECT nome FROM funcionarios WHERE salario > 8000", ['union distinct'],
+    "Escreva um SELECT para cada regra e ligue os dois com UNION DISTINCT. Ele já tira os nomes repetidos.",
+    "O `UNION DISTINCT` junta o resultado de dois SELECT em uma lista só e remove as linhas repetidas. Serve quando você tem duas regras diferentes para escolher pessoas (ou produtos, clientes...) e quer uma lista única, sem repetir quem cai nas duas. (O `UNION ALL` mantém as repetidas.)", RH),
   f: F("Este código deveria listar, numa lista só, as cidades dos clientes cadastrados antes de 2026 e as cidades dos clientes do estado PR, mas dá erro. Rode, leia a mensagem, ache o erro e conserte.",
     `SELECT cidade FROM clientes WHERE cadastro < '2026-01-01'
-UNION
+UNION DISTINCT
 SELECT cidade, estado FROM clientes WHERE estado = 'PR'`,
-    "SELECT cidade FROM clientes WHERE cadastro < '2026-01-01' UNION SELECT cidade FROM clientes WHERE estado = 'PR'", ['union'],
+    "SELECT cidade FROM clientes WHERE cadastro < '2026-01-01' UNION DISTINCT SELECT cidade FROM clientes WHERE estado = 'PR'", ['union distinct'],
     "A mensagem fala do número de colunas. Os dois SELECT precisam devolver a mesma quantidade de colunas.",
-    "O erro era que o segundo SELECT trazia duas colunas (`cidade, estado`) e o primeiro só uma. No UNION (e no EXCEPT) os dois SELECT precisam ter o mesmo número de colunas, na mesma ordem e com o mesmo tipo de dado, porque as linhas vão ser empilhadas numa tabela só.", CLI)
+    "O erro era que o segundo SELECT trazia duas colunas (`cidade, estado`) e o primeiro só uma. No UNION DISTINCT (e no EXCEPT DISTINCT) os dois SELECT precisam ter o mesmo número de colunas, na mesma ordem e com o mesmo tipo de dado, porque as linhas vão ser empilhadas numa tabela só.", CLI)
 };
 SP['sql-2-18'] = {
-  d: D("Quem acessou o site em 2026-10-01 mas não voltou em 2026-10-02? Liste o usuario_id dessas pessoas usando EXCEPT entre dois SELECT da tabela acessos.",
-    "SELECT usuario_id FROM acessos WHERE data = '2026-10-01' EXCEPT SELECT usuario_id FROM acessos WHERE data = '2026-10-02'", ['except'],
-    "O primeiro SELECT traz quem acessou em 2026-10-01; o segundo, quem acessou em 2026-10-02. O EXCEPT deixa o que está no primeiro e não está no segundo.",
-    "O `EXCEPT` devolve o que está no primeiro resultado e não aparece no segundo: 'estava aqui, mas não está lá'. É ótimo para comparar dois momentos (quem veio ontem e não veio hoje), duas listas (inscritos que não pagaram) ou dois períodos.", WEB),
+  d: D("Quem acessou o site em 2026-10-01 mas não voltou em 2026-10-02? Liste o usuario_id dessas pessoas usando EXCEPT DISTINCT entre dois SELECT da tabela acessos.",
+    "SELECT usuario_id FROM acessos WHERE data = '2026-10-01' EXCEPT DISTINCT SELECT usuario_id FROM acessos WHERE data = '2026-10-02'", ['except distinct'],
+    "O primeiro SELECT traz quem acessou em 2026-10-01; o segundo, quem acessou em 2026-10-02. O EXCEPT DISTINCT deixa o que está no primeiro e não está no segundo.",
+    "O `EXCEPT DISTINCT` devolve o que está no primeiro resultado e não aparece no segundo: 'estava aqui, mas não está lá'. É ótimo para comparar dois momentos (quem veio ontem e não veio hoje), duas listas (inscritos que não pagaram) ou dois períodos.", WEB),
   f: F("Este código deveria listar quem acessou o site em 2026-10-03 mas não voltou em 2026-10-04, mas o resultado está errado. Rode, ache o erro e conserte.",
     `SELECT usuario_id FROM acessos WHERE data = '2026-10-04'
-EXCEPT
+EXCEPT DISTINCT
 SELECT usuario_id FROM acessos WHERE data = '2026-10-03'`,
-    "SELECT usuario_id FROM acessos WHERE data = '2026-10-03' EXCEPT SELECT usuario_id FROM acessos WHERE data = '2026-10-04'", ['except'],
-    "Compare com o resultado esperado. O EXCEPT guarda o que está no PRIMEIRO SELECT e não está no segundo: a ordem importa.",
+    "SELECT usuario_id FROM acessos WHERE data = '2026-10-03' EXCEPT DISTINCT SELECT usuario_id FROM acessos WHERE data = '2026-10-04'", ['except distinct'],
+    "Compare com o resultado esperado. O EXCEPT DISTINCT guarda o que está no PRIMEIRO SELECT e não está no segundo: a ordem importa.",
     "O erro era a ordem dos SELECT: o EXCEPT não é simétrico. `A EXCEPT B` traz o que tem em A e não tem em B; trocar os lados responde outra pergunta (quem acessou em 10-04 e não em 10-03). Pense assim: o que eu quero manter vem primeiro.", WEB)
 };
 SP['sql-2-19'] = {
@@ -342,42 +342,42 @@ FROM produtos`,
 };
 SP['sql-2-23'] = {
   d: D("Quantos pedidos foram feitos em cada mês? Mostre o mês (ano-mês, apelido mes) e a quantidade de pedidos (apelido total).",
-    "SELECT strftime('%Y-%m', data) AS mes, COUNT(*) AS total FROM pedidos GROUP BY mes", ['strftime', 'group by'],
-    "strftime('%Y-%m', data) transforma a data em ano-mês. Dê o apelido mes e agrupe por ele.",
-    "O `strftime` extrai pedaços de uma data (ano, mês, dia) ou muda o formato dela. Com ele dá para agrupar por mês, por ano ou por dia da semana mesmo com a data completa guardada na tabela. `'%Y-%m'` é o código de 'ano-mês' (por exemplo, 2026-10).", CLI),
+    "SELECT FORMAT_DATE('%Y-%m', data) AS mes, COUNT(*) AS total FROM pedidos GROUP BY mes", ['format_date', 'group by'],
+    "FORMAT_DATE('%Y-%m', data) transforma a data em ano-mês. Dê o apelido mes e agrupe por ele.",
+    "O `FORMAT_DATE` escreve a data no formato que você pedir, e o `EXTRACT` tira um pedaço dela (ano, mês, dia) como número. Com eles dá para agrupar por mês, por ano ou por dia mesmo com a data completa guardada na tabela. `'%Y-%m'` é o código de 'ano-mês' (por exemplo, 2026-10).", CLI),
   f: F("Este código deveria somar as quantidades vendidas em outubro (mês 10), mas o resultado vem vazio (NULL). Rode, ache o erro e conserte.",
     `SELECT SUM(qtd) AS total
 FROM vendas
-WHERE strftime('%m', data) = 10`,
-    "SELECT SUM(qtd) AS total FROM vendas WHERE strftime('%m', data) = '10'", ['strftime'],
-    "O strftime devolve TEXTO, como '10', mesmo quando parece número. Como se escreve um texto no SQL?",
-    "O erro era comparar com o número `10`. O `strftime` sempre devolve texto, então o resultado é `'10'` (com aspas), e o SQL não considera o texto `'10'` igual ao número 10. Compare com o mesmo tipo: `= '10'`.", LOJA)
+WHERE EXTRACT(MONTH FROM data) = '10'`,
+    "SELECT SUM(qtd) AS total FROM vendas WHERE EXTRACT(MONTH FROM data) = 10", ['extract'],
+    "O EXTRACT devolve um NÚMERO (10), não um texto. Como se escreve um número no SQL, com ou sem aspas?",
+    "O erro era comparar com o texto `'10'`. O `EXTRACT(MONTH FROM data)` devolve um número, e o SQL não considera o texto `'10'` igual ao número 10 (no BigQuery isso até dá erro de tipos). Compare com o mesmo tipo: `= 10`. Já o `FORMAT_DATE('%m', data)` devolve texto, e aí sim se compara com `'10'`.", LOJA)
 };
 SP['sql-2-24'] = {
   d: D("Quanto os clientes pagaram por mês? Mostre o mês (ano-mês, apelido mes) e o total dos pedidos com status 'pago' (apelido total), em ordem de mês.",
-    "SELECT strftime('%Y-%m', data) AS mes, SUM(valor) AS total FROM pedidos WHERE status = 'pago' GROUP BY mes ORDER BY mes", ['strftime', 'group by', 'order by'],
-    "Filtre o status no WHERE, agrupe pelo mês criado com strftime e ordene pelo próprio mês.",
-    "Um relatório mensal junta várias peças: o `strftime` cria o mês, o `WHERE` escolhe só o que interessa (pedidos pagos), o `GROUP BY` agrupa por mês, o `SUM` calcula o total e o `ORDER BY` coloca os meses em ordem. É um dos relatórios mais comuns do dia a dia de quem analisa dados.", CLI),
+    "SELECT FORMAT_DATE('%Y-%m', data) AS mes, SUM(valor) AS total FROM pedidos WHERE status = 'pago' GROUP BY mes ORDER BY mes", ['format_date', 'group by', 'order by'],
+    "Filtre o status no WHERE, agrupe pelo mês criado com FORMAT_DATE e ordene pelo próprio mês.",
+    "Um relatório mensal junta várias peças: o `FORMAT_DATE` cria o mês, o `WHERE` escolhe só o que interessa (pedidos pagos), o `GROUP BY` agrupa por mês, o `SUM` calcula o total e o `ORDER BY` coloca os meses em ordem. É um dos relatórios mais comuns do dia a dia de quem analisa dados.", CLI),
   f: F("Este código deveria mostrar o mês (ano-mês, apelido mes) e a quantidade total vendida em cada mês (apelido total), em ordem de mês. Mas todos os meses aparecem juntos numa linha só. Rode, ache o erro e conserte.",
-    `SELECT strftime('%Y-%M', data) AS mes, SUM(qtd) AS total
+    `SELECT FORMAT_DATE('%Y-%M', data) AS mes, SUM(qtd) AS total
 FROM vendas
 GROUP BY mes
 ORDER BY mes`,
-    "SELECT strftime('%Y-%m', data) AS mes, SUM(qtd) AS total FROM vendas GROUP BY mes ORDER BY mes", ['strftime', 'group by', 'order by'],
-    "Olhe o texto do mês no resultado: ele se parece com 2026-09? Os códigos do strftime diferenciam letras maiúsculas e minúsculas.",
-    "O erro era `%M` no lugar de `%m`: no strftime os códigos fazem diferença entre maiúscula e minúscula. `%m` é o mês, mas `%M` são os minutos, que nas datas guardadas sem hora são sempre 00, então todos os meses caíam no mesmo grupo. Os principais: `%Y` ano, `%m` mês e `%d` dia.", LOJA)
+    "SELECT FORMAT_DATE('%Y-%m', data) AS mes, SUM(qtd) AS total FROM vendas GROUP BY mes ORDER BY mes", ['format_date', 'group by', 'order by'],
+    "Olhe o texto do mês no resultado: ele se parece com 2026-09? Os códigos do FORMAT_DATE diferenciam letras maiúsculas e minúsculas.",
+    "O erro era `%M` no lugar de `%m`: no FORMAT_DATE os códigos fazem diferença entre maiúscula e minúscula. `%m` é o mês, mas `%M` são os minutos, que nas datas guardadas sem hora são sempre 00, então todos os meses caíam no mesmo grupo. Os principais: `%Y` ano, `%m` mês e `%d` dia.", LOJA)
 };
 SP['sql-2-25'] = {
   d: D("Há quantos dias cada funcionário trabalha na empresa? Mostre o nome e a quantidade de dias entre a admissão e '2026-10-18' (apelido dias_casa), do mais antigo para o mais novo.",
-    "SELECT nome, CAST(julianday('2026-10-18') - julianday(admissao) AS INTEGER) AS dias_casa FROM funcionarios ORDER BY dias_casa DESC", ['julianday', 'order by'],
-    "julianday transforma uma data num número de dias. Subtraia a admissão da data final e use CAST(... AS INTEGER) para tirar as casas decimais.",
-    "O `julianday` transforma uma data num número (os dias contados a partir de um ponto fixo), e por isso dá para subtrair uma data da outra e obter a diferença em dias. Serve para calcular idade de conta, tempo de casa, dias de atraso ou prazo de entrega. Quanto mais antiga a admissão, mais dias: por isso o mais antigo vem primeiro.", RH),
+    "SELECT nome, DATE_DIFF(DATE '2026-10-18', admissao, DAY) AS dias_casa FROM funcionarios ORDER BY dias_casa DESC", ['date_diff', 'order by'],
+    "Use DATE_DIFF(data_final, data_inicial, DAY): a data final ('2026-10-18') vem primeiro e a admissão depois.",
+    "O `DATE_DIFF(data_final, data_inicial, DAY)` conta quantos dias há entre duas datas e já devolve um número inteiro. Serve para calcular idade de conta, tempo de casa, dias de atraso ou prazo de entrega. Quanto mais antiga a admissão, mais dias: por isso o mais antigo vem primeiro.", RH),
   f: F("Este código deveria mostrar o nome de cada usuário e há quantos dias a conta foi criada até '2026-10-18' (apelido dias), mas os números saem negativos. Rode, ache o erro e conserte.",
-    `SELECT nome, CAST(julianday(criado_em) - julianday('2026-10-18') AS INTEGER) AS dias
+    `SELECT nome, DATE_DIFF(criado_em, DATE '2026-10-18', DAY) AS dias
 FROM usuarios`,
-    "SELECT nome, CAST(julianday('2026-10-18') - julianday(criado_em) AS INTEGER) AS dias FROM usuarios", ['julianday'],
+    "SELECT nome, DATE_DIFF(DATE '2026-10-18', criado_em, DAY) AS dias FROM usuarios", ['date_diff'],
     "Uma data mais antiga tem um número menor. Para o resultado dar positivo, quem vem primeiro na subtração: a data mais nova ou a mais antiga?",
-    "O erro era a ordem da subtração. Na conta `data_nova - data_antiga` o resultado é positivo; invertida, fica negativo. Aqui a data final ('2026-10-18') é a mais nova, então ela vem primeiro: `julianday('2026-10-18') - julianday(criado_em)`.", WEB)
+    "O erro era a ordem da subtração. No `DATE_DIFF(data_nova, data_antiga, DAY)` o resultado é positivo; invertida, fica negativo. Aqui a data final ('2026-10-18') é a mais nova, então ela vem primeiro: `DATE_DIFF(DATE '2026-10-18', criado_em, DAY)`.", WEB)
 };
 SP['sql-2-26'] = {
   d: D("Cadastre o departamento (6, 'Juridico', 'Recife') e depois mostre o nome dos departamentos de Recife, ordenados por nome.",

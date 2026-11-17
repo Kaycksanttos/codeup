@@ -5,7 +5,7 @@ const { L } = mkH('sql', 1, LOJA);
 const R = { seed: RH };
 
 exports.lessons = [
-  L('SELECT *', 'SELECT escolhe o que mostrar e FROM diz de qual tabela. O asterisco (*) significa "todas as colunas". ' + T_LOJA, 'SELECT * FROM produtos',
+  L('SELECT *', 'SELECT escolhe o que mostrar e FROM diz de qual tabela. O asterisco (*) significa "todas as colunas". Este curso usa o SQL do BigQuery (GoogleSQL), o banco do Google para análise de dados: lá o nome completo de uma tabela é projeto.dataset.tabela (aqui basta o nome da tabela, mas o nome completo também funciona). ' + T_LOJA, 'SELECT * FROM produtos',
     'Mostre todas as colunas e linhas da tabela produtos.', 'SELECT * FROM produtos', ['select', 'from produtos'], 'SELECT * FROM produtos'),
   L('Escolhendo colunas', 'Em vez de *, liste só as colunas que quer, separadas por vírgula.', 'SELECT nome FROM produtos',
     'Mostre as colunas nome e preco de todos os produtos.', 'SELECT nome, preco FROM produtos', ['select', 'from produtos'], 'SELECT nome, preco FROM produtos'),

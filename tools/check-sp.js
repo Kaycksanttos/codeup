@@ -16,7 +16,7 @@ async function check(only = '') {
   const bad = [], warn = [], stat = { d: 0, f: 0, fErr: 0, fWrong: 0 };
   const say = (id, m) => bad.push(`${id}: ${m}`), wrn = (id, m) => warn.push(`${id}: ${m}`);
   let initSqlJs; try { initSqlJs = require('../vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
-  const SQL = await initSqlJs();
+  const SQL = require('../public/bq.js').install(await initSqlJs());
   const run = (seed, code) => { const db = new SQL.Database(); try { db.run(seed); const r = db.exec(code); const last = r[r.length - 1]; return { rows: (last ? last.values : []).map(v => JSON.stringify(v)), cols: last ? last.columns : [] }; } catch (e) { return { err: e.message }; } finally { db.close(); } };
   const same = (a, b, ordered) => JSON.stringify(ordered ? a : [...a].sort()) === JSON.stringify(ordered ? b : [...b].sort());
   const sqlLessons = lessons.filter(l => l.type === 'sql' && l.lv === 2 && (!only || l.id.startsWith(only)));

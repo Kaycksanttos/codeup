@@ -132,10 +132,10 @@ module.exports = {
     `Escreva CREATE VIEW dias_por_usuario AS SELECT usuario_id, COUNT(*) AS dias FROM acessos GROUP BY usuario_id; e depois faça um SELECT que junta usuarios com o nome da view.`,
     `2 colunas (nome e dias) e 6 linhas, de quem acessou em mais dias (Carla, 5) para quem acessou em menos.`],
   'sql-3-27': [
-    `Índice (CREATE INDEX) é um atalho, como o índice no final de um livro: em vez de ler página por página, você vai direto ao lugar. O resultado da consulta é o mesmo, só fica mais rápido.`,
-    `Serve para manter o banco rápido quando a tabela fica enorme e você procura sempre pela mesma coluna.`,
-    `Escreva CREATE INDEX idx_acesso_usuario ON acessos(usuario_id); e depois faça a consulta normalmente: SELECT COUNT(*) FROM acessos WHERE usuario_id = 3.`,
-    `1 linha e 1 coluna com a contagem: 5 (o usuário 3 acessou 5 vezes).`],
+    `QUALIFY é o WHERE das funções de janela (um recurso do BigQuery). Primeiro a janela numera ou classifica as linhas (ROW_NUMBER, RANK...) e o QUALIFY fica só com as que você quer, como a número 1 de cada grupo.`,
+    `Serve para pegar o primeiro (ou os 3 primeiros) de cada grupo sem precisar de CTE: o melhor mês de cada vendedor, o último pedido de cada cliente.`,
+    `Escreva SELECT vendedor, mes, valor FROM vendas_mes QUALIFY ROW_NUMBER() OVER (PARTITION BY vendedor ORDER BY valor DESC) = 1 e ordene por vendedor.`,
+    `3 colunas (vendedor, mes e valor) e 4 linhas, uma para cada vendedor, com o melhor mês dele: Ana (2026-09, 2100), Bruno (2026-10, 1600), Carla (2026-10, 2900) e Diego (2026-09, 1100).`],
   'sql-3-28': [
     `Aqui você junta função de janela com CTE para achar quem está acima da média do próprio grupo, sem precisar de subconsulta correlacionada.`,
     `Serve para achar os destaques de cada grupo: as vendas que foram melhores que o normal daquele vendedor.`,

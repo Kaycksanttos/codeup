@@ -126,7 +126,7 @@ Colunas, nesta ordem:
 2. `vendas`: quantas vendas houve no mês
 3. `receita`: a receita do mês, que é a soma de `qtd` vezes o preço do produto
 4. `ultima_venda`: a data da última venda do mês
-5. `dias`: quantos dias se passaram da primeira à última venda do mês, como número inteiro (use `julianday` e `CAST`)
+5. `dias`: quantos dias se passaram da primeira à última venda do mês, como número inteiro (use `DATE_DIFF`)
 
 Ordene por `mes`.
 
@@ -209,13 +209,11 @@ Colunas, nesta ordem:
 Ordene por `mes`.
 
 ## pj-sql-3-30
-Monte a curva ABC da loja, em 3 passos.
+Monte a curva ABC da loja, em 2 passos.
 
 Passo 1: crie a view `receita_produto`, com 2 colunas: `nome` e `receita` (a receita de cada produto vendido, que é a soma de `qtd` vezes `preco`).
 
-Passo 2: crie o índice `idx_vendas_produto` na coluna `produto_id` da tabela `vendas`.
-
-Passo 3: usando a view, mostre uma linha por produto, do de maior receita para o de menor. Colunas, nesta ordem:
+Passo 2: usando a view, mostre uma linha por produto, do de maior receita para o de menor. Colunas, nesta ordem:
 - `nome`
 - `receita`
 - `pct_acum`: o percentual acumulado da receita, com 1 casa

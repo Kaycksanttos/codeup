@@ -19,7 +19,7 @@ function pyRun(code) { const r = spawnSync('python3', ['-I', '-c', code], { enco
 
 async function main() {
   let initSqlJs; try { initSqlJs = require('../vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
-  const SQL = await initSqlJs(), stat = { items: 0, python: 0, sql: 0 };
+  const SQL = require('../public/bq.js').install(await initSqlJs()), stat = { items: 0, python: 0, sql: 0 };
   const want = lessons.filter(l => l.type !== 'excel' && l.lv >= 2), ids = new Set(lessons.map(l => l.id));
   for (const id of Object.keys(lessons.EX)) { const l = lessons.find(x => x.id === id); if (!l) bad.push(`${id}: atividade de explicar sem lição correspondente`); else if (l.type === 'excel' || l.lv < 2) bad.push(`${id}: o Básico e o Excel não têm a atividade de explicar`); }
   const acts = want.filter(l => !only || l.id.startsWith(only));

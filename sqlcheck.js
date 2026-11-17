@@ -10,7 +10,7 @@ const norm = (r, ordered) => {
 (async () => {
   // 1º a cópia que vem junto do projeto (vendor/sql); se não existir, o pacote instalado com "npm install"
   let initSqlJs; try { initSqlJs = require('./vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
-  const SQL = await initSqlJs();
+  const SQL = await initSqlJs(); require('./public/bq.js').install(SQL);   // o aluno escreve BigQuery (veja public/bq.js)
   parentPort.postMessage({ ready: true });
   parentPort.once('message', ({ seed, code, expected, show }) => {
     try {

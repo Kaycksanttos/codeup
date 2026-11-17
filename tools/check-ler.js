@@ -19,7 +19,7 @@ function pyRun(code) { const r = spawnSync('python3', ['-I', '-c', code], { enco
 
 async function main() {
   let initSqlJs; try { initSqlJs = require('../vendor/sql/sql-wasm.js'); } catch { initSqlJs = require('sql.js'); }
-  const SQL = await initSqlJs(), tables = {}, stat = { items: 0, proved: 0, concept: 0 };
+  const SQL = require('../public/bq.js').install(await initSqlJs()), tables = {}, stat = { items: 0, proved: 0, concept: 0 };
   // as lições de Power BI e DAX (dax/quiz) têm a conferência própria em tools/check-pbi.js (npm run check:pbi)
   const acts = lessons.filter(l => (!only || l.id.startsWith(only)) && l.type !== 'dax' && l.type !== 'quiz');
   // sobras: itens que não pertencem a nenhuma lição
@@ -54,7 +54,7 @@ async function main() {
         const seed = r.seed || l.seed, db = new SQL.Database();
         try {
           db.run(seed);
-          if (!tables[lessons.seedKey(seed)]) tables[lessons.seedKey(seed)] = (db.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY rowid")[0]?.values || []).map(([name]) => { const t = db.exec(`SELECT * FROM ${name}`)[0]; return { name, cols: t ? t.columns : [], rows: t ? t.values.map(v => v.map(show)) : [] }; });
+          if (!tables[lessons.seedKey(seed)]) tables[lessons.seedKey(seed)] = (db.execRaw("SELECT name FROM sqlite_master WHERE type='table' ORDER BY rowid")[0]?.values || []).map(([name]) => { const t = db.exec(`SELECT * FROM ${name}`)[0]; return { name, cols: t ? t.columns : [], rows: t ? t.values.map(v => v.map(show)) : [] }; });
           if (r.v === 'err') { let e = null; try { db.exec(r.code); } catch (er) { e = er; } if (!e) say(l, 'a consulta deveria dar erro, mas rodou'); }
           else {
             let res; try { res = db.exec(r.code); } catch (er) { say(l, 'a consulta deu erro: ' + er.message); continue; }
