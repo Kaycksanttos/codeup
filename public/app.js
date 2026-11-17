@@ -749,7 +749,7 @@ function render() {
     const trk = `<div class="card cont tkc"${nx ? ` onclick="${nx.cp ? `openStep('${nx.cp.id}')` : `openL('${nx.id}')`}"` : ''}>${tg(T, 58)}<div class=bd><b>${TN[T]}</b><small>Nível ${lv} · ${LV[lv - 1]}</small><div class=tkb><i style="width:${Math.round(nd / 30 * 100)}%"></i></div></div><div class=tkn><b>${nd}</b>/30</div>${nx ? `<span class=go>${ic('arrow', 20)}</span>` : ''}</div>`;
     h = `${head}${an}${vb}
     ${document.body.classList.contains('wild') ? trk : cont || `<div class=panel>${prog}</div>`}
-    <div class=tabs>${Array.from({ length: Math.max(3, lvs(T).length) }, (_, i) => i + 1).map(x => x > lvs(T).length ? `<button class=soon onclick="toast('${LV[x - 1]} de ${TN[T]} chega em breve.')">${ic('lock', 15)}<span>${LV[x - 1]}</span><small>em breve</small></button>` : `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
+    <div class="tabs${lvs(T).length > 3 ? ' t4' : ''}">${Array.from({ length: Math.max(3, lvs(T).length) }, (_, i) => i + 1).map(x => x > lvs(T).length ? `<button class=soon onclick="toast('${LV[x - 1]} de ${TN[T]} chega em breve.')">${ic('lock', 15)}<span>${LV[x - 1]}</span><small>em breve</small></button>` : `<button class="${lv == x ? 'on' : ''}" onclick="S.lv=${x};render()">${lvOpen(T, x) ? (passedLv(T, x) ? ic('check', 15) : bars(x)) : ic('lock', 15)}<span>${LV[x - 1]}</span><small>${lvDone(T, x)}/30</small></button>`).join('')}</div>
     <div class="unit slim"><span class=uflag>${ic('flag', 18)}</span><div><small>NÍVEL ${lv}</small><b>${LV[lv - 1]}</b></div><div class=uc>${nd}/30</div></div>
     ${!open ? `<div class="note">${ic('lock', 18)}<div><b>Nível bloqueado</b><br>Passe na prova final de ${LV[lv - 2]} (30 lições + a prova) para entrar aqui.</div></div>` : ''}
     <div class=tl style="--n:${NR};--row:${MAP.row}px;--top:${MAP.top}px">${scene}${pathSvg}${rows.map(rowHtml).join('')}
@@ -779,7 +779,8 @@ function render() {
     <div class=crl id=crl>${ACTIVE().map(courseRow).join('')}${SOON.map(soonRow).join('')}</div><p class="tn crnone" id=crnone hidden>Nenhum curso encontrado. Tente outra palavra.</p>`;
   }
   if (S.tab == 'pf') h = profileView(L, T);
-  A.innerHTML = `<div class=c>${h}</div>${nav()}`; countUp(); if (S.tab == 'tr') cfilter(); if (S.tab == 'home') setTimeout(startTour, 700);
+  A.innerHTML = `<div class=c>${h}</div>${nav()}`; countUp(); { const tb = document.querySelector('.tabs.t4'), on = tb && tb.querySelector('button.on'); if (on) tb.scrollLeft += on.getBoundingClientRect().left - tb.getBoundingClientRect().left - (tb.clientWidth - on.offsetWidth) / 2; }   // 4 níveis (Python): a faixa rola para o lado e o nível atual fica no meio
+  if (S.tab == 'tr') cfilter(); if (S.tab == 'home') setTimeout(startTour, 700);
   if (S.tab == 'home' && S.scroll) { S.scroll = false; const c = document.querySelector('.ti.cur'); if (c) c.scrollIntoView({ block: 'center' }); }
 }
 
@@ -2059,7 +2060,9 @@ function diagErr(e, code, l) {
     else tips.push(esc(friendly(m).split('\n\n')[0]));
     if (/SyntaxError/.test(m)) tips.push('Revise chaves { }, parênteses ( ), aspas e vírgulas: todo abre precisa de um fecha.');
   } else if (l.type == 'python') {
-    const ln = [...m.matchAll(/line (\d+)/g)].pop(); if (ln) line = +ln[1];
+    let ln = [...m.matchAll(/line (\d+)/g)].pop();
+    if (labFs(l)) ln = [...m.matchAll(/line (\d+), in (\S+)/g)].filter(x => +x[1] <= lines.length && !x[2].startsWith('_')).pop() || [...m.matchAll(/line (\d+)/g)].filter(x => +x[1] <= lines.length).pop();   // Automações: o erro pode nascer dentro do computador de treino (public/lab.py); a linha mostrada é sempre a do código do aluno
+    if (ln) line = +ln[1];
     const nm = m.match(/name '([^']+)' is not defined/);
     if (nm) { const ids = [...new Set([...code.matchAll(/[A-Za-z_]\w*/g)].map(x => x[0]))].filter(x => x != nm[1]); const sg = similar(nm[1], [...ids, ...PY_FN]); line = line || lines.findIndex(x => x.includes(nm[1])) + 1;
       tips.push(`O nome <b>${esc(nm[1])}</b> não existe.${sg ? ` Você quis dizer <b>${esc(sg)}</b>?` : ' Confira se digitou igual ao que você criou antes.'}`); }
@@ -2289,6 +2292,8 @@ function friendly(m) {
     [/syntax error|incomplete input/i, 'Erro de sintaxe: revise vírgulas, aspas, parênteses e a ordem das palavras.'], [/NameError/, 'Nome não definido: você usou algo que ainda não criou ou digitou errado.'],
     [/IndentationError/, 'Erro de indentação: alinhe o código com espaços.'], [/SyntaxError: (Unexpected|Invalid|Missing)/, 'Erro de sintaxe: revise chaves, parênteses, aspas e vírgulas.'], [/SyntaxError/, 'Erro de sintaxe: revise parênteses, aspas e dois-pontos.'],
     [/KeyError/, 'Chave não encontrada: confira o nome da coluna ou da chave.'],
+    [/FileNotFoundError/, 'Arquivo ou pasta não encontrado: confira o nome, a pasta e as letras maiúsculas e minúsculas (o botão Arquivos mostra o que existe).'], [/FileExistsError/, 'Esse arquivo ou pasta já existe: use exist_ok=True ao criar a pasta ou escolha outro nome.'],
+    [/IsADirectoryError|NotADirectoryError/, 'O caminho aponta para uma pasta onde se esperava um arquivo (ou o contrário). Confira o caminho.'], [/JSONDecodeError/, 'O texto não está no formato JSON: confira chaves, aspas duplas e vírgulas.'],
     [/ReferenceError/, 'Nome não definido: você usou algo que ainda não criou ou digitou errado.'], [/Assignment to constant variable/, 'Uma const não pode receber outro valor. Use let se o valor precisar mudar.'],
     [/is not a function/, 'Isso não é uma função: confira o nome e os parênteses.'], [/Cannot read properties of (undefined|null)/, 'Você tentou usar uma propriedade de algo que está undefined ou null.'], [/before initialization/, 'Você usou a variável antes de criá-la.'], [/Tempo esgotado/, 'O código demorou demais: confira se há um laço sem fim.'],
     [/TypeError/, 'Tipos incompatíveis: confira o que você está somando, comparando ou chamando.'],

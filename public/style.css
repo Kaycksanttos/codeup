@@ -983,6 +983,7 @@ body.neo .boot .bootm{color:#4d5678}body.neo .boot .bb{background:#d9def0}
 .sbadge{flex:none;font-size:11px;font-weight:800;letter-spacing:.3px;padding:4px 10px;border-radius:999px;background:var(--panel2);color:var(--mute);white-space:nowrap}
 .crnone{text-align:center;margin:18px 0}
 .tabs button.soon{opacity:.6}
+.tabs.t4{overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}.tabs.t4::-webkit-scrollbar{display:none}.tabs.t4 button{flex:1 0 auto;min-width:104px;scroll-snap-align:center}
 body.neo .crs,body.neo .crl .cr,body.neo .crc button{background:#fff;border-color:#e2e8fa;border-width:2px;border-bottom-width:4px;color:var(--text)}
 body.neo .crc button{color:var(--mute)}body.neo .crc button.on{background:var(--acc);border-color:var(--acc);color:#fff;box-shadow:none}
 body.neo .crl .cr{box-shadow:0 10px 26px rgba(70,80,160,.10)}body.neo .crl .cr.cur{border-color:var(--tk)}
